@@ -1,6 +1,5 @@
 import { CONFIG } from 'src/global-config';
-
-import { OverviewAppView } from 'src/sections/overview/app/view';
+import { LmsDashboardView } from 'src/features/dashboard/views/lms-dashboard-view';
 
 // ----------------------------------------------------------------------
 
@@ -11,7 +10,7 @@ export default function OverviewAppPage() {
     <>
       <title>{metadata.title}</title>
 
-      <OverviewAppView />
+      <LmsDashboardView />
     </>
   );
 }

@@ -168,9 +168,9 @@ export function HomeFooter({ sx, ...other }) {
       <Container>
         <Logo />
         <Box sx={{ mt: 1, typography: 'caption' }}>
-          © All rights reserved.
-          <br /> made by
-          <Link href="https://minimals.cc/"> minimals.cc </Link>
+          © {new Date().getFullYear()} EERC LMS. All rights reserved.
+          <br />
+          Exam preparation, course delivery, and learner progress in one platform.
         </Box>
       </Container>
     </FooterRoot>

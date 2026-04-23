@@ -91,6 +91,23 @@ export const paths = {
   // DASHBOARD
   dashboard: {
     root: ROOTS.DASHBOARD,
+    overview: ROOTS.DASHBOARD,
+    courses: {
+      root: `${ROOTS.DASHBOARD}/courses`,
+      details: (courseId) => `${ROOTS.DASHBOARD}/courses/${courseId}`,
+    },
+    modules: {
+      details: (moduleId) => `${ROOTS.DASHBOARD}/modules/${moduleId}`,
+    },
+    quizzes: {
+      root: `${ROOTS.DASHBOARD}/quizzes`,
+      details: (quizId) => `${ROOTS.DASHBOARD}/quizzes/${quizId}`,
+      history: `${ROOTS.DASHBOARD}/quizzes/history`,
+    },
+    analyticsHub: `${ROOTS.DASHBOARD}/analytics`,
+    leaderboard: `${ROOTS.DASHBOARD}/leaderboard`,
+    enrollment: `${ROOTS.DASHBOARD}/enrollment`,
+    admin: `${ROOTS.DASHBOARD}/admin`,
     mail: `${ROOTS.DASHBOARD}/mail`,
     chat: `${ROOTS.DASHBOARD}/chat`,
     blank: `${ROOTS.DASHBOARD}/blank`,

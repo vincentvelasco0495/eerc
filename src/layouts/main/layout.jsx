@@ -6,6 +6,7 @@ import Button from '@mui/material/Button';
 
 import { paths } from 'src/routes/paths';
 import { usePathname } from 'src/routes/hooks';
+import { RouterLink } from 'src/routes/components';
 
 import { Logo } from 'src/components/logo';
 
@@ -65,25 +66,43 @@ export function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md
           />
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5 } }}>
-            {/** @slot Settings button */}
-            <SettingsButton />
+            {isHomePage ? (
+              <Button
+                component={RouterLink}
+                href={paths.dashboard.root}
+                variant="contained"
+                sx={(theme) => ({
+                  display: 'none',
+                  px: 2.5,
+                  borderRadius: 999,
+                  [theme.breakpoints.up(layoutQuery)]: { display: 'inline-flex' },
+                })}
+              >
+                Go to dashboard
+              </Button>
+            ) : (
+              <>
+                {/** @slot Settings button */}
+                <SettingsButton />
 
-            {/** @slot Sign in button */}
-            <SignInButton />
+                {/** @slot Sign in button */}
+                <SignInButton />
 
-            {/** @slot Purchase button */}
-            <Button
-              variant="contained"
-              rel="noopener noreferrer"
-              target="_blank"
-              href={paths.minimalStore}
-              sx={(theme) => ({
-                display: 'none',
-                [theme.breakpoints.up(layoutQuery)]: { display: 'inline-flex' },
-              })}
-            >
-              Purchase
-            </Button>
+                {/** @slot Purchase button */}
+                <Button
+                  variant="contained"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                  href={paths.minimalStore}
+                  sx={(theme) => ({
+                    display: 'none',
+                    [theme.breakpoints.up(layoutQuery)]: { display: 'inline-flex' },
+                  })}
+                >
+                  Purchase
+                </Button>
+              </>
+            )}
           </Box>
         </>
       ),
@@ -102,7 +121,16 @@ export function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md
 
   const renderFooter = () =>
     isHomePage ? (
-      <HomeFooter sx={slotProps?.footer?.sx} />
+      <HomeFooter
+        sx={[
+          {
+            bgcolor: '#0f172a',
+            color: 'common.white',
+            '& a': { color: 'common.white' },
+          },
+          ...(Array.isArray(slotProps?.footer?.sx) ? slotProps.footer.sx : [slotProps?.footer?.sx]),
+        ]}
+      />
     ) : (
       <Footer sx={slotProps?.footer?.sx} layoutQuery={layoutQuery} />
     );

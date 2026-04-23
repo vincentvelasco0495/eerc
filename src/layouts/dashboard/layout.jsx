@@ -112,26 +112,21 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
             <VerticalDivider sx={{ [theme.breakpoints.up(layoutQuery)]: { display: 'flex' } }} />
           )}
 
-          {/** @slot Workspace popover */}
-          <WorkspacesPopover
-            data={_workspaces}
-            sx={{ ...(isNavHorizontal && { color: 'var(--layout-nav-text-primary-color)' }) }}
-          />
         </>
       ),
       rightArea: (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0, sm: 0.75 } }}>
           {/** @slot Searchbar */}
-          <Searchbar data={navData} />
+          {/* <Searchbar data={navData} /> */}
 
           {/** @slot Language popover */}
-          <LanguagePopover data={allLangs} />
+          {/* <LanguagePopover data={allLangs} /> */}
 
           {/** @slot Notifications popover */}
           <NotificationsDrawer data={_notifications} />
 
           {/** @slot Contacts popover */}
-          <ContactsPopover data={_contacts} />
+          {/* <ContactsPopover data={_contacts} /> */}
 
           {/** @slot Settings button */}
           <SettingsButton />

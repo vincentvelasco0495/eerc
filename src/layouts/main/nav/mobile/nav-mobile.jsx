@@ -18,6 +18,7 @@ import { SignInButton } from '../../../components/sign-in-button';
 
 export function NavMobile({ data, open, onClose, slots, sx }) {
   const pathname = usePathname();
+  const isHomePage = pathname === '/';
 
   useEffect(() => {
     if (open) {
@@ -82,17 +83,25 @@ export function NavMobile({ data, open, onClose, slots, sx }) {
             display: 'flex',
           }}
         >
-          <SignInButton fullWidth />
+          {isHomePage ? (
+            <Button fullWidth variant="contained" href={paths.dashboard.root}>
+              Go to dashboard
+            </Button>
+          ) : (
+            <>
+              <SignInButton fullWidth />
 
-          <Button
-            fullWidth
-            variant="contained"
-            rel="noopener noreferrer"
-            target="_blank"
-            href={paths.minimalStore}
-          >
-            Purchase
-          </Button>
+              <Button
+                fullWidth
+                variant="contained"
+                rel="noopener noreferrer"
+                target="_blank"
+                href={paths.minimalStore}
+              >
+                Purchase
+              </Button>
+            </>
+          )}
         </Box>
       )}
     </Drawer>
