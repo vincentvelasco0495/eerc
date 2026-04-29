@@ -1,5 +1,8 @@
+import { Navigate } from 'react-router';
+
+import { paths } from 'src/routes/paths';
+
 import { CONFIG } from 'src/global-config';
-import { LmsDashboardView } from 'src/features/dashboard/views/lms-dashboard-view';
 
 // ----------------------------------------------------------------------
 
@@ -10,7 +13,7 @@ export default function OverviewAppPage() {
     <>
       <title>{metadata.title}</title>
 
-      <LmsDashboardView />
+      <Navigate to={paths.dashboard.studentProfile} replace />
     </>
   );
 }

@@ -63,7 +63,7 @@ export function NavList({ data, sx, ...other }) {
     );
 
   return (
-    <NavLi sx={sx} {...other}>
+    <NavLi sx={[{ position: 'relative' }, ...(Array.isArray(sx) ? sx : [sx])]} {...other}>
       {renderNavItem()}
       {renderDropdown()}
     </NavLi>

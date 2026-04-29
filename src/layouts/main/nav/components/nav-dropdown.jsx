@@ -5,11 +5,9 @@ import { styled } from '@mui/material/styles';
 
 const NavDropdownPaper = styled('div')(({ theme }) => ({
   ...theme.mixins.paperStyles(theme, { dropdown: true }),
-  padding: theme.spacing(5, 1, 1, 4),
+  padding: theme.spacing(2, 1.25, 1.25, 1.25),
   borderRadius: Number(theme.shape.borderRadius) * 2,
-  ...(theme.direction === 'rtl' && {
-    padding: theme.spacing(5, 4, 1, 1),
-  }),
+  minWidth: 260,
 }));
 
 // ----------------------------------------------------------------------
@@ -22,14 +20,10 @@ export const NavDropdown = styled(({ open, children, ...other }) => (
   </Fade>
 ))(({ theme }) => ({
   left: 0,
-  right: 0,
   marginTop: 12,
-  width: '100%',
-  position: 'fixed',
-  marginLeft: 'auto',
-  marginRight: 'auto',
-  padding: theme.spacing(1.5),
+  width: 'max-content',
+  maxWidth: 'min(320px, calc(100vw - 24px))',
+  position: 'absolute',
   zIndex: theme.zIndex.drawer * 2,
-  maxWidth: theme.breakpoints.values.lg,
-  top: 'calc(var(--layout-header-desktop-height) / 2)',
+  top: '100%',
 }));

@@ -47,20 +47,30 @@ const commonRules = () => ({
  * @rules import
  * from 'eslint-plugin-import'.
  */
-const importRules = () => ({
-  ...importPlugin.configs.recommended.rules,
-  'import/named': 0,
-  'import/export': 0,
-  'import/default': 0,
-  'import/namespace': 0,
-  'import/no-named-as-default': 0,
-  'import/newline-after-import': 2,
-  'import/no-named-as-default-member': 0,
-  'import/no-cycle': [
-    0, // disabled if slow
-    { ignoreExternal: true, disableScc: true },
-  ],
-});
+const importRules = () => {
+  const importRecommended = { ...importPlugin.configs.recommended.rules };
+  delete importRecommended['import/no-unresolved'];
+
+  return {
+    ...importRecommended,
+    // Define once with options (avoid flat-config merge dropping rule options in some IDEs).
+    'import/no-unresolved': [
+      2,
+      { caseSensitive: false, caseSensitiveStrict: false },
+    ],
+    'import/named': 0,
+    'import/export': 0,
+    'import/default': 0,
+    'import/namespace': 0,
+    'import/no-named-as-default': 0,
+    'import/newline-after-import': 2,
+    'import/no-named-as-default-member': 0,
+    'import/no-cycle': [
+      0, // disabled if slow
+      { ignoreExternal: true, disableScc: true },
+    ],
+  };
+};
 
 /**
  * @rules unused imports
@@ -164,6 +174,9 @@ export const customConfig = {
   },
   settings: {
     'import/resolver': {
+      node: {
+        extensions: ['.js', '.jsx', '.json'],
+      },
       alias: {
         map: [['src', './src']],
         extensions: ['.js', '.jsx', '.json'],
@@ -192,4 +205,11 @@ export default [
   eslintJs.configs.recommended,
   reactPlugin.configs.flat.recommended,
   customConfig,
+  // Ensures rule options apply in tooling that merges flat configs conservatively (e.g. some IDE integrations).
+  {
+    name: 'import-no-unresolved-options',
+    rules: {
+      'import/no-unresolved': [2, { caseSensitive: false, caseSensitiveStrict: false }],
+    },
+  },
 ];

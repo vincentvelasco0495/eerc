@@ -27,6 +27,10 @@ export function useToolbarState(editor) {
             : ctx.editor.isActive('paragraph'),
         canUndo: canRun.undo().run(),
         canRedo: canRun.redo().run(),
+        isSubscript: ctx.editor.isActive('subscript'),
+        isSuperscript: ctx.editor.isActive('superscript'),
+        canSinkList: canRun.sinkListItem('listItem').run(),
+        canLiftList: canRun.liftListItem('listItem').run(),
       };
     },
   });

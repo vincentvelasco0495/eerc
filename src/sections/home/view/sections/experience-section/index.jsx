@@ -11,6 +11,7 @@ import { RouterLink } from 'src/routes/components';
 import { Iconify } from 'src/components/iconify';
 
 import { styles } from './styles';
+import { Reveal, RevealGroup } from '../shared/reveal';
 import { CourseStylePreview, CommunityIllustration, InterfaceIllustration, ContentInteractionPreview } from '../shared/visuals';
 
 const CONTENT_ITEMS = [
@@ -42,13 +43,15 @@ export function ExperienceSection() {
     <>
       <Box sx={styles.community.root}>
         <Container maxWidth="xl" sx={styles.community.container}>
-          <Stack spacing={2} alignItems="center" sx={styles.community.header}>
-            <Typography variant="h2" sx={styles.community.heading}>COMMUNITY</Typography>
-            <Typography variant="body1" sx={styles.community.copy}>
-              Revive your website and engage users with tones of integrations.
-            </Typography>
-          </Stack>
-          <Box sx={styles.community.preview}><CommunityIllustration /></Box>
+          <Reveal>
+            <Stack spacing={2} alignItems="center" sx={styles.community.header}>
+              <Typography variant="h2" sx={styles.community.heading}>COMMUNITY</Typography>
+              <Typography variant="body1" sx={styles.community.copy}>
+                Revive your website and engage users with tones of integrations.
+              </Typography>
+            </Stack>
+          </Reveal>
+          <Reveal sx={styles.community.preview}><CommunityIllustration /></Reveal>
         </Container>
       </Box>
 
@@ -56,22 +59,26 @@ export function ExperienceSection() {
         <Container maxWidth="xl" sx={styles.interface.container}>
           <Grid container spacing={{ xs: 5, md: 8 }} alignItems="center">
             <Grid size={{ xs: 12, md: 6 }}>
-              <InterfaceIllustration />
+              <Reveal direction="inLeft">
+                <InterfaceIllustration />
+              </Reveal>
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <Stack spacing={1.75} sx={styles.interface.content}>
-                <Typography variant="overline" sx={styles.interface.overline}>USER FRIENDLY</Typography>
-                <Typography variant="h2" sx={styles.interface.heading}>INTERFACE</Typography>
-                <Typography variant="body1" sx={styles.interface.copy}>
-                  EERC LMS is designed with a clean engineering-first interface that keeps courses,
-                  technical modules, references, and learner actions easy to navigate.
-                </Typography>
-                <Typography variant="body1" sx={styles.interface.copy}>
-                  From review-center staff to board-exam learners, every screen is built for
-                  clarity, speed, and a smoother learning experience across the full training
-                  workflow.
-                </Typography>
-              </Stack>
+              <Reveal direction="inRight">
+                <Stack spacing={1.75} sx={styles.interface.content}>
+                  <Typography variant="overline" sx={styles.interface.overline}>USER FRIENDLY</Typography>
+                  <Typography variant="h2" sx={styles.interface.heading}>INTERFACE</Typography>
+                  <Typography variant="body1" sx={styles.interface.copy}>
+                    EERC LMS is designed with a clean engineering-first interface that keeps courses,
+                    technical modules, references, and learner actions easy to navigate.
+                  </Typography>
+                  <Typography variant="body1" sx={styles.interface.copy}>
+                    From review-center staff to board-exam learners, every screen is built for
+                    clarity, speed, and a smoother learning experience across the full training
+                    workflow.
+                  </Typography>
+                </Stack>
+              </Reveal>
             </Grid>
           </Grid>
         </Container>
@@ -79,25 +86,31 @@ export function ExperienceSection() {
 
       <Box sx={styles.courseStyles.root}>
         <Container maxWidth="xl" sx={styles.courseStyles.container}>
-          <Stack spacing={2} alignItems="center" sx={styles.courseStyles.header}>
-            <Typography variant="h2" sx={styles.courseStyles.heading}>COURSE STYLES</Typography>
-            <Typography variant="body1" sx={styles.courseStyles.copy}>
-              Configure how engineering programs are presented with flexible course layouts for
-              review sessions, technical references, and learner progress tracking.
-            </Typography>
-            <Typography variant="body1" sx={styles.courseStyles.copySecondary}>
-              Set up each learning experience to match your training style, from content-heavy board
-              preparation to guided module delivery and premium cohort-based programs.
-            </Typography>
-          </Stack>
+          <Reveal>
+            <Stack spacing={2} alignItems="center" sx={styles.courseStyles.header}>
+              <Typography variant="h2" sx={styles.courseStyles.heading}>COURSE STYLES</Typography>
+              <Typography variant="body1" sx={styles.courseStyles.copy}>
+                Configure how engineering programs are presented with flexible course layouts for
+                review sessions, technical references, and learner progress tracking.
+              </Typography>
+              <Typography variant="body1" sx={styles.courseStyles.copySecondary}>
+                Set up each learning experience to match your training style, from content-heavy board
+                preparation to guided module delivery and premium cohort-based programs.
+              </Typography>
+            </Stack>
+          </Reveal>
 
-          <Grid container spacing={{ xs: 3, md: 4 }} sx={styles.courseStyles.grid}>
-            {['catalog', 'overview', 'details'].map((style) => (
-              <Grid key={style} size={{ xs: 12, md: 4 }}>
-                <CourseStylePreview kind={style} />
-              </Grid>
-            ))}
-          </Grid>
+          <RevealGroup>
+            <Grid container spacing={{ xs: 3, md: 4 }} sx={styles.courseStyles.grid}>
+              {['catalog', 'overview', 'details'].map((style) => (
+                <Grid key={style} size={{ xs: 12, md: 4 }}>
+                  <Reveal>
+                    <CourseStylePreview kind={style} />
+                  </Reveal>
+                </Grid>
+              ))}
+            </Grid>
+          </RevealGroup>
         </Container>
       </Box>
 
@@ -105,32 +118,40 @@ export function ExperienceSection() {
         <Container maxWidth="xl" sx={styles.contentInteraction.container}>
           <Grid container spacing={{ xs: 6, md: 8 }} alignItems="center">
             <Grid size={{ xs: 12, md: 5 }}>
-              <Stack spacing={3} sx={styles.contentInteraction.content}>
-                <Typography variant="h2" sx={styles.contentInteraction.heading}>
-                  SIMPLIFY CONTENT
-                  <br />
-                  INTERACTION
-                </Typography>
-                <Stack spacing={2.5}>
-                  {CONTENT_ITEMS.map((item) => (
-                    <Stack key={item.title} direction="row" spacing={2} alignItems="flex-start">
-                      <Box sx={styles.contentInteraction.iconWrap(item.color)}>
-                        <Iconify icon={item.icon} width={24} />
-                      </Box>
-                      <Stack spacing={0.75}>
-                        <Typography variant="h6" sx={styles.contentInteraction.itemTitle}>{item.title}</Typography>
-                        <Typography variant="body2" sx={styles.contentInteraction.itemDescription}>{item.description}</Typography>
-                      </Stack>
+              <Reveal direction="inLeft">
+                <Stack spacing={3} sx={styles.contentInteraction.content}>
+                  <Typography variant="h2" sx={styles.contentInteraction.heading}>
+                    SIMPLIFY CONTENT
+                    <br />
+                    INTERACTION
+                  </Typography>
+                  <RevealGroup>
+                    <Stack spacing={2.5}>
+                      {CONTENT_ITEMS.map((item) => (
+                        <Reveal key={item.title}>
+                          <Stack direction="row" spacing={2} alignItems="flex-start">
+                            <Box sx={styles.contentInteraction.iconWrap(item.color)}>
+                              <Iconify icon={item.icon} width={24} />
+                            </Box>
+                            <Stack spacing={0.75}>
+                              <Typography variant="h6" sx={styles.contentInteraction.itemTitle}>{item.title}</Typography>
+                              <Typography variant="body2" sx={styles.contentInteraction.itemDescription}>{item.description}</Typography>
+                            </Stack>
+                          </Stack>
+                        </Reveal>
+                      ))}
                     </Stack>
-                  ))}
+                  </RevealGroup>
+                  <Button component={RouterLink} href={paths.dashboard.courses.root} variant="contained" sx={styles.contentInteraction.button}>
+                    Live Preview
+                  </Button>
                 </Stack>
-                <Button component={RouterLink} href={paths.dashboard.courses.root} variant="contained" sx={styles.contentInteraction.button}>
-                  Live Preview
-                </Button>
-              </Stack>
+              </Reveal>
             </Grid>
             <Grid size={{ xs: 12, md: 7 }}>
-              <ContentInteractionPreview />
+              <Reveal direction="inRight">
+                <ContentInteractionPreview />
+              </Reveal>
             </Grid>
           </Grid>
         </Container>

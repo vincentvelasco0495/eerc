@@ -9,6 +9,8 @@ const ICONS = {
   courses: icon('solar:book-bookmark-bold-duotone'),
   modules: icon('solar:library-bold-duotone'),
   quizzes: icon('solar:document-bold-duotone'),
+  instructorProfile: icon('solar:teacher-bold-duotone'),
+  studentProfile: icon('solar:user-id-bold-duotone'),
   analytics: icon('solar:chart-square-bold-duotone'),
   leaderboard: icon('solar:cup-star-bold-duotone'),
   enrollment: icon('solar:user-plus-bold-duotone'),
@@ -20,6 +22,12 @@ export const navData = [
     subheader: 'Learning',
     items: [
       { title: 'Dashboard', path: paths.dashboard.root, icon: ICONS.dashboard },
+      {
+        title: 'Instructor Profile',
+        path: paths.dashboard.instructorProfile,
+        icon: ICONS.instructorProfile,
+      },
+      { title: 'Student Profile', path: paths.dashboard.studentProfile, icon: ICONS.studentProfile },
       { title: 'Courses', path: paths.dashboard.courses.root, icon: ICONS.courses, deepMatch: true },
       { title: 'Quizzes', path: paths.dashboard.quizzes.root, icon: ICONS.quizzes, deepMatch: true },
       { title: 'Analytics', path: paths.dashboard.analyticsHub, icon: ICONS.analytics },

@@ -3,9 +3,13 @@ import { common, createLowlight } from 'lowlight';
 import { mergeClasses } from 'minimal-shared/utils';
 import ImageExtension from '@tiptap/extension-image';
 import StarterKitExtension from '@tiptap/starter-kit';
+import { Subscript } from '@tiptap/extension-subscript';
+import { Underline } from '@tiptap/extension-underline';
+import { Superscript } from '@tiptap/extension-superscript';
 import TextAlignExtension from '@tiptap/extension-text-align';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Placeholder as PlaceholderExtension } from '@tiptap/extensions';
+import { TextStyleKit } from '@tiptap/extension-text-style/text-style-kit';
 import CodeBlockLowlightExtension from '@tiptap/extension-code-block-lowlight';
 import { useEditor, EditorContent, ReactNodeViewRenderer } from '@tiptap/react';
 
@@ -19,8 +23,12 @@ import { editorClasses } from './classes';
 import { Toolbar } from './components/toolbar';
 import { BubbleToolbar } from './components/bubble-toolbar';
 import { CodeHighlightBlock } from './components/code-highlight-block';
+import { TinyMceToolbar } from './components/tinymce-chrome/tinymce-toolbar';
+import { TinyMceMenuBar } from './components/tinymce-chrome/tinymce-menu-bar';
 import { ClearFormat as ClearFormatExtension } from './extension/clear-format';
 import { TextTransform as TextTransformExtension } from './extension/text-transform';
+import { TinyMceEditorPanel } from './components/tinymce-chrome/tinymce-editor-panel';
+import { TinyMceToolbarPanel } from './components/tinymce-chrome/tinymce-toolbar-panel';
 
 // ----------------------------------------------------------------------
 
@@ -34,6 +42,10 @@ export function Editor({
   className,
   editable = true,
   fullItem = false,
+  /** `'tinymce'` adds menu bar, 3-row toolbar, and status strip (lesson builder). */
+  chrome = 'default',
+  /** Document area drag-resize limits (tinymce chrome only). */
+  tinymceResizeBounds,
   immediatelyRender = false,
   ref: contentRef,
   value: initialContent = '',
@@ -42,6 +54,8 @@ export function Editor({
 }) {
   const [fullscreen, setFullscreen] = useState(false);
   const [rerenderKey, setRerenderKey] = useState(0);
+
+  const tmResizeBounds = tinymceResizeBounds ?? { min: 150, max: 600 };
 
   const lowlight = useMemo(() => createLowlight(common), []);
 
@@ -78,6 +92,10 @@ export function Editor({
         },
       }),
       TextAlignExtension.configure({ types: ['heading', 'paragraph'] }),
+      TextStyleKit,
+      Underline,
+      Subscript,
+      Superscript,
       ImageExtension.configure({ HTMLAttributes: { class: editorClasses.content.image } }),
       PlaceholderExtension.configure({
         placeholder,
@@ -155,26 +173,61 @@ export function Editor({
             [editorClasses.state.error]: !!error,
             [editorClasses.state.disabled]: !editable,
             [editorClasses.state.fullscreen]: fullscreen,
+            [editorClasses.state.tinymce]: chrome === 'tinymce',
           })}
           sx={sx}
         >
           {editor && !editor.isDestroyed && (
             <>
-              <Toolbar
-                editor={editor}
-                fullItem={fullItem}
-                fullscreen={fullscreen}
-                onToggleFullscreen={handleToggleFullscreen}
-              />
-              <BubbleToolbar editor={editor} />
-              <EditorContent
-                ref={contentRef}
-                spellCheck={false}
-                autoComplete="off"
-                autoCapitalize="off"
-                editor={editor}
-                className={editorClasses.content.root}
-              />
+              {chrome === 'tinymce' ? (
+                <>
+                  <TinyMceToolbarPanel>
+                    <TinyMceMenuBar />
+                    <TinyMceToolbar
+                      editor={editor}
+                      fullItem={fullItem}
+                      fullscreen={fullscreen}
+                      onToggleFullscreen={handleToggleFullscreen}
+                    />
+                  </TinyMceToolbarPanel>
+
+                  <TinyMceEditorPanel
+                    editor={editor}
+                    resizeBounds={tmResizeBounds}
+                    fullscreen={fullscreen}
+                    mainSlot={
+                      <EditorContent
+                        ref={contentRef}
+                        spellCheck={false}
+                        autoComplete="off"
+                        autoCapitalize="off"
+                        editor={editor}
+                        className={editorClasses.content.root}
+                      />
+                    }
+                  >
+                    <BubbleToolbar editor={editor} />
+                  </TinyMceEditorPanel>
+                </>
+              ) : (
+                <>
+                  <Toolbar
+                    editor={editor}
+                    fullItem={fullItem}
+                    fullscreen={fullscreen}
+                    onToggleFullscreen={handleToggleFullscreen}
+                  />
+                  <BubbleToolbar editor={editor} />
+                  <EditorContent
+                    ref={contentRef}
+                    spellCheck={false}
+                    autoComplete="off"
+                    autoCapitalize="off"
+                    editor={editor}
+                    className={editorClasses.content.root}
+                  />
+                </>
+              )}
             </>
           )}
         </EditorRoot>

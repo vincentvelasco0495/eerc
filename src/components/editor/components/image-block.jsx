@@ -11,7 +11,7 @@ import { ToolbarItem } from './toolbar-item';
 
 // ----------------------------------------------------------------------
 
-export function ImageBlock({ editor, icon }) {
+export function ImageBlock({ editor, icon, ariaLabel = 'Insert image' }) {
   const { anchorEl, open, onOpen, onClose } = usePopover();
   const [state, setState] = useState({
     imageUrl: '',
@@ -30,7 +30,7 @@ export function ImageBlock({ editor, icon }) {
     <>
       <ToolbarItem
         aria-describedby={popoverId}
-        aria-label="Insert image"
+        aria-label={ariaLabel}
         className={editorClasses.toolbar.image}
         onClick={onOpen}
         icon={icon}

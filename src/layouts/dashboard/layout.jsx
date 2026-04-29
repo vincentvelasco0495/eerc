@@ -6,8 +6,10 @@ import Alert from '@mui/material/Alert';
 import { useTheme } from '@mui/material/styles';
 import { iconButtonClasses } from '@mui/material/IconButton';
 
-import { allLangs } from 'src/locales';
-import { _contacts, _notifications } from 'src/_mock';
+import { paths } from 'src/routes/paths';
+import { usePathname } from 'src/routes/hooks';
+
+import { _notifications } from 'src/_mock';
 
 import { Logo } from 'src/components/logo';
 import { useSettingsContext } from 'src/components/settings';
@@ -19,14 +21,9 @@ import { VerticalDivider } from './content';
 import { NavVertical } from './nav-vertical';
 import { NavHorizontal } from './nav-horizontal';
 import { _account } from '../nav-config-account';
-import { Searchbar } from '../components/searchbar';
-import { _workspaces } from '../nav-config-workspace';
 import { MenuButton } from '../components/menu-button';
 import { AccountDrawer } from '../components/account-drawer';
 import { SettingsButton } from '../components/settings-button';
-import { LanguagePopover } from '../components/language-popover';
-import { ContactsPopover } from '../components/contacts-popover';
-import { WorkspacesPopover } from '../components/workspaces-popover';
 import { navData as dashboardNavData } from '../nav-config-dashboard';
 import { dashboardLayoutVars, dashboardNavColorVars } from './css-vars';
 import { NotificationsDrawer } from '../components/notifications-drawer';
@@ -36,6 +33,7 @@ import { MainSection, layoutClasses, HeaderSection, LayoutSection } from '../cor
 
 export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery = 'lg' }) {
   const theme = useTheme();
+  const pathname = usePathname();
 
   const { user } = useMockedUser();
 
@@ -46,6 +44,20 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
   const { value: open, onFalse: onClose, onTrue: onOpen } = useBoolean();
 
   const navData = slotProps?.nav?.data ?? dashboardNavData;
+  const isStudentWorkspace = [
+    paths.dashboard.instructorProfile,
+    paths.dashboard.instructorAnnouncement,
+    paths.dashboard.instructorSettings,
+    paths.dashboard.instructorGradebook,
+    paths.dashboard.instructorCourseCurriculum,
+    paths.dashboard.instructorAssignments,
+    paths.dashboard.studentProfile,
+    paths.dashboard.studentAssignments,
+    paths.dashboard.quizzes.root,
+    paths.dashboard.studentSettings,
+  ].includes(pathname);
+
+  const hideDashboardHeader = pathname === paths.dashboard.instructorCourseCurriculum;
 
   const isNavMini = settings.state.navLayout === 'mini';
   const isNavHorizontal = settings.state.navLayout === 'horizontal';
@@ -58,7 +70,10 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
       container: {
         maxWidth: false,
         sx: {
-          ...(isNavVertical && { px: { [layoutQuery]: 5 } }),
+          width: 1,
+          maxWidth: 'none !important',
+          mx: 0,
+          px: { xs: 2, sm: 3, [layoutQuery]: 5 },
           ...(isNavHorizontal && {
             bgcolor: 'var(--layout-nav-bg)',
             height: { [layoutQuery]: 'var(--layout-nav-horizontal-height)' },
@@ -85,17 +100,21 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
       leftArea: (
         <>
           {/** @slot Nav mobile */}
-          <MenuButton
-            onClick={onOpen}
-            sx={{ mr: 1, ml: -1, [theme.breakpoints.up(layoutQuery)]: { display: 'none' } }}
-          />
-          <NavMobile
-            data={navData}
-            open={open}
-            onClose={onClose}
-            cssVars={navVars.section}
-            checkPermissions={canDisplayItemByRole}
-          />
+          {!isStudentWorkspace && (
+            <>
+              <MenuButton
+                onClick={onOpen}
+                sx={{ mr: 1, ml: -1, [theme.breakpoints.up(layoutQuery)]: { display: 'none' } }}
+              />
+              <NavMobile
+                data={navData}
+                open={open}
+                onClose={onClose}
+                cssVars={navVars.section}
+                checkPermissions={canDisplayItemByRole}
+              />
+            </>
+          )}
 
           {/** @slot Logo */}
           {isNavHorizontal && (
@@ -174,11 +193,11 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
       /** **************************************
        * @Header
        *************************************** */
-      headerSection={renderHeader()}
+      headerSection={hideDashboardHeader ? null : renderHeader()}
       /** **************************************
        * @Sidebar
        *************************************** */
-      sidebarSection={isNavHorizontal ? null : renderSidebar()}
+      sidebarSection={isNavHorizontal || isStudentWorkspace ? null : renderSidebar()}
       /** **************************************
        * @Footer
        *************************************** */

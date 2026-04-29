@@ -19,20 +19,26 @@ import { NavItem } from './nav-mobile-item';
 export function NavList({ data, sx, ...other }) {
   const pathname = usePathname();
   const navItemRef = useRef(null);
+  const childGroups = data.children
+    ? data.children.some((child) => Array.isArray(child.items))
+      ? data.children
+      : [{ items: data.children }]
+    : [];
+  const childItems = childGroups.flatMap((group) => group.items ?? []);
 
   const isNotRootOrDocs = !['/', paths.docs].includes(pathname);
   const isNotComponentsPath = !pathname.startsWith(paths.components);
-  const isOpenPath = !!data.children && isNotRootOrDocs && isNotComponentsPath;
+  const isOpenPath = !!childItems.length && isNotRootOrDocs && isNotComponentsPath;
 
-  const isActive = isActiveLink(pathname, data.path, data.deepMatch ?? !!data.children);
+  const isActive = isActiveLink(pathname, data.path, data.deepMatch ?? !!childItems.length);
 
   const { value: open, onToggle } = useBoolean(isOpenPath);
 
   const handleToggleMenu = useCallback(() => {
-    if (data.children) {
+    if (childItems.length) {
       onToggle();
     }
-  }, [data.children, onToggle]);
+  }, [childItems.length, onToggle]);
 
   const renderNavItem = () => (
     <NavItem
@@ -45,7 +51,7 @@ export function NavList({ data, sx, ...other }) {
       open={open}
       active={isActive}
       // options
-      hasChild={!!data.children}
+      hasChild={!!childItems.length}
       externalLink={isExternalLink(data.path)}
       // actions
       onClick={handleToggleMenu}
@@ -53,10 +59,10 @@ export function NavList({ data, sx, ...other }) {
   );
 
   const renderCollapse = () =>
-    !!data.children && (
+    !!childItems.length && (
       <Collapse in={open}>
         <NavSectionVertical
-          data={data.children}
+          data={childGroups}
           sx={{ px: 1.5 }}
           slotProps={{
             rootItem: {

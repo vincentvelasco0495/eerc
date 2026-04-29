@@ -5,6 +5,8 @@ import AppBar from '@mui/material/AppBar';
 import { styled } from '@mui/material/styles';
 import Container from '@mui/material/Container';
 
+import { pageContentStyles } from 'src/components/layout/lms-page-shell.styles';
+
 import { layoutClasses } from './classes';
 
 // ----------------------------------------------------------------------
@@ -110,6 +112,7 @@ const HeaderRoot = styled(AppBar, {
 const HeaderContainer = styled(Container, {
   shouldForwardProp: (prop) => !['layoutQuery', 'sx'].includes(prop),
 })(({ layoutQuery = 'md', theme }) => ({
+  ...pageContentStyles.maxWidthContent,
   display: 'flex',
   alignItems: 'center',
   color: 'var(--color)',

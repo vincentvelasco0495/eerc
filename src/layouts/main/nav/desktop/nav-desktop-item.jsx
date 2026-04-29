@@ -84,6 +84,7 @@ const ItemRoot = styled(ButtonBase, { shouldForwardProp })(({ active, open, them
   };
 
   return {
+    flexShrink: 0,
     transition: theme.transitions.create(['color'], {
       duration: theme.transitions.duration.shorter,
     }),
@@ -102,6 +103,13 @@ const ItemRoot = styled(ButtonBase, { shouldForwardProp })(({ active, open, them
 const ItemTitle = styled('span', { shouldForwardProp })(({ theme }) => ({
   ...navItemStyles.title(theme),
   ...theme.typography.body2,
+  display: 'inline-flex',
+  flex: '0 0 auto',
+  minWidth: 'max-content',
+  overflow: 'visible',
+  textOverflow: 'clip',
+  WebkitLineClamp: 'unset',
+  WebkitBoxOrient: 'initial',
   fontWeight: theme.typography.fontWeightMedium,
   variants: [
     { props: { variant: 'subItem' }, style: { fontSize: theme.typography.pxToRem(13) } },

@@ -1,0 +1,47 @@
+export const styles = {
+  card: {
+    borderRadius: 2,
+    border: '1px solid',
+    borderColor: 'divider',
+    boxShadow: 'none',
+  },
+  cardContent: { p: { xs: 2.25, md: 2.75 } },
+  title: { fontSize: '1.02rem' },
+  grid: {
+    display: 'grid',
+    gap: { xs: 1.75, md: 2.25 },
+    alignItems: 'center',
+    gridTemplateColumns: {
+      xs: '1fr',
+      md: 'minmax(180px, 1.5fr) minmax(220px, 1.7fr)',
+      xl:
+        'minmax(200px, 1.6fr) minmax(240px, 1.8fr) minmax(140px, 1fr) minmax(120px, 0.9fr) minmax(140px, 0.95fr)',
+    },
+  },
+  metaBlock: { minWidth: 0 },
+  metaCaption: { color: 'text.secondary' },
+  metaValue: { fontWeight: 600, color: 'text.primary' },
+  teacherRow: { minWidth: 0 },
+  teacherAvatar: {
+    width: 32,
+    height: 32,
+    bgcolor: 'primary.lighter',
+    color: 'primary.main',
+    fontSize: 13,
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  teacherName: { fontWeight: 600, color: 'text.primary' },
+  gradeRow: { justifySelf: { xl: 'end' } },
+  gradeAvatar: {
+    width: 28,
+    height: 28,
+    bgcolor: 'primary.main',
+    color: 'common.white',
+    fontSize: 12,
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  gradeScoreLine: { fontWeight: 600 },
+  gradeProgress: { color: 'text.secondary' },
+};

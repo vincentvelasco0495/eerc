@@ -8,12 +8,28 @@ import { DashboardContent } from 'src/layouts/dashboard';
 
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 
-export function LmsPageShell({ heading, description, eyebrow, links, action, children }) {
+import { lmsPageShellStyles } from './lms-page-shell.styles';
+
+export function LmsPageShell({
+  heading,
+  description,
+  eyebrow,
+  links,
+  action,
+  children,
+  contentSx,
+}) {
   const defaultLinks = [{ name: 'Dashboard', href: paths.dashboard.root }];
 
   return (
     <DashboardContent maxWidth={false}>
-      <Stack spacing={4}>
+      <Stack
+        spacing={4}
+        sx={[
+          lmsPageShellStyles.content,
+          ...(Array.isArray(contentSx) ? contentSx : [contentSx]),
+        ]}
+      >
         <CustomBreadcrumbs
           heading={heading}
           links={[...defaultLinks, ...(links ?? [])]}

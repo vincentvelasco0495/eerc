@@ -2954,6 +2954,12 @@ export function IntegrationCard({ item }) {
         boxShadow: '0 10px 20px rgba(7, 12, 24, 0.08)',
         display: 'grid',
         placeItems: 'center',
+        transition:
+          'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
+        '&:hover': {
+          transform: 'translateY(-8px)',
+          boxShadow: '0 20px 40px rgba(7, 12, 24, 0.14)',
+        },
       }}
     >
       <IntegrationWordmark item={item} />
@@ -3578,6 +3584,12 @@ export function TestimonialCard({ item }) {
         bgcolor: item.color,
         textAlign: 'center',
         boxShadow: '0 12px 24px rgba(7, 12, 24, 0.14)',
+        transition:
+          'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
+        '&:hover': {
+          transform: 'translateY(-8px)',
+          boxShadow: '0 24px 42px rgba(7, 12, 24, 0.2)',
+        },
       }}
     >
       <Box
@@ -3734,6 +3746,12 @@ export function SupportInfoCard() {
         color: 'text.primary',
         boxShadow: '0 16px 34px rgba(7, 12, 24, 0.12)',
         textAlign: 'center',
+        transition:
+          'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
+        '&:hover': {
+          transform: 'translateY(-8px)',
+          boxShadow: '0 24px 46px rgba(7, 12, 24, 0.16)',
+        },
       }}
     >
       <Stack spacing={1.5} alignItems="center">
@@ -3764,6 +3782,12 @@ export function CommunityInfoCard() {
         color: 'common.white',
         boxShadow: '0 18px 36px rgba(47, 102, 212, 0.22)',
         textAlign: 'center',
+        transition:
+          'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
+        '&:hover': {
+          transform: 'translateY(-8px)',
+          boxShadow: '0 26px 50px rgba(47, 102, 212, 0.3)',
+        },
       }}
     >
       <Stack spacing={1.8} alignItems="center">
@@ -3962,6 +3986,12 @@ export function QuizFeaturePanel({ title, description, buttonLabel, buttonColor,
         borderRadius: 1.5,
         bgcolor: '#eef2fb',
         boxShadow: '0 12px 30px rgba(15, 23, 42, 0.06)',
+        transition:
+          'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
+        '&:hover': {
+          transform: 'translateY(-8px)',
+          boxShadow: '0 22px 44px rgba(15, 23, 42, 0.12)',
+        },
       }}
     >
       <Stack spacing={3} alignItems="center" sx={{ height: 1, textAlign: 'center' }}>
@@ -4226,6 +4256,12 @@ export function QuizTypeCard({ item }) {
           borderRadius: 1.5,
           bgcolor: 'common.white',
           boxShadow: '0 16px 32px rgba(7, 12, 24, 0.18)',
+          transition:
+            'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
+          '&:hover': {
+            transform: 'translateY(-8px)',
+            boxShadow: '0 26px 48px rgba(7, 12, 24, 0.22)',
+          },
         }}
       >
         <Stack spacing={1.1}>
@@ -4354,7 +4390,7 @@ export function InstructorProfileShowcase() {
                     index === 0
                       ? 'solar:widget-5-bold-duotone'
                       : index === 1
-                        ? 'solar:megaphone-bold-duotone'
+                        ? 'solar:speaker-bold-duotone'
                         : index === 2
                           ? 'solar:chart-2-bold-duotone'
                           : index === 3

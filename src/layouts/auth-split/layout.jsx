@@ -21,7 +21,15 @@ import { MainSection, LayoutSection, HeaderSection } from '../core';
 export function AuthSplitLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md' }) {
   const renderHeader = () => {
     const headerSlotProps = {
-      container: { maxWidth: false },
+      container: {
+        maxWidth: false,
+        sx: {
+          width: 1,
+          maxWidth: 'none !important',
+          mx: 0,
+          px: { xs: 2, sm: 3 },
+        },
+      },
     };
 
     const headerSlots = {
@@ -31,19 +39,26 @@ export function AuthSplitLayout({ sx, cssVars, children, slotProps, layoutQuery 
         </Alert>
       ),
       leftArea: (
-        <>
-          {/** @slot Logo */}
-          <Logo />
-        </>
+        <Logo
+          sx={{
+            width: 28,
+            height: 28,
+          }}
+        />
       ),
       rightArea: (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 } }}>
           {/** @slot Help link */}
           <Link
             href={paths.faqs}
             component={RouterLink}
             color="inherit"
-            sx={{ typography: 'subtitle2' }}
+            sx={{
+              typography: 'caption',
+              fontWeight: 600,
+              color: 'text.secondary',
+              textDecoration: 'none',
+            }}
           >
             Need help?
           </Link>

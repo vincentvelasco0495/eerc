@@ -38,6 +38,24 @@ export const EditorRoot = styled('div')(({ theme }) => ({
     zIndex: theme.zIndex.modal,
     backgroundColor: theme.vars.palette.background.default,
   },
+  /** TinyMCE chrome: gray frame, white toolbar + document panels. */
+  [`&.${editorClasses.state.tinymce}`]: {
+    overflow: 'hidden',
+    borderRadius: Number(theme.shape.borderRadius),
+    backgroundColor: '#f5f5f5',
+    [`& .${editorClasses.content.root}`]: {
+      flex: '1 1 auto',
+      minHeight: 0,
+      overflowY: 'visible',
+      backgroundColor: theme.vars.palette.common.white,
+      [`& .tiptap.ProseMirror`]: {
+        minHeight: '100%',
+        padding: theme.spacing(2),
+        fontFamily:
+          'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      },
+    },
+  },
   /**
    * Placeholder
    */

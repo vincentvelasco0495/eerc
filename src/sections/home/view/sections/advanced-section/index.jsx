@@ -8,6 +8,7 @@ import { Iconify } from 'src/components/iconify';
 
 import { styles } from './styles';
 import { INTEGRATION_ITEMS } from '../shared/data';
+import { Reveal, RevealGroup } from '../shared/reveal';
 import {
   IntegrationCard,
   CollaborationPreview,
@@ -75,34 +76,42 @@ export function AdvancedSection() {
     <>
       <Box sx={styles.lessonQuiz.root}>
         <Container maxWidth="xl" sx={styles.lessonQuiz.container}>
-          <Stack spacing={2} alignItems="center" sx={styles.lessonQuiz.header}>
-            <Typography variant="h2" sx={styles.lessonQuiz.heading}>LESSONS & QUIZZES STYLES</Typography>
-            <Typography variant="body1" sx={styles.lessonQuiz.copy}>
-              Build well-structured engineering lesson pages and intuitive quiz flows that make
-              technical review content easier to study, navigate, and complete.
-            </Typography>
-          </Stack>
+          <Reveal>
+            <Stack spacing={2} alignItems="center" sx={styles.lessonQuiz.header}>
+              <Typography variant="h2" sx={styles.lessonQuiz.heading}>LESSONS & QUIZZES STYLES</Typography>
+              <Typography variant="body1" sx={styles.lessonQuiz.copy}>
+                Build well-structured engineering lesson pages and intuitive quiz flows that make
+                technical review content easier to study, navigate, and complete.
+              </Typography>
+            </Stack>
+          </Reveal>
 
           <Grid container spacing={{ xs: 4, md: 5 }} alignItems="center" sx={styles.lessonQuiz.grid}>
             <Grid size={{ xs: 12, md: 5 }}>
-              <Stack spacing={2}>
-                {LESSON_STYLE_ITEMS.map((item) => (
-                  <Box key={item.title} sx={styles.lessonQuiz.card(item.active)}>
-                    <Stack direction="row" spacing={2} alignItems="flex-start">
-                      <Box sx={styles.lessonQuiz.cardIcon(item.active)}>
-                        <Iconify icon={item.icon} width={24} />
+              <RevealGroup>
+                <Stack spacing={2}>
+                  {LESSON_STYLE_ITEMS.map((item) => (
+                    <Reveal key={item.title}>
+                      <Box sx={styles.lessonQuiz.card(item.active)}>
+                        <Stack direction="row" spacing={2} alignItems="flex-start">
+                          <Box sx={styles.lessonQuiz.cardIcon(item.active)}>
+                            <Iconify icon={item.icon} width={24} />
+                          </Box>
+                          <Stack spacing={0.8}>
+                            <Typography variant="h6" sx={styles.lessonQuiz.cardTitle(item.active)}>{item.title}</Typography>
+                            <Typography variant="body2" sx={styles.lessonQuiz.cardDescription(item.active)}>{item.description}</Typography>
+                          </Stack>
+                        </Stack>
                       </Box>
-                      <Stack spacing={0.8}>
-                        <Typography variant="h6" sx={styles.lessonQuiz.cardTitle(item.active)}>{item.title}</Typography>
-                        <Typography variant="body2" sx={styles.lessonQuiz.cardDescription(item.active)}>{item.description}</Typography>
-                      </Stack>
-                    </Stack>
-                  </Box>
-                ))}
-              </Stack>
+                    </Reveal>
+                  ))}
+                </Stack>
+              </RevealGroup>
             </Grid>
             <Grid size={{ xs: 12, md: 7 }}>
-              <LessonQuizStylesPreview />
+              <Reveal direction="inRight">
+                <LessonQuizStylesPreview />
+              </Reveal>
             </Grid>
           </Grid>
         </Container>
@@ -112,24 +121,30 @@ export function AdvancedSection() {
         <Container maxWidth="xl" sx={styles.collaboration.container}>
           <Grid container spacing={{ xs: 5, md: 6 }} alignItems="center">
             <Grid size={{ xs: 12, md: 5 }}>
-              <Stack spacing={2}>
-                {COLLAB_ITEMS.map((item) => (
-                  <Box key={item.title} sx={styles.collaboration.card(item.active)}>
-                    <Stack direction="row" spacing={2} alignItems="flex-start">
-                      <Box sx={styles.collaboration.cardIcon(item.active)}>
-                        <Iconify icon={item.icon} width={24} />
+              <RevealGroup>
+                <Stack spacing={2}>
+                  {COLLAB_ITEMS.map((item) => (
+                    <Reveal key={item.title}>
+                      <Box sx={styles.collaboration.card(item.active)}>
+                        <Stack direction="row" spacing={2} alignItems="flex-start">
+                          <Box sx={styles.collaboration.cardIcon(item.active)}>
+                            <Iconify icon={item.icon} width={24} />
+                          </Box>
+                          <Stack spacing={0.75}>
+                            <Typography variant="h6" sx={styles.collaboration.cardTitle(item.active)}>{item.title}</Typography>
+                            <Typography variant="body2" sx={styles.collaboration.cardDescription(item.active)}>{item.description}</Typography>
+                          </Stack>
+                        </Stack>
                       </Box>
-                      <Stack spacing={0.75}>
-                        <Typography variant="h6" sx={styles.collaboration.cardTitle(item.active)}>{item.title}</Typography>
-                        <Typography variant="body2" sx={styles.collaboration.cardDescription(item.active)}>{item.description}</Typography>
-                      </Stack>
-                    </Stack>
-                  </Box>
-                ))}
-              </Stack>
+                    </Reveal>
+                  ))}
+                </Stack>
+              </RevealGroup>
             </Grid>
             <Grid size={{ xs: 12, md: 7 }}>
-              <CollaborationPreview />
+              <Reveal direction="inRight">
+                <CollaborationPreview />
+              </Reveal>
             </Grid>
           </Grid>
         </Container>
@@ -137,22 +152,28 @@ export function AdvancedSection() {
 
       <Box sx={styles.integrations.root}>
         <Container maxWidth="xl" sx={styles.integrations.container}>
-          <Stack spacing={2} alignItems="center" sx={styles.integrations.header}>
-            <Typography variant="h2" sx={styles.integrations.heading}>INTEGRATIONS</Typography>
-            <Typography variant="body1" sx={styles.integrations.copy}>
-              EERC LMS integrates with the most helpful tools for course delivery, payments,
-              communication, interactive content, and learner management so the platform can fit
-              your full training workflow.
-            </Typography>
-          </Stack>
+          <Reveal>
+            <Stack spacing={2} alignItems="center" sx={styles.integrations.header}>
+              <Typography variant="h2" sx={styles.integrations.heading}>INTEGRATIONS</Typography>
+              <Typography variant="body1" sx={styles.integrations.copy}>
+                EERC LMS integrates with the most helpful tools for course delivery, payments,
+                communication, interactive content, and learner management so the platform can fit
+                your full training workflow.
+              </Typography>
+            </Stack>
+          </Reveal>
 
-          <Grid container spacing={{ xs: 2, md: 2.5 }} sx={styles.integrations.grid}>
-            {INTEGRATION_ITEMS.map((item) => (
-              <Grid key={item.title} size={{ xs: 12, sm: 6, md: 4 }}>
-                <IntegrationCard item={item} />
-              </Grid>
-            ))}
-          </Grid>
+          <RevealGroup>
+            <Grid container spacing={{ xs: 2, md: 2.5 }} sx={styles.integrations.grid}>
+              {INTEGRATION_ITEMS.map((item) => (
+                <Grid key={item.title} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <Reveal>
+                    <IntegrationCard item={item} />
+                  </Reveal>
+                </Grid>
+              ))}
+            </Grid>
+          </RevealGroup>
         </Container>
       </Box>
 
@@ -160,22 +181,26 @@ export function AdvancedSection() {
         <Container maxWidth="xl" sx={styles.translation.container}>
           <Grid container spacing={{ xs: 5, md: 8 }} alignItems="center">
             <Grid size={{ xs: 12, md: 6 }}>
-              <TranslationReadyIllustration />
+              <Reveal direction="inLeft">
+                <TranslationReadyIllustration />
+              </Reveal>
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <Stack spacing={3} sx={styles.translation.content}>
-                <Typography variant="h2" sx={styles.translation.heading}>TRANSLATION READY</Typography>
-                <Typography variant="body1" sx={styles.translation.copyPrimary}>
-                  Make your engineering learning platform accessible to more learners with
-                  multilingual-ready pages, course content, and navigation across the full LMS
-                  experience.
-                </Typography>
-                <Typography variant="body1" sx={styles.translation.copySecondary}>
-                  EERC LMS can support different audiences, helping review centers deliver training,
-                  announcements, and study materials in the language that best fits each learner
-                  group.
-                </Typography>
-              </Stack>
+              <Reveal direction="inRight">
+                <Stack spacing={3} sx={styles.translation.content}>
+                  <Typography variant="h2" sx={styles.translation.heading}>TRANSLATION READY</Typography>
+                  <Typography variant="body1" sx={styles.translation.copyPrimary}>
+                    Make your engineering learning platform accessible to more learners with
+                    multilingual-ready pages, course content, and navigation across the full LMS
+                    experience.
+                  </Typography>
+                  <Typography variant="body1" sx={styles.translation.copySecondary}>
+                    EERC LMS can support different audiences, helping review centers deliver training,
+                    announcements, and study materials in the language that best fits each learner
+                    group.
+                  </Typography>
+                </Stack>
+              </Reveal>
             </Grid>
           </Grid>
         </Container>

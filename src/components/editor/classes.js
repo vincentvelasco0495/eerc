@@ -48,5 +48,6 @@ export const editorClasses = {
     error: '--error',
     disabled: '--disabled',
     fullscreen: '--fullscreen',
+    tinymce: '--tinymce',
   },
 };

@@ -16,7 +16,7 @@ export function NavDesktop({ data, sx, ...other }) {
     >
       <NavUl
         sx={{
-          gap: 5,
+          gap: { md: 3, lg: 4 },
           height: 1,
           flexDirection: 'row',
           alignItems: 'center',

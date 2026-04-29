@@ -6,6 +6,7 @@ import Typography from '@mui/material/Typography';
 
 import { styles } from './styles';
 import { TESTIMONIAL_ITEMS } from '../shared/data';
+import { Reveal, RevealGroup } from '../shared/reveal';
 import { TestimonialCard, TestimonialBackdrop } from '../shared/visuals';
 
 export function TestimonialsSection() {
@@ -13,23 +14,31 @@ export function TestimonialsSection() {
     <Box sx={styles.root}>
       <TestimonialBackdrop />
       <Container maxWidth="xl" sx={styles.container}>
-        <Stack spacing={0.75} alignItems="center" sx={styles.header}>
-          <Typography variant="h2" sx={styles.heading}>TESTIMONIALS</Typography>
-          <Typography variant="overline" sx={styles.overline}>OUR CUSTOMERS FEEDBACK</Typography>
-        </Stack>
+        <Reveal>
+          <Stack spacing={0.75} alignItems="center" sx={styles.header}>
+            <Typography variant="h2" sx={styles.heading}>TESTIMONIALS</Typography>
+            <Typography variant="overline" sx={styles.overline}>OUR CUSTOMERS FEEDBACK</Typography>
+          </Stack>
+        </Reveal>
 
-        <Grid container spacing={{ xs: 2, md: 2.5 }} sx={styles.grid}>
-          {TESTIMONIAL_ITEMS.map((item) => (
-            <Grid key={item.author} size={{ xs: 12, sm: 6, lg: 3 }}>
-              <TestimonialCard item={item} />
-            </Grid>
-          ))}
-        </Grid>
+        <RevealGroup>
+          <Grid container spacing={{ xs: 2, md: 2.5 }} sx={styles.grid}>
+            {TESTIMONIAL_ITEMS.map((item) => (
+              <Grid key={item.author} size={{ xs: 12, sm: 6, lg: 3 }}>
+                <Reveal>
+                  <TestimonialCard item={item} />
+                </Reveal>
+              </Grid>
+            ))}
+          </Grid>
+        </RevealGroup>
 
-        <Stack direction="row" spacing={1} justifyContent="center" sx={styles.dots}>
-          <Box sx={styles.activeDot} />
-          <Box sx={styles.inactiveDot} />
-        </Stack>
+        <Reveal>
+          <Stack direction="row" spacing={1} justifyContent="center" sx={styles.dots}>
+            <Box sx={styles.activeDot} />
+            <Box sx={styles.inactiveDot} />
+          </Stack>
+        </Reveal>
       </Container>
     </Box>
   );

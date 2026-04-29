@@ -21,7 +21,7 @@ const HEADING_OPTIONS = [
   { label: 'Heading 6', level: 6 },
 ];
 
-export function HeadingBlock({ editor, isActive }) {
+export function HeadingBlock({ editor, isActive, variant = 'default' }) {
   const { anchorEl, open, onOpen, onClose } = usePopover();
 
   const selectedOption = useMemo(
@@ -59,18 +59,23 @@ export function HeadingBlock({ editor, isActive }) {
         onClick={onOpen}
         sx={(theme) => ({
           px: 1,
-          width: 120,
-          height: 32,
-          borderRadius: 0.75,
-          typography: 'body2',
-          fontWeight: 'fontWeightMedium',
+          width: variant === 'tinymce' ? 128 : 120,
+          height: variant === 'tinymce' ? 26 : 32,
+          borderRadius:
+            variant === 'tinymce' ? '6px' : Number(theme.shape.borderRadius) * 0.75,
+          typography: variant === 'tinymce' ? 'caption' : 'body2',
+          fontWeight: variant === 'tinymce' ? 600 : 'fontWeightMedium',
           justifyContent: 'space-between',
-          border: `solid 1px ${varAlpha(theme.vars.palette.grey['500Channel'], 0.2)}`,
+          border:
+            variant === 'tinymce'
+              ? `1px solid rgba(0, 0, 0, 0.12)`
+              : `solid 1px ${varAlpha(theme.vars.palette.grey['500Channel'], 0.2)}`,
+          backgroundColor: variant === 'tinymce' ? theme.vars.palette.common.white : undefined,
         })}
       >
         {selectedOption?.label ?? 'Paragraph'}
         <Iconify
-          width={16}
+          width={variant === 'tinymce' ? 14 : 16}
           icon={open ? 'eva:arrow-ios-upward-fill' : 'eva:arrow-ios-downward-fill'}
         />
       </ButtonBase>
@@ -84,7 +89,7 @@ export function HeadingBlock({ editor, isActive }) {
           list: { 'aria-labelledby': buttonId },
           paper: {
             sx: {
-              width: 120,
+              width: variant === 'tinymce' ? 128 : 120,
               [`& .${listClasses.root}`]: { gap: 0.5, display: 'flex', flexDirection: 'column' },
               [`& .${buttonBaseClasses.root}`]: {
                 px: 1,
