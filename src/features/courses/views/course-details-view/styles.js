@@ -4,6 +4,7 @@ export const COURSE_COLOR_MAP = {
   'course-ce-review': ['#0f4c81', '#49a5ff', '#f0b14f'],
   'course-plumbing-mastery': ['#1f6b5c', '#34c38f', '#f6b23c'],
   'course-materials-intensive': ['#4f46a5', '#8b5cf6', '#f97316'],
+  'course-how-to-design-components': ['#2563eb', '#38bdf8', '#fcd34d'],
 };
 
 export function getPalette(theme) {
@@ -160,4 +161,18 @@ export const styles = {
   sidebarCardPadding: { p: { xs: 2.5, md: 3 } },
   startCourseCta: { borderRadius: 1.5, py: 1.6 },
   aboutProgramBody: { color: 'text.secondary', lineHeight: 1.85 },
+  completionSidebarCard: {
+    bgcolor: 'primary.lighter',
+    border: '1px solid',
+    borderColor: 'primary.light',
+    boxShadow: 'none',
+  },
+  relatedCourseCard: {
+    border: '1px solid',
+    borderColor: 'divider',
+    boxShadow: 'none',
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+  },
 };

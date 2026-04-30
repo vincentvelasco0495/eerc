@@ -1,13 +1,19 @@
 import { useSetState } from 'minimal-shared/hooks';
 import { useMemo, useEffect, useCallback } from 'react';
 
+import { CONFIG } from 'src/global-config';
 import axios, { endpoints } from 'src/lib/axios';
 
 import { JWT_STORAGE_KEY } from './constant';
 import { AuthContext } from '../auth-context';
 import { setSession, isValidToken } from './utils';
+import { getDemoProfileFromAccessToken } from './demo-credentials';
 
 // ----------------------------------------------------------------------
+
+function normalizeJwtSessionUser(record) {
+  return { ...record, role: record?.role ?? 'admin' };
+}
 
 /**
  * NOTE:
@@ -23,19 +29,35 @@ export function AuthProvider({ children }) {
       const accessToken = sessionStorage.getItem(JWT_STORAGE_KEY);
 
       if (accessToken && isValidToken(accessToken)) {
-        setSession(accessToken);
+        await setSession(accessToken);
+
+        const demoProfile = getDemoProfileFromAccessToken(accessToken);
+        if (demoProfile) {
+          if (!CONFIG.auth.allowDemoSignIn) {
+            await setSession(null);
+            setState({ user: null, loading: false });
+            return null;
+          }
+          const user = normalizeJwtSessionUser({ ...demoProfile, accessToken });
+          setState({ user, loading: false });
+          return user;
+        }
 
         const res = await axios.get(endpoints.auth.me);
 
-        const { user } = res.data;
+        const { user: apiUser } = res.data;
 
-        setState({ user: { ...user, accessToken }, loading: false });
-      } else {
-        setState({ user: null, loading: false });
+        const user = normalizeJwtSessionUser({ ...apiUser, accessToken });
+        setState({ user, loading: false });
+        return user;
       }
+
+      setState({ user: null, loading: false });
+      return null;
     } catch (error) {
       console.error(error);
       setState({ user: null, loading: false });
+      return null;
     }
   }, [setState]);
 

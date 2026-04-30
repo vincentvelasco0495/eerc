@@ -181,8 +181,8 @@ export function Editor({
             <>
               {chrome === 'tinymce' ? (
                 <>
-                  <TinyMceToolbarPanel>
-                    <TinyMceMenuBar />
+                    <TinyMceToolbarPanel>
+                    <TinyMceMenuBar editor={editor} />
                     <TinyMceToolbar
                       editor={editor}
                       fullItem={fullItem}

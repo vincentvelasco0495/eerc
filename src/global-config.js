@@ -17,6 +17,11 @@ export const CONFIG = {
     method: 'jwt',
     skip: false,
     redirectPath: paths.dashboard.studentProfile,
+    /**
+     * Frontend-only demo sign-in (`admin@demo.com` / `student@demo.com`).
+     * Set `VITE_ALLOW_DEMO_SIGN_IN=false` when your backend `/api/auth/sign-in` is live.
+     */
+    allowDemoSignIn: import.meta.env.VITE_ALLOW_DEMO_SIGN_IN !== 'false',
   },
   /**
    * Firebase

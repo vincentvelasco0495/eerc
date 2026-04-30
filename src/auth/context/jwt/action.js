@@ -1,7 +1,9 @@
+import { CONFIG } from 'src/global-config';
 import axios, { endpoints } from 'src/lib/axios';
 
 import { setSession } from './utils';
 import { JWT_STORAGE_KEY } from './constant';
+import { createDemoAccessToken, resolveDemoCredentials } from './demo-credentials';
 
 // ----------------------------------------------------------------------
 
@@ -10,6 +12,14 @@ import { JWT_STORAGE_KEY } from './constant';
  *************************************** */
 export const signInWithPassword = async ({ email, password }) => {
   try {
+    const demoProfile =
+      CONFIG.auth.allowDemoSignIn && resolveDemoCredentials(email, password);
+
+    if (demoProfile) {
+      await setSession(createDemoAccessToken(demoProfile));
+      return;
+    }
+
     const params = { email, password };
 
     const res = await axios.post(endpoints.auth.signIn, params);
@@ -20,7 +30,7 @@ export const signInWithPassword = async ({ email, password }) => {
       throw new Error('Access token not found in response');
     }
 
-    setSession(accessToken);
+    await setSession(accessToken);
   } catch (error) {
     console.error('Error during sign in:', error);
     throw error;

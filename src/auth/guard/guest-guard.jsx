@@ -1,23 +1,21 @@
 import { useState, useEffect } from 'react';
-import { safeReturnUrl } from 'minimal-shared/utils';
 
 import { useSearchParams } from 'src/routes/hooks';
-
-import { CONFIG } from 'src/global-config';
 
 import { SplashScreen } from 'src/components/loading-screen';
 
 import { useAuthContext } from '../hooks';
+import { resolvePostLoginUrl } from '../utils';
 
 // ----------------------------------------------------------------------
 
 export function GuestGuard({ children }) {
-  const { loading, authenticated } = useAuthContext();
+  const { loading, authenticated, user } = useAuthContext();
 
   const [isChecking, setIsChecking] = useState(true);
 
   const searchParams = useSearchParams();
-  const redirectUrl = safeReturnUrl(searchParams.get('returnTo'), CONFIG.auth.redirectPath);
+  const redirectUrl = resolvePostLoginUrl(user?.role ?? 'admin', searchParams.get('returnTo'));
 
   const checkPermissions = async () => {
     if (loading) {
@@ -38,7 +36,7 @@ export function GuestGuard({ children }) {
   useEffect(() => {
     checkPermissions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authenticated, loading]);
+  }, [authenticated, loading, user]);
 
   if (isChecking) {
     return <SplashScreen />;

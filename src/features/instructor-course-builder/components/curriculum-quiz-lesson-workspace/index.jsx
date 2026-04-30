@@ -15,6 +15,7 @@ import { QuizHeader } from './quiz-header';
 import { FooterActions } from './footer-actions';
 import { QuestionEditor } from './question-editor';
 import { QuestionSettings } from './question-settings';
+import { QuizSettingsPanel } from './quiz-settings-panel';
 import { QuestionCardChrome } from './question-card-chrome';
 import { QuestionCollapsedBar } from './question-collapsed-bar';
 import { QuizQuestionSortableItem } from './quiz-question-sortable-item';
@@ -102,14 +103,18 @@ export function CurriculumQuizLessonWorkspace({ lesson, onLessonTitleChange, onL
 
       <Box sx={styles.tabsRow}>
         <QuizTabs activeTab={activeTab} onTabChange={setActiveTab} questionCount={questions.length} />
-        <Box sx={styles.tabActions}>
-          <IconButton sx={styles.listIconBtn} aria-label="Layout" size="small">
-            <Iconify icon="solar:list-linear" width={22} />
-          </IconButton>
-          <Button variant="outlined" sx={styles.libraryBtn} onClick={() => toast.info('Questions library (demo).')}>
-            Questions library
-          </Button>
-        </Box>
+        {activeTab === 'questions' ? (
+          <Box sx={styles.tabActions}>
+            <IconButton sx={styles.listIconBtn} aria-label="Layout" size="small">
+              <Iconify icon="solar:list-linear" width={22} />
+            </IconButton>
+            <Button variant="outlined" sx={styles.libraryBtn} onClick={() => toast.info('Questions library (demo).')}>
+              Questions library
+            </Button>
+          </Box>
+        ) : (
+          <Box sx={{ minWidth: { xs: 0, sm: 40 } }} aria-hidden />
+        )}
       </Box>
 
       {activeTab === 'questions' ? (
@@ -126,7 +131,6 @@ export function CurriculumQuizLessonWorkspace({ lesson, onLessonTitleChange, onL
                     {q.collapsed ? (
                       <QuestionCollapsedBar
                         questionText={q.questionText}
-                        questionType={q.questionType}
                         collapsed={q.collapsed}
                         onToggleCollapse={() => patchQuestion(q.id, { collapsed: !q.collapsed })}
                         onDelete={() => handleDeleteQuestion(q.id)}
@@ -142,15 +146,9 @@ export function CurriculumQuizLessonWorkspace({ lesson, onLessonTitleChange, onL
                         />
                         <QuestionEditor
                           questionText={q.questionText}
-                          onQuestionTextChange={(text) => patchQuestion(q.id, { questionText: text })}
-                          blockType={q.blockType}
-                          onBlockTypeChange={(blockType) => patchQuestion(q.id, { blockType })}
+                          onQuestionTextChange={(html) => patchQuestion(q.id, { questionText: html })}
                         />
                         <QuestionSettings
-                          questionType={q.questionType}
-                          onQuestionTypeChange={(questionType) => patchQuestion(q.id, { questionType })}
-                          category={q.category}
-                          onCategoryChange={(category) => patchQuestion(q.id, { category })}
                           required={q.required}
                           onRequiredChange={(required) => patchQuestion(q.id, { required })}
                         />
@@ -180,10 +178,12 @@ export function CurriculumQuizLessonWorkspace({ lesson, onLessonTitleChange, onL
             onSave={handleFooterSave}
           />
         </>
+      ) : activeTab === 'settings' ? (
+        <QuizSettingsPanel lesson={lesson} onLessonSave={onLessonSave} />
       ) : (
         <Box sx={styles.placeholderPanel}>
           <Typography color="text.secondary" textAlign="center">
-            {activeTab === 'settings' ? 'Quiz settings — demo placeholder.' : 'Q&A — demo placeholder.'}
+            Q&A — demo placeholder.
           </Typography>
         </Box>
       )}

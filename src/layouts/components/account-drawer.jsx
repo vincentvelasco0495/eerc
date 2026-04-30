@@ -11,9 +11,9 @@ import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 
-import { paths } from 'src/routes/paths';
 import { usePathname } from 'src/routes/hooks';
 import { RouterLink } from 'src/routes/components';
+import { paths, isDashboardLayoutPath } from 'src/routes/paths';
 
 import { _mock } from 'src/_mock';
 
@@ -64,8 +64,9 @@ export function AccountDrawer({ data = [], sx, ...other }) {
       ]}
     >
       {data.map((option) => {
-        const rootLabel = pathname.includes('/dashboard') ? 'Home' : 'Dashboard';
-        const rootHref = pathname.includes('/dashboard') ? '/' : paths.dashboard.root;
+        const onLmsSurface = isDashboardLayoutPath(pathname);
+        const rootLabel = onLmsSurface ? 'Home' : 'Dashboard';
+        const rootHref = onLmsSurface ? '/' : paths.dashboard.root;
 
         return (
           <MenuItem key={option.label}>

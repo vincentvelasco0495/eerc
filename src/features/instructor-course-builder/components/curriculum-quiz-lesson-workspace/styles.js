@@ -278,20 +278,6 @@ export const styles = {
     flex: 1,
   },
 
-  questionTypePill: {
-    flexShrink: 0,
-    display: 'inline-flex',
-    alignItems: 'center',
-    px: 1.25,
-    py: 0.375,
-    borderRadius: '999px',
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: '0.06em',
-    bgcolor: '#4b5563',
-    color: '#fff',
-  },
-
   trashBtn: {
     width: 36,
     height: 36,
@@ -344,80 +330,7 @@ export const styles = {
     minWidth: 0,
     display: 'flex',
     flexDirection: 'column',
-    gap: 0,
-  },
-
-  toolbar: {
-    display: 'flex',
-    alignItems: 'center',
-    flexWrap: 'wrap',
     gap: 1,
-    p: 1.5,
-    bgcolor: '#f9fafb',
-    border: `1px solid ${quizColors.border}`,
-    borderBottom: 'none',
-    borderRadius: '8px 8px 0 0',
-  },
-
-  paragraphSelect: {
-    minWidth: 140,
-    fontSize: 14,
-    '& .MuiOutlinedInput-notchedOutline': {
-      borderColor: quizColors.border,
-    },
-  },
-
-  toolbarIconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: '6px',
-    color: quizColors.text,
-  },
-
-  textareaWrap: {
-    border: `1px solid ${quizColors.border}`,
-    borderRadius: '0 0 8px 8px',
-    bgcolor: '#fff',
-    overflow: 'hidden',
-  },
-
-  textarea: {
-    width: '100%',
-    minHeight: 180,
-    p: 2,
-    fontSize: 15,
-    lineHeight: 1.6,
-    fontFamily: 'inherit',
-    border: 'none',
-    resize: 'vertical',
-    color: quizColors.text,
-    boxSizing: 'border-box',
-    '&:focus': { outline: 'none' },
-  },
-
-  statusBar: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    px: 2,
-    py: 0.75,
-    borderTop: `1px solid ${quizColors.border}`,
-    bgcolor: '#fafafa',
-  },
-
-  statusLeft: {
-    fontSize: 12,
-    fontWeight: 600,
-    color: quizColors.muted,
-    fontFamily: 'ui-monospace, monospace',
-  },
-
-  statusRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 1,
-    fontSize: 12,
-    color: quizColors.muted,
   },
 
   settingsRow: {
@@ -428,26 +341,6 @@ export const styles = {
     px: 2.5,
     py: 2,
     borderTop: `1px solid ${quizColors.border}`,
-  },
-
-  settingsSelect: {
-    minWidth: 160,
-    fontSize: 14,
-    '& .MuiOutlinedInput-notchedOutline': {
-      borderColor: quizColors.border,
-    },
-  },
-
-  categorySelect: {
-    minWidth: 140,
-    fontSize: 14,
-  },
-
-  infoIconBtn: {
-    width: 32,
-    height: 32,
-    ml: -1,
-    color: quizColors.primaryBlue,
   },
 
   answersSection: {
@@ -616,5 +509,98 @@ export const styles = {
     border: `1px solid ${quizColors.border}`,
     borderRadius: '10px',
     minHeight: 280,
+  },
+
+  /** Quiz → Settings tab (MasterStudy-style form) */
+  quizSettingsRoot: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+    overflow: 'auto',
+  },
+
+  quizSettingsCard: {
+    bgcolor: '#fff',
+    border: `1px solid ${quizColors.border}`,
+    borderRadius: '10px',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+    p: { xs: 2, sm: 2.5, md: 3 },
+    maxWidth: 960,
+    width: '100%',
+    mx: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 0,
+    boxSizing: 'border-box',
+  },
+
+  quizSettingsFieldLabel: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: quizColors.text,
+    display: 'block',
+    mb: 0.75,
+  },
+
+  quizSettingsTextArea: {
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '8px',
+      alignItems: 'flex-start',
+    },
+  },
+
+  quizSettingsNumberInput: {
+    borderRadius: '8px',
+  },
+
+  quizSettingsSelect: {
+    borderRadius: '8px',
+  },
+
+  quizSettingsToggleGrid: {
+    display: 'grid',
+    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+    columnGap: 3,
+    rowGap: 0,
+    my: 2,
+    px: { xs: 0, sm: 0 },
+  },
+
+  quizSettingsToggleCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 0,
+  },
+
+  quizSettingsSwitchRow: {
+    m: 0,
+    mr: 'auto!important',
+    alignItems: 'center',
+    '& .MuiFormControlLabel-label': {
+      fontSize: 14,
+      fontWeight: 500,
+      color: quizColors.text,
+    },
+  },
+
+  quizSettingsSaveRow: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    pt: 2.5,
+    mt: 1,
+  },
+
+  quizSettingsFooterSaveBtn: {
+    textTransform: 'none',
+    fontWeight: 600,
+    fontSize: 15,
+    px: 4,
+    py: 1.25,
+    borderRadius: 1,
+    bgcolor: quizColors.primaryBlue,
+    '&:hover': {
+      bgcolor: quizColors.primaryBlueHover,
+    },
   },
 };

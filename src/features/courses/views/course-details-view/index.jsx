@@ -27,6 +27,7 @@ import { RouterLink } from 'src/routes/components';
 import {
   useLmsCourse,
   useLmsCourses,
+  useLmsQuizzes,
   useLmsPrograms,
   useLmsModulesByCourse,
 } from 'src/hooks/use-lms';
@@ -217,6 +218,60 @@ const COURSE_PAGE_COPY = {
       },
     ],
   },
+  'course-how-to-design-components': {
+    category: 'Environmental Sciences',
+    badge: 'SPECIAL',
+    description:
+      'A UX-focused sprint on structuring screens so layouts stay consistent, typography stays readable, and learners can skim without losing hierarchy. ',
+    body: [
+      'Interface design fails quietly: spacing drifts, type scales collide, and “almost right” grids create cognitive drag. This course anchors you in repeatable composition habits—establishing grids, aligning modules, and reinforcing affordances so instructional content reads as calmly as intended.',
+      "You'll move through short theory bursts and applied layout exercises modeled on LMS patterns: hero regions, stacked lessons, FAQs, notices, and review surfaces.",
+    ],
+    learn: [
+      'Build responsive layout shells that behave predictably across breakpoints.',
+      'Pair typography scale ramps with instructional density for long-read pages.',
+      'Design component inventories that naming, props, and states can share.',
+      'Critique layouts with checkpoints that unblock engineering sooner.',
+      'Ship teaser and catalog cards that harmonize thumbnails, badges, and CTAs.',
+    ],
+    audience: [
+      'Product designers supporting education or LMS experiences.',
+      'Frontend engineers prototyping curriculum pages.',
+      'Instructional designers who own layout fidelity with engineering.',
+      'Teams standardizing dashboards, courses, and resource hubs.',
+    ],
+    faqs: [
+      {
+        question: 'Do we cover design systems?',
+        answer:
+          "You'll practice modular regions and repeatable tokens—the same ingredients design systems formalize.",
+      },
+      {
+        question: 'Are Figma files required?',
+        answer:
+          'No. Exercises are layout principles; you can sketch in any tool or in-browser.',
+      },
+      {
+        question: 'Is this only for web?',
+        answer:
+          'Patterns apply to web-first LMS UIs; responsive thinking still helps native layouts.',
+      },
+    ],
+    notices: [
+      'Preview builds use sample Environmental Sciences metadata to mirror catalog cards.',
+      'Completion state in the sidebar is a mock for instructor preview only.',
+      'Swap copy in Settings to align with your production program description.',
+    ],
+    reviews: [
+      {
+        author: 'Jamie Ortega',
+        role: 'Product designer',
+        rating: 4.5,
+        content:
+          'Clear structure for teaching pages. The module on hierarchy alone saved us a round of visual QA.',
+      },
+    ],
+  },
 };
 
 const ARCHIVE_OPTIONS = ['Current intake', 'May 2026', 'April 2026', 'March 2026'];
@@ -263,10 +318,16 @@ function SidebarDetailRow({ icon, label, value }) {
 
 function PopularCourseItem({ course }) {
   const copy = getCourseCopy(course);
+  const itemRating =
+    copy.reviews.length > 0
+      ? copy.reviews.reduce((sum, review) => sum + review.rating, 0) / copy.reviews.length
+      : 4.8;
 
   return (
     <Box component={RouterLink} href={paths.dashboard.courses.details(course.id)} sx={styles.popularCourseLink}>
-      <Box sx={{ ...styles.popularCourseThumb, ...courseArtSx(course.id, true) }} />
+      <Box sx={{ position: 'relative', ...styles.popularCourseThumb, ...courseArtSx(course.id, true) }}>
+        <Chip label={copy.badge} color="warning" size="small" sx={{ position: 'absolute', top: 6, left: 6 }} />
+      </Box>
       <Stack spacing={0.35} sx={styles.popularCourseStack}>
         <Typography variant="subtitle2" sx={styles.popularCourseTitle}>
           {course.title}
@@ -274,11 +335,63 @@ function PopularCourseItem({ course }) {
         <Typography variant="caption" sx={styles.popularCourseCategory}>
           {copy.category}
         </Typography>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main' }}>
+            Free
+          </Typography>
+          <Rating readOnly precision={0.5} value={itemRating} size="small" />
+        </Stack>
         <Typography variant="caption" sx={styles.popularCourseMentor}>
           By {course.mentor}
         </Typography>
       </Stack>
     </Box>
+  );
+}
+
+function RelatedCourseCard({ course: related }) {
+  const rcopy = getCourseCopy(related);
+  const itemRating =
+    rcopy.reviews.length > 0
+      ? rcopy.reviews.reduce((sum, review) => sum + review.rating, 0) / rcopy.reviews.length
+      : 4.5;
+
+  return (
+    <Card
+      component={RouterLink}
+      href={paths.dashboard.courses.details(related.id)}
+      sx={styles.relatedCourseCard}
+    >
+      <Box
+        sx={{
+          position: 'relative',
+          minHeight: 132,
+          borderRadius: 0,
+          ...courseArtSx(related.id, true),
+        }}
+      >
+        <Chip
+          label={rcopy.badge}
+          color="error"
+          size="small"
+          sx={{ position: 'absolute', top: 10, left: 10 }}
+        />
+      </Box>
+      <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', pt: 2, pb: 2.5 }}>
+        <Typography variant="subtitle2" sx={{ lineHeight: 1.35, mb: 0.5 }}>
+          {related.title}
+        </Typography>
+        <Typography variant="subtitle2" color="primary" fontWeight={700}>
+          Free
+        </Typography>
+        <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mt: 0.5 }}>
+          <Rating readOnly precision={0.5} value={itemRating} size="small" />
+        </Stack>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+          By {related.mentor}
+        </Typography>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -288,9 +401,16 @@ export function CourseDetailsView({ courseId }) {
   const courses = useLmsCourses();
   const programs = useLmsPrograms();
   const modules = useLmsModulesByCourse(courseId);
+  const lmsQuizzes = useLmsQuizzes();
+
   const relatedCourses = useMemo(
     () => courses.filter((item) => item.id !== courseId).slice(0, 3),
     [courseId, courses]
+  );
+
+  const quizzesForCourse = useMemo(
+    () => lmsQuizzes.filter((q) => q.courseId === courseId),
+    [lmsQuizzes, courseId]
   );
 
   if (!course) {
@@ -304,15 +424,19 @@ export function CourseDetailsView({ courseId }) {
   const copy = getCourseCopy(course);
   const program = programs.find((item) => item.id === course.programId);
   const videoLessons = modules.filter((moduleItem) => moduleItem.resources.includes('Video')).length;
-  const averageRating = copy.reviews.length
-    ? copy.reviews.reduce((sum, review) => sum + review.rating, 0) / copy.reviews.length
-    : 4.8;
+  const videoDetailValue =
+    course.videoHoursLabel ??
+    (videoLessons > 0 ? `${videoLessons} ${videoLessons === 1 ? 'lesson' : 'lessons'} with video` : '—');
   const detailRows = [
     { label: 'Duration', value: `${course.hours} hours`, icon: 'solar:clock-circle-linear' },
     { label: 'Lectures', value: modules.length, icon: 'solar:notebook-minimalistic-linear' },
-    { label: 'Video', value: `${videoLessons} lessons`, icon: 'solar:play-circle-linear' },
-    { label: 'Level', value: course.level, icon: 'solar:shield-check-linear' },
+    { label: 'Video', value: videoDetailValue, icon: 'solar:play-circle-linear' },
+    { label: 'Quizzes', value: quizzesForCourse.length, icon: 'solar:clipboard-check-linear' },
+    { label: 'Level', value: course.level, icon: 'solar:graph-up-linear' },
   ];
+  const averageRating = copy.reviews.length
+    ? copy.reviews.reduce((sum, review) => sum + review.rating, 0) / copy.reviews.length
+    : 4.8;
 
   return (
     <DashboardContent maxWidth={false}>
@@ -327,7 +451,7 @@ export function CourseDetailsView({ courseId }) {
         />
 
         <Grid container spacing={{ xs: 4, lg: 5 }} alignItems="flex-start">
-          <Grid size={{ xs: 12, lg: 8 }}>
+          <Grid size={{ xs: 12, lg: 8 }} sx={{ order: { xs: 1, lg: 2 } }}>
             <Stack spacing={3}>
               <Stack
                 direction={{ xs: 'column', md: 'row' }}
@@ -404,7 +528,7 @@ export function CourseDetailsView({ courseId }) {
                 <Stack spacing={0.35}>
                   <Rating readOnly precision={0.5} value={averageRating} size="small" />
                   <Typography variant="caption">
-                    {copy.reviews.length} reviews
+                    {copy.reviews.length} {copy.reviews.length === 1 ? 'review' : 'reviews'}
                   </Typography>
                 </Stack>
               </Stack>
@@ -467,6 +591,17 @@ export function CourseDetailsView({ courseId }) {
                             </Typography>
                           ))}
                         </Stack>
+                      </Stack>
+
+                      <Stack spacing={2}>
+                        <Typography variant="h5">Related courses</Typography>
+                        <Grid container spacing={2}>
+                          {relatedCourses.map((rc) => (
+                            <Grid key={rc.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                              <RelatedCourseCard course={rc} />
+                            </Grid>
+                          ))}
+                        </Grid>
                       </Stack>
                     </Stack>
                   </TabPanel>
@@ -556,7 +691,8 @@ export function CourseDetailsView({ courseId }) {
                               <Typography variant="h3">{averageRating.toFixed(1)}</Typography>
                               <Rating readOnly precision={0.5} value={averageRating} />
                               <Typography variant="body2" sx={styles.ratingSummaryFooter}>
-                                Based on {copy.reviews.length} learner reviews
+                                Based on {copy.reviews.length}{' '}
+                                {copy.reviews.length === 1 ? 'learner review' : 'learner reviews'}
                               </Typography>
                             </Stack>
                             <Chip label={`${course.learners.toLocaleString()} enrolled learners`} color="primary" variant="outlined" />
@@ -591,28 +727,84 @@ export function CourseDetailsView({ courseId }) {
             </Stack>
           </Grid>
 
-          <Grid size={{ xs: 12, lg: 4 }}>
+          <Grid size={{ xs: 12, lg: 4 }} sx={{ order: { xs: 2, lg: 1 } }}>
             <Stack spacing={3}>
-              <Card sx={styles.sidebarCard}>
-                <CardContent sx={styles.sidebarCardPadding}>
-                  <Stack spacing={2.5}>
+              {course.previewCompleted ? (
+                <Card sx={[styles.sidebarCard, styles.completionSidebarCard]}>
+                  <CardContent sx={styles.sidebarCardPadding}>
+                    <Stack spacing={2}>
+                      <Stack direction="row" spacing={1.25} alignItems="center">
+                        <Iconify icon="solar:check-circle-bold" width={28} sx={{ color: 'primary.main' }} />
+                        <Box>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                            Course complete
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                            Score: 100%
+                          </Typography>
+                        </Box>
+                      </Stack>
+                      <Button variant="outlined" color="primary" size="small">
+                        Details
+                      </Button>
+                      <Button
+                        component={RouterLink}
+                        href={paths.dashboard.modules.details(course.nextModuleId)}
+                        variant="contained"
+                        size="large"
+                        sx={styles.startCourseCta}
+                      >
+                        CONTINUE
+                      </Button>
+                      <Divider />
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        <Button
+                          variant="text"
+                          color="inherit"
+                          size="small"
+                          startIcon={<Iconify icon="solar:heart-linear" />}
+                          sx={styles.toolbarTextButton}
+                        >
+                          Add to wishlist
+                        </Button>
+                        <Button
+                          variant="text"
+                          color="inherit"
+                          size="small"
+                          startIcon={<Iconify icon="solar:share-linear" />}
+                          sx={styles.toolbarTextButton}
+                        >
+                          Share
+                        </Button>
+                      </Stack>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card sx={styles.sidebarCard}>
+                  <CardContent sx={styles.sidebarCardPadding}>
                     <Button
                       component={RouterLink}
                       href={paths.dashboard.modules.details(course.nextModuleId)}
                       variant="contained"
                       size="large"
+                      fullWidth
                       sx={styles.startCourseCta}
                     >
                       START COURSE
                     </Button>
+                  </CardContent>
+                </Card>
+              )}
 
-                    <Stack spacing={1.6}>
-                      <Typography variant="h5">Course details</Typography>
-                      <Divider />
-                      {detailRows.map((item) => (
-                        <SidebarDetailRow key={item.label} {...item} />
-                      ))}
-                    </Stack>
+              <Card sx={[styles.sidebarCard, { bgcolor: 'grey.50' }]}>
+                <CardContent sx={styles.sidebarCardPadding}>
+                  <Stack spacing={1.6}>
+                    <Typography variant="h5">Course details</Typography>
+                    <Divider />
+                    {detailRows.map((item) => (
+                      <SidebarDetailRow key={item.label} {...item} />
+                    ))}
                   </Stack>
                 </CardContent>
               </Card>
@@ -635,9 +827,11 @@ export function CourseDetailsView({ courseId }) {
               <Card sx={styles.sidebarCard}>
                 <CardContent sx={styles.sidebarCardPadding}>
                   <Stack spacing={1.5}>
-                    <Typography variant="h5">Archive</Typography>
+                    <Typography variant="overline" sx={{ letterSpacing: 1.2, fontWeight: 700 }}>
+                      Archive
+                    </Typography>
                     <Divider />
-                    <TextField select fullWidth defaultValue={ARCHIVE_OPTIONS[0]}>
+                    <TextField select fullWidth defaultValue={ARCHIVE_OPTIONS[0]} label="Select Month">
                       {ARCHIVE_OPTIONS.map((item) => (
                         <MenuItem key={item} value={item}>
                           {item}
@@ -648,22 +842,24 @@ export function CourseDetailsView({ courseId }) {
                 </CardContent>
               </Card>
 
-              <Card sx={styles.sidebarCard}>
-                <CardContent sx={styles.sidebarCardPadding}>
-                  <Stack spacing={1.5}>
-                    <Typography variant="h5">About this program</Typography>
-                    <Divider />
-                    <Typography variant="body2" sx={styles.aboutProgramBody}>
-                      {program?.description ?? copy.description}
-                    </Typography>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                      {course.tags.map((tag) => (
-                        <Chip key={tag} label={tag} size="small" />
-                      ))}
+              {course.id !== 'course-how-to-design-components' && (
+                <Card sx={styles.sidebarCard}>
+                  <CardContent sx={styles.sidebarCardPadding}>
+                    <Stack spacing={1.5}>
+                      <Typography variant="h5">About this program</Typography>
+                      <Divider />
+                      <Typography variant="body2" sx={styles.aboutProgramBody}>
+                        {program?.description ?? copy.description}
+                      </Typography>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        {course.tags.map((tag) => (
+                          <Chip key={tag} label={tag} size="small" />
+                        ))}
+                      </Stack>
                     </Stack>
-                  </Stack>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
             </Stack>
           </Grid>
         </Grid>

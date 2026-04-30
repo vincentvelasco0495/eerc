@@ -8,6 +8,7 @@ import Divider from '@mui/material/Divider';
 import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
 
+import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 
 import { Iconify } from 'src/components/iconify';
@@ -78,7 +79,13 @@ export function CurriculumBuilderTopBar({
             <MenuItem onClick={onClosePublishMenu}>Draft</MenuItem>
             <MenuItem onClick={onClosePublishMenu}>Scheduled</MenuItem>
           </Menu>
-          <Button variant="outlined" color="inherit" sx={styles.viewButton}>
+          <Button
+            component={RouterLink}
+            href={paths.courseDetailDemo}
+            variant="outlined"
+            color="inherit"
+            sx={styles.viewButton}
+          >
             View
           </Button>
         </Stack>

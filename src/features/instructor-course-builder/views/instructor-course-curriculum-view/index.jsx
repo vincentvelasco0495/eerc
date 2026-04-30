@@ -9,6 +9,9 @@ import { paths } from 'src/routes/paths';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { styles } from './styles';
+import { CourseFaqWorkspace } from '../../components/course-faq-workspace';
+import { CourseNoticeWorkspace } from '../../components/course-notice-workspace';
+import { CourseSettingsWorkspace } from '../../components/course-settings-workspace';
 import { CurriculumBuilderTopBar } from '../../components/curriculum-builder-top-bar';
 import { CurriculumBuilderSidebar } from '../../components/curriculum-builder-sidebar';
 import { CurriculumBuilderWorkspace } from '../../components/curriculum-builder-workspace';
@@ -132,22 +135,42 @@ export function InstructorCourseCurriculumView() {
           onClosePublishMenu={handleClosePublish}
         />
 
-        <Stack direction={{ xs: 'column', md: 'row' }} sx={styles.body}>
-          <CurriculumBuilderSidebar
-            modules={modules}
-            expandedByModuleId={expandedModules}
-            onToggleModule={toggleModule}
-            selectedLessonId={selectedLessonId}
-            onSelectLesson={setSelectedLessonId}
-            onAddLesson={handleAddLesson}
-          />
+        {courseTab === 'curriculum' ? (
+          <Stack direction={{ xs: 'column', md: 'row' }} sx={styles.body}>
+            <CurriculumBuilderSidebar
+              modules={modules}
+              expandedByModuleId={expandedModules}
+              onToggleModule={toggleModule}
+              selectedLessonId={selectedLessonId}
+              onSelectLesson={setSelectedLessonId}
+              onAddLesson={handleAddLesson}
+            />
 
-          <CurriculumBuilderWorkspace
-            lesson={selectedLesson}
-            onLessonTitleChange={handleLessonTitleChange}
-            onLessonSave={handleLessonSave}
-          />
-        </Stack>
+            <CurriculumBuilderWorkspace
+              lesson={selectedLesson}
+              onLessonTitleChange={handleLessonTitleChange}
+              onLessonSave={handleLessonSave}
+            />
+          </Stack>
+        ) : (
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              bgcolor: 'grey.50',
+            }}
+          >
+            {courseTab === 'settings' ? (
+              <CourseSettingsWorkspace />
+            ) : courseTab === 'faq' ? (
+              <CourseFaqWorkspace />
+            ) : courseTab === 'notice' ? (
+              <CourseNoticeWorkspace />
+            ) : null}
+          </Box>
+        )}
       </Box>
     </DashboardContent>
   );

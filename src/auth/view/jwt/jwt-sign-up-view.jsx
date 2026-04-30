@@ -12,17 +12,17 @@ import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 
 import { paths } from 'src/routes/paths';
-import { useRouter } from 'src/routes/hooks';
 import { RouterLink } from 'src/routes/components';
+import { useRouter, useSearchParams } from 'src/routes/hooks';
 
 import { Iconify } from 'src/components/iconify';
 import { Form, Field, schemaUtils } from 'src/components/hook-form';
 
 import { signUp } from '../../context/jwt';
 import { useAuthContext } from '../../hooks';
-import { getErrorMessage } from '../../utils';
 import { FormHead } from '../../components/form-head';
 import { SignUpTerms } from '../../components/sign-up-terms';
+import { getErrorMessage, resolvePostLoginUrl } from '../../utils';
 
 // ----------------------------------------------------------------------
 
@@ -44,6 +44,8 @@ export function JwtSignUpView() {
   const showPassword = useBoolean();
 
   const { checkUserSession } = useAuthContext();
+
+  const searchParams = useSearchParams();
 
   const [errorMessage, setErrorMessage] = useState(null);
 
@@ -72,9 +74,9 @@ export function JwtSignUpView() {
         firstName: data.firstName,
         lastName: data.lastName,
       });
-      await checkUserSession?.();
-
-      router.refresh();
+      const sessionUser = await checkUserSession?.();
+      const role = sessionUser?.role ?? 'admin';
+      router.replace(resolvePostLoginUrl(role, searchParams.get('returnTo')));
     } catch (error) {
       console.error(error);
       const feedbackMessage = getErrorMessage(error);

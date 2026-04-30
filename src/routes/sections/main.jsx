@@ -29,6 +29,8 @@ const Page404 = lazy(() => import('src/pages/error/404'));
 // Blank
 const BlankPage = lazy(() => import('src/pages/blank'));
 
+const CourseDetailPage = lazy(() => import('src/pages/course-detail/CourseDetail'));
+
 // ----------------------------------------------------------------------
 
 export const mainRoutes = [
@@ -49,6 +51,7 @@ export const mainRoutes = [
           { path: 'about-us', element: <AboutPage /> },
           { path: 'contact-us', element: <ContactPage /> },
           { path: 'faqs', element: <FaqsPage /> },
+          { path: 'course-detail', element: <CourseDetailPage /> },
           { path: 'blank', element: <BlankPage /> },
           {
             path: 'product',

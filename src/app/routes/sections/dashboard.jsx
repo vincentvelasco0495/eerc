@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
-import { Outlet, Navigate } from 'react-router';
+import { Outlet, Navigate, useLocation } from 'react-router';
 
+import { paths } from 'src/routes/paths';
 import { usePathname } from 'src/routes/hooks';
 
 import { CONFIG } from 'src/global-config';
@@ -10,7 +11,6 @@ import { LoadingScreen } from 'src/components/loading-screen';
 
 import { AuthGuard } from 'src/auth/guard';
 
-const DashboardHomePage = lazy(() => import('src/pages/dashboard'));
 const CourseListPage = lazy(() => import('src/pages/course/list'));
 const CourseDetailsPage = lazy(() => import('src/pages/course/details'));
 const ModuleDetailsPage = lazy(() => import('src/pages/module/details'));
@@ -49,12 +49,28 @@ const dashboardLayout = () => (
   </DashboardLayout>
 );
 
+/** Maps old `/dashboard/...` bookmarks to flattened LMS URLs. */
+function LegacyDashboardRedirect() {
+  const { pathname, search, hash } = useLocation();
+
+  if (pathname === '/dashboard' || pathname === '/dashboard/') {
+    return <Navigate to={`${paths.dashboard.root}${search}${hash}`} replace />;
+  }
+
+  if (pathname.startsWith('/dashboard/')) {
+    const target = pathname.slice('/dashboard'.length) + search + hash;
+    return <Navigate to={target} replace />;
+  }
+
+  return <Navigate to={paths.dashboard.root} replace />;
+}
+
+const dashboardLayoutElement = CONFIG.auth.skip ? dashboardLayout() : <AuthGuard>{dashboardLayout()}</AuthGuard>;
+
 export const dashboardRoutes = [
   {
-    path: 'dashboard',
-    element: CONFIG.auth.skip ? dashboardLayout() : <AuthGuard>{dashboardLayout()}</AuthGuard>,
+    element: dashboardLayoutElement,
     children: [
-      { index: true, element: <DashboardHomePage /> },
       { path: 'courses', element: <CourseListPage /> },
       { path: 'courses/:courseId', element: <CourseDetailsPage /> },
       { path: 'modules/:moduleId', element: <ModuleDetailsPage /> },
@@ -74,8 +90,21 @@ export const dashboardRoutes = [
       { path: 'student-profile', element: <StudentProfilePage /> },
       { path: 'enrollment', element: <EnrollmentPage /> },
       { path: 'admin', element: <AdminPage /> },
-      { path: 'course', element: <Navigate to="/dashboard/courses" replace /> },
-      { path: 'analytics/legacy', element: <Navigate to="/dashboard/analytics" replace /> },
+      {
+        path: 'course',
+        element: <Navigate to={paths.dashboard.courses.root} replace />,
+      },
+      {
+        path: 'analytics/legacy',
+        element: <Navigate to={paths.dashboard.analyticsHub} replace />,
+      },
+    ],
+  },
+  {
+    path: 'dashboard',
+    children: [
+      { index: true, element: <LegacyDashboardRedirect /> },
+      { path: '*', element: <LegacyDashboardRedirect /> },
     ],
   },
 ];

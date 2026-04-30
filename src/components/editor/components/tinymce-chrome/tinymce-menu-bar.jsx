@@ -1,73 +1,266 @@
 import { usePopover } from 'minimal-shared/hooks';
+import { useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Menu from '@mui/material/Menu';
+import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
 import MenuItem from '@mui/material/MenuItem';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import ButtonBase from '@mui/material/ButtonBase';
+import DialogTitle from '@mui/material/DialogTitle';
+import GlobalStyles from '@mui/material/GlobalStyles';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
 
 import { TINYMCE } from './tinymce-theme';
 
 const MENUS = [
-  { id: 'view', label: 'View', items: ['Source code', 'Visual aids'] },
-  { id: 'format', label: 'Format', items: ['Bold', 'Italic', 'Clear formatting'] },
-  { id: 'table', label: 'Table', items: ['Insert table', 'Delete table'] },
-  { id: 'tools', label: 'Tools', items: ['Word count', 'Preview'] },
+  {
+    id: 'view',
+    label: 'View',
+    items: [
+      { label: 'Source code', action: 'source' },
+      { label: 'Visual aids', action: 'toggleVisualAids' },
+    ],
+  },
+  {
+    id: 'format',
+    label: 'Format',
+    items: [
+      { label: 'Bold', action: 'bold' },
+      { label: 'Italic', action: 'italic' },
+      { label: 'Clear formatting', action: 'clearFormat' },
+    ],
+  },
+  {
+    id: 'tools',
+    label: 'Tools',
+    items: [
+      { label: 'Word count', action: 'wordCount' },
+      { label: 'Preview', action: 'preview' },
+    ],
+  },
 ];
 
-export function TinyMceMenuBar() {
+// ----------------------------------------------------------------------
+
+export function TinyMceMenuBar({ editor }) {
+  const [visualAids, setVisualAids] = useState(false);
+  const [sourceOpen, setSourceOpen] = useState(false);
+  const [sourceDraft, setSourceDraft] = useState('');
+  const [wcOpen, setWcOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  useEffect(() => {
+    const el = editor?.view?.dom;
+    if (!el) return undefined;
+    el.setAttribute('data-visual-aids', visualAids ? 'true' : '');
+    return () => {
+      el.removeAttribute('data-visual-aids');
+    };
+  }, [editor, visualAids]);
+
+  const runAction = useCallback(
+    (action, closeMenu) => {
+      closeMenu?.();
+      if (!editor) return;
+
+      const chain = () => editor.chain().focus();
+
+      switch (action) {
+        case 'source':
+          setSourceDraft(editor.getHTML());
+          setSourceOpen(true);
+          break;
+        case 'toggleVisualAids':
+          setVisualAids((prev) => !prev);
+          break;
+        case 'bold':
+          chain().toggleBold().run();
+          break;
+        case 'italic':
+          chain().toggleItalic().run();
+          break;
+        case 'clearFormat':
+          chain().clearNodes().unsetAllMarks().run();
+          break;
+        case 'wordCount':
+          setWcOpen(true);
+          break;
+        case 'preview':
+          setPreviewOpen(true);
+          break;
+        default:
+          break;
+      }
+    },
+    [editor]
+  );
+
+  const applySource = useCallback(() => {
+    editor?.chain().focus().setContent(sourceDraft).run();
+    setSourceOpen(false);
+  }, [editor, sourceDraft]);
+
+  const htmlPreview = editor?.getHTML?.() ?? '';
+  const plain = editor?.getText?.() ?? '';
+  const wordCount =
+    plain.trim().length === 0 ? 0 : plain.trim().split(/\s+/).filter(Boolean).length;
+  const charCount = plain.length;
+
+  if (!editor) return null;
+
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        justifyContent: 'flex-start',
-        columnGap: 5,
-        rowGap: 0.5,
-        width: 1,
-        px: 2,
-        py: 0.75,
-        minHeight: 40,
-        backgroundColor: TINYMCE.chromeSurface,
-        borderBottom: `1px solid ${TINYMCE.hairline}`,
-      }}
-    >
-      {MENUS.map((m) => (
-        <MenuDropdown key={m.id} {...m} />
-      ))}
-    </Box>
+    <>
+      <GlobalStyles
+        styles={{
+          '.ProseMirror[data-visual-aids="true"] p': {
+            outline: '1px dashed rgba(128, 128, 128, 0.45)',
+            outlineOffset: '2px',
+          },
+          '.ProseMirror[data-visual-aids="true"] table': {
+            outline: '1px dashed rgba(128, 128, 128, 0.45)',
+          },
+        }}
+      />
+
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          justifyContent: 'flex-start',
+          columnGap: 5,
+          rowGap: 0.5,
+          width: 1,
+          px: 2,
+          py: 0.75,
+          minHeight: 40,
+          backgroundColor: TINYMCE.chromeSurface,
+          borderBottom: `1px solid ${TINYMCE.hairline}`,
+        }}
+      >
+        {MENUS.map((m) => (
+          <MenuDropdown key={m.id} label={m.label} items={m.items} onAction={runAction} visualAids={visualAids} />
+        ))}
+      </Box>
+
+      <Dialog open={sourceOpen} onClose={() => setSourceOpen(false)} fullWidth maxWidth="md">
+        <DialogTitle>Source code</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            multiline
+            fullWidth
+            minRows={14}
+            value={sourceDraft}
+            onChange={(e) => setSourceDraft(e.target.value)}
+            placeholder="<p></p>"
+            spellCheck={false}
+            sx={{ mt: 0.5, fontFamily: 'ui-monospace, Consolas, monospace', fontSize: 13 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setSourceOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={applySource}>
+            Apply
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={wcOpen} onClose={() => setWcOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Word count</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Statistics for the document.
+          </Typography>
+          <Typography variant="body1">
+            Words: <strong>{wordCount}</strong>
+          </Typography>
+          <Typography variant="body1">
+            Characters: <strong>{charCount}</strong>
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button variant="contained" onClick={() => setWcOpen(false)}>
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} fullWidth maxWidth="md">
+        <DialogTitle>Preview</DialogTitle>
+        <DialogContent sx={{ pb: 2 }}>
+          <Box
+            sx={{
+              minHeight: 280,
+              maxHeight: '60vh',
+              overflow: 'auto',
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 1,
+              p: 2,
+              bgcolor: 'background.paper',
+              typography: 'body1',
+              '& img': { maxWidth: '100%', height: 'auto' },
+            }}
+            dangerouslySetInnerHTML={{ __html: htmlPreview }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setPreviewOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
 
-function MenuDropdown({ label, items }) {
+function MenuDropdown({ label, items, onAction, visualAids }) {
   const { anchorEl, open, onOpen, onClose } = usePopover();
 
   return (
     <>
-      <ButtonBase
-        onClick={onOpen}
-        disableRipple
-        sx={{
-          px: 1.25,
-          py: 0.75,
-          borderRadius: TINYMCE.buttonRadius,
-          typography: 'body2',
-          fontSize: 13,
-          fontWeight: 500,
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          color: TINYMCE.menuColor,
-          '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.06)' },
-        }}
-      >
+      <ButtonBase onClick={onOpen} disableRipple sx={{ ...menuBtnSx }}>
         {label}
       </ButtonBase>
       <Menu anchorEl={anchorEl} open={open} onClose={onClose}>
-        {items.map((item) => (
-          <MenuItem key={item} dense disabled onClick={onClose}>
-            {item}
-          </MenuItem>
-        ))}
+        {items.map((item) => {
+          const secondaryLabel =
+            item.action === 'toggleVisualAids' ? (visualAids ? 'On' : 'Off') : null;
+          return (
+            <MenuItem
+              key={item.action}
+              dense
+              onClick={() => onAction(item.action, onClose)}
+              sx={{
+                justifyContent: 'space-between',
+                gap: 2,
+              }}
+            >
+              {item.label}
+              {secondaryLabel && (
+                <Typography component="span" variant="caption" color="text.secondary">
+                  {secondaryLabel}
+                </Typography>
+              )}
+            </MenuItem>
+          );
+        })}
       </Menu>
     </>
   );
 }
+
+const menuBtnSx = {
+  px: 1.25,
+  py: 0.75,
+  borderRadius: TINYMCE.buttonRadius,
+  typography: 'body2',
+  fontSize: 13,
+  fontWeight: 500,
+  fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  color: TINYMCE.menuColor,
+  '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.06)' },
+};

@@ -12,16 +12,16 @@ import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 
 import { paths } from 'src/routes/paths';
-import { useRouter } from 'src/routes/hooks';
 import { RouterLink } from 'src/routes/components';
+import { useRouter, useSearchParams } from 'src/routes/hooks';
 
 import { Iconify } from 'src/components/iconify';
 import { Form, Field, schemaUtils } from 'src/components/hook-form';
 
 import { useAuthContext } from '../../hooks';
-import { getErrorMessage } from '../../utils';
 import { FormHead } from '../../components/form-head';
-import { signInWithPassword } from '../../context/jwt';
+import { getErrorMessage, resolvePostLoginUrl } from '../../utils';
+import { DEMO_SIGN_IN_USERS, signInWithPassword } from '../../context/jwt';
 
 // ----------------------------------------------------------------------
 
@@ -42,11 +42,16 @@ export function JwtSignInView() {
 
   const { checkUserSession } = useAuthContext();
 
+  const searchParams = useSearchParams();
+
   const [errorMessage, setErrorMessage] = useState(null);
 
+  const instructorDemo = DEMO_SIGN_IN_USERS[0];
+  const studentDemo = DEMO_SIGN_IN_USERS[1];
+
   const defaultValues = {
-    email: 'demo@minimals.cc',
-    password: '@2Minimal',
+    email: instructorDemo.email,
+    password: instructorDemo.password,
   };
 
   const methods = useForm({
@@ -62,9 +67,9 @@ export function JwtSignInView() {
   const onSubmit = handleSubmit(async (data) => {
     try {
       await signInWithPassword({ email: data.email, password: data.password });
-      await checkUserSession?.();
-
-      router.refresh();
+      const sessionUser = await checkUserSession?.();
+      const role = sessionUser?.role ?? 'admin';
+      router.replace(resolvePostLoginUrl(role, searchParams.get('returnTo')));
     } catch (error) {
       console.error(error);
       const feedbackMessage = getErrorMessage(error);
@@ -139,9 +144,9 @@ export function JwtSignInView() {
       />
 
       <Alert severity="info" sx={{ mb: 3 }}>
-        Use <strong>{defaultValues.email}</strong>
-        {' with password '}
-        <strong>{defaultValues.password}</strong>
+        <strong>Instructor:</strong> {instructorDemo.email} — password <strong>{instructorDemo.password}</strong>
+        <br />
+        <strong>Student:</strong> {studentDemo.email} — password <strong>{studentDemo.password}</strong>
       </Alert>
 
       {!!errorMessage && (

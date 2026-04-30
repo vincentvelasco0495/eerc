@@ -15,10 +15,8 @@ export function createDemoQuestion() {
   return {
     id: nid(),
     collapsed: true,
-    blockType: 'paragraph',
-    questionText: 'What does CPU stand for?',
+    questionText: '<p>What does CPU stand for?</p>',
     questionType: 'single_choice',
-    category: '',
     required: false,
     answers,
     correctAnswerId: answers[2].id,
@@ -33,10 +31,8 @@ export function createBlankQuestion() {
   return {
     id: nid(),
     collapsed: true,
-    blockType: 'paragraph',
     questionText: '',
     questionType: 'single_choice',
-    category: '',
     required: false,
     answers: [
       { id: a1, text: '' },
