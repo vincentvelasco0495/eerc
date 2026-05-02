@@ -1,5 +1,5 @@
 import { usePopover } from 'minimal-shared/hooks';
-import { useState, useEffect, useCallback } from 'react';
+import { Fragment, useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Menu from '@mui/material/Menu';
@@ -7,12 +7,18 @@ import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
+import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
 import ButtonBase from '@mui/material/ButtonBase';
 import DialogTitle from '@mui/material/DialogTitle';
 import GlobalStyles from '@mui/material/GlobalStyles';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
+import ListSubheader from '@mui/material/ListSubheader';
+import useMediaQuery from '@mui/material/useMediaQuery';
+
+import { Iconify } from 'src/components/iconify';
 
 import { TINYMCE } from './tinymce-theme';
 
@@ -47,6 +53,8 @@ const MENUS = [
 // ----------------------------------------------------------------------
 
 export function TinyMceMenuBar({ editor }) {
+  const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down('sm'));
   const [visualAids, setVisualAids] = useState(false);
   const [sourceOpen, setSourceOpen] = useState(false);
   const [sourceDraft, setSourceDraft] = useState('');
@@ -126,26 +134,30 @@ export function TinyMceMenuBar({ editor }) {
         }}
       />
 
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          justifyContent: 'flex-start',
-          columnGap: 5,
-          rowGap: 0.5,
-          width: 1,
-          px: 2,
-          py: 0.75,
-          minHeight: 40,
-          backgroundColor: TINYMCE.chromeSurface,
-          borderBottom: `1px solid ${TINYMCE.hairline}`,
-        }}
-      >
-        {MENUS.map((m) => (
-          <MenuDropdown key={m.id} label={m.label} items={m.items} onAction={runAction} visualAids={visualAids} />
-        ))}
-      </Box>
+      {isSmDown ? (
+        <MobileEditorMenuBar runAction={runAction} visualAids={visualAids} />
+      ) : (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            justifyContent: 'flex-start',
+            columnGap: 5,
+            rowGap: 0.5,
+            width: 1,
+            px: 2,
+            py: 0.75,
+            minHeight: 40,
+            backgroundColor: TINYMCE.chromeSurface,
+            borderBottom: `1px solid ${TINYMCE.hairline}`,
+          }}
+        >
+          {MENUS.map((m) => (
+            <MenuDropdown key={m.id} label={m.label} items={m.items} onAction={runAction} visualAids={visualAids} />
+          ))}
+        </Box>
+      )}
 
       <Dialog open={sourceOpen} onClose={() => setSourceOpen(false)} fullWidth maxWidth="md">
         <DialogTitle>Source code</DialogTitle>
@@ -214,6 +226,80 @@ export function TinyMceMenuBar({ editor }) {
         </DialogActions>
       </Dialog>
     </>
+  );
+}
+
+function MobileEditorMenuBar({ runAction, visualAids }) {
+  const { anchorEl, open, onOpen, onClose } = usePopover();
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        width: 1,
+        px: 0.75,
+        py: 0.25,
+        minHeight: 44,
+        backgroundColor: TINYMCE.chromeSurface,
+        borderBottom: `1px solid ${TINYMCE.hairline}`,
+      }}
+    >
+      <IconButton
+        color="inherit"
+        size="large"
+        edge="start"
+        aria-label="View, format, and tools"
+        aria-expanded={open ? 'true' : undefined}
+        aria-haspopup="menu"
+        onClick={onOpen}
+        sx={{ borderRadius: 1 }}
+      >
+        <Iconify icon="eva:menu-2-fill" width={22} />
+      </IconButton>
+      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, ml: 0.5 }}>
+        View · Format · Tools
+      </Typography>
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={onClose}
+        slotProps={{
+          paper: {
+            sx: {
+              width: 'min(100vw - 24px, 320px)',
+              maxHeight: 'min(72dvh, 420px)',
+            },
+          },
+        }}
+      >
+        {MENUS.map((m) => (
+          <Fragment key={m.id}>
+            <ListSubheader disableSticky sx={{ typography: 'overline', lineHeight: 1.5, py: 1 }}>
+              {m.label}
+            </ListSubheader>
+            {m.items.map((item) => {
+              const secondaryLabel =
+                item.action === 'toggleVisualAids' ? (visualAids ? 'On' : 'Off') : null;
+              return (
+                <MenuItem
+                  key={item.action}
+                  onClick={() => runAction(item.action, onClose)}
+                  sx={{ justifyContent: 'space-between', gap: 2, minHeight: 48 }}
+                >
+                  {item.label}
+                  {secondaryLabel ? (
+                    <Typography component="span" variant="caption" color="text.secondary">
+                      {secondaryLabel}
+                    </Typography>
+                  ) : null}
+                </MenuItem>
+              );
+            })}
+          </Fragment>
+        ))}
+      </Menu>
+    </Box>
   );
 }
 

@@ -51,6 +51,9 @@ export const EditorRoot = styled('div')(({ theme }) => ({
       [`& .tiptap.ProseMirror`]: {
         minHeight: '100%',
         padding: theme.spacing(2),
+        [theme.breakpoints.down('sm')]: {
+          padding: theme.spacing(1.5),
+        },
         fontFamily:
           'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
       },

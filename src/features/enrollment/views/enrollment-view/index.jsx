@@ -13,27 +13,45 @@ import CardContent from '@mui/material/CardContent';
 
 import { useEnrollment, useLmsActions, useLmsCourses } from 'src/hooks/use-lms';
 
+import { LMS_PROGRAM_SELECT_OPTIONS } from 'src/constants/lms';
+
 import { LmsStatCard } from 'src/components/ui/lms-stat-card';
 import { LmsPageShell } from 'src/components/layout/lms-page-shell';
 
 import { styles } from './styles';
 
 export function EnrollmentView() {
-  const courses = useLmsCourses();
+  const { courses } = useLmsCourses(1, 200);
   const enrollment = useEnrollment();
   const { submitEnrollment } = useLmsActions();
-  const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [selectedProgramId, setSelectedProgramId] = useState('');
 
-  const nextCourse = useMemo(
-    () => courses.find((course) => !enrollment.some((item) => item.courseId === course.id)),
-    [courses, enrollment]
-  );
+  const defaultProgramId = useMemo(() => {
+    for (const option of LMS_PROGRAM_SELECT_OPTIONS) {
+      const open = courses.some(
+        (course) =>
+          course.programId === option.id &&
+          !enrollment.some((item) => item.courseId === course.id)
+      );
+      if (open) return option.id;
+    }
+    return LMS_PROGRAM_SELECT_OPTIONS[0]?.id ?? '';
+  }, [courses, enrollment]);
+
+  const selectedCourse = useMemo(() => {
+    if (!selectedProgramId) return undefined;
+    const inProgram = courses.filter((course) => course.programId === selectedProgramId);
+    return (
+      inProgram.find((course) => !enrollment.some((item) => item.courseId === course.id)) ??
+      inProgram[0]
+    );
+  }, [courses, enrollment, selectedProgramId]);
 
   useEffect(() => {
-    if (!selectedCourseId && nextCourse?.id) {
-      setSelectedCourseId(nextCourse.id);
+    if (!selectedProgramId && defaultProgramId) {
+      setSelectedProgramId(defaultProgramId);
     }
-  }, [nextCourse?.id, selectedCourseId]);
+  }, [defaultProgramId, selectedProgramId]);
 
   return (
     <LmsPageShell
@@ -77,24 +95,24 @@ export function EnrollmentView() {
               <Stack spacing={2.5}>
                 <Typography variant="h6">Apply for a course</Typography>
                 <Typography variant="body2" sx={styles.applyDescription}>
-                  Choose a program-aligned course and submit a learner application.
+                  Choose a program and submit a learner application.
                 </Typography>
                 <TextField
                   select
-                  value={selectedCourseId}
-                  label="Program course"
+                  value={selectedProgramId}
+                  label="Programs"
                   helperText="UI-only application flow for learner enrollment."
-                  onChange={(event) => setSelectedCourseId(event.target.value)}
+                  onChange={(event) => setSelectedProgramId(event.target.value)}
                 >
-                  {courses.map((course) => (
-                    <MenuItem key={course.id} value={course.id}>
-                      {course.title}
+                  {LMS_PROGRAM_SELECT_OPTIONS.map((option) => (
+                    <MenuItem key={option.id} value={option.id}>
+                      {option.label}
                     </MenuItem>
                   ))}
                 </TextField>
                 <Button
-                  disabled={!selectedCourseId}
-                  onClick={() => selectedCourseId && submitEnrollment(selectedCourseId)}
+                  disabled={!selectedCourse}
+                  onClick={() => selectedCourse && submitEnrollment(selectedCourse.id)}
                   variant="contained"
                 >
                   Submit application

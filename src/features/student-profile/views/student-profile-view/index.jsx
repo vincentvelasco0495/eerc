@@ -22,8 +22,8 @@ const FILTER_OPTIONS = [
 ];
 
 export function StudentProfileView() {
-  const courses = useLmsCourses();
-  const programs = useLmsPrograms();
+  const { courses } = useLmsCourses(1, 200);
+  const { programs } = useLmsPrograms();
 
   const [filterValue, setFilterValue] = useState('all');
   const [page, setPage] = useState(1);
@@ -78,9 +78,9 @@ export function StudentProfileView() {
       <Stack spacing={3}>
         <StudentProfileCourseTabs value={filterValue} tabs={tabs} onChange={setFilterValue} />
 
-        <Grid container spacing={2.5}>
+        <Grid container spacing={{ xs: 2, sm: 2, md: 2.5 }}>
           {visibleCourses.map((course) => (
-            <Grid key={course.id} size={{ xs: 12, md: 6, xl: 4 }} sx={styles.courseGrid}>
+            <Grid key={course.id} size={{ xs: 12, sm: 6, lg: 4 }} sx={styles.courseGrid}>
               <StudentProfileCourseCard course={course} />
             </Grid>
           ))}
@@ -91,6 +91,7 @@ export function StudentProfileView() {
           count={totalPages}
           shape="rounded"
           color="primary"
+          size="small"
           onChange={(_, value) => setPage(value)}
           sx={styles.pagination}
         />

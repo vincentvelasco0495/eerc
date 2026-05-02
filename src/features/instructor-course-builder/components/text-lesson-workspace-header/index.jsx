@@ -7,7 +7,12 @@ import { Iconify } from 'src/components/iconify';
 
 import { styles } from './styles';
 
-export function TextLessonWorkspaceHeader({ lessonTitle, onLessonTitleChange, onCreate }) {
+export function TextLessonWorkspaceHeader({
+  lessonTitle,
+  onLessonTitleChange,
+  onCreate,
+  actionLabel = 'Create',
+}) {
   return (
     <Stack sx={styles.root}>
       <Stack direction="row" alignItems="center" sx={styles.typeLabel}>
@@ -25,7 +30,7 @@ export function TextLessonWorkspaceHeader({ lessonTitle, onLessonTitleChange, on
       />
 
       <Button variant="contained" color="primary" onClick={onCreate} sx={styles.createButton}>
-        Create
+        {actionLabel}
       </Button>
     </Stack>
   );

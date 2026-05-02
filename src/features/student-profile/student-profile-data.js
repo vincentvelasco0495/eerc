@@ -46,6 +46,7 @@ const supplementalCourseTemplates = [
   {
     id: 'supplemental-structural-drill',
     courseId: 'course-ce-review',
+    courseSlug: 'ce-board-review',
     category: 'Continuing Education',
     title: 'Structural Design Drill Pack',
     lessons: 6,
@@ -58,6 +59,7 @@ const supplementalCourseTemplates = [
   {
     id: 'supplemental-code-clinic',
     courseId: 'course-plumbing-mastery',
+    courseSlug: 'master-plumbing-fast-track',
     category: 'Master Plumbing',
     title: 'Code Compliance Clinic',
     lessons: 5,
@@ -70,6 +72,7 @@ const supplementalCourseTemplates = [
   {
     id: 'supplemental-metallurgy-lab',
     courseId: 'course-materials-intensive',
+    courseSlug: 'materials-engineering-intensive',
     category: 'Materials Engineering',
     title: 'Metallurgy Failure Analysis Lab',
     lessons: 6,
@@ -83,6 +86,7 @@ const supplementalCourseTemplates = [
   {
     id: 'supplemental-hydraulics-workshop',
     courseId: 'course-ce-review',
+    courseSlug: 'ce-board-review',
     category: 'Continuing Education',
     title: 'Hydraulics Formula Workshop',
     lessons: 4,
@@ -95,6 +99,7 @@ const supplementalCourseTemplates = [
   {
     id: 'supplemental-vent-design',
     courseId: 'course-plumbing-mastery',
+    courseSlug: 'master-plumbing-fast-track',
     category: 'Master Plumbing',
     title: 'Sanitary Vent Design Sprint',
     lessons: 7,
@@ -107,6 +112,7 @@ const supplementalCourseTemplates = [
   {
     id: 'supplemental-heat-treatment',
     courseId: 'course-materials-intensive',
+    courseSlug: 'materials-engineering-intensive',
     category: 'Materials Engineering',
     title: 'Heat Treatment Intensive',
     lessons: 8,
@@ -154,6 +160,7 @@ export function buildStudentProfileCourses(courses, programs) {
     return {
       id: course.id,
       courseId: course.id,
+      courseSlug: course.slug,
       category: programMap.get(course.programId) ?? course.subjects[0] ?? 'Learning Track',
       title: course.title,
       lessons: course.totalModules,

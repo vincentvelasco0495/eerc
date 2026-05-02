@@ -21,7 +21,8 @@ export const styles = {
 export function getSidebarItemSx(item) {
   return {
     px: 1.5,
-    py: 1.1,
+    py: { xs: 1.2, sm: 1.1 },
+    minHeight: { xs: 48, sm: 44 },
     borderRadius: 1.5,
     display: 'flex',
     alignItems: 'center',

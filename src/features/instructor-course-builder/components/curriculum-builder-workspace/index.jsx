@@ -24,7 +24,16 @@ const placeholderSx = (theme) => ({
   borderRadius: 2,
 });
 
-export function CurriculumBuilderWorkspace({ lesson, onLessonTitleChange, onLessonSave }) {
+export function CurriculumBuilderWorkspace({
+  lesson,
+  onLessonTitleChange,
+  onLessonSave,
+  /** When authoring a live text or video lesson, persist rich fields via LMS PATCH. */
+  saveLiveRichLesson,
+  /** Server snapshot backing the workspace (camelCase from LMS modules payload). */
+  liveLessonAuthoring = null,
+  onLessonMaterialsInvalidate,
+}) {
   if (!lesson) {
     return <CurriculumBuilderEmptyWorkspace />;
   }
@@ -35,6 +44,9 @@ export function CurriculumBuilderWorkspace({ lesson, onLessonTitleChange, onLess
         lesson={lesson}
         onLessonTitleChange={onLessonTitleChange}
         onLessonSave={onLessonSave}
+        saveLiveRichLesson={saveLiveRichLesson}
+        liveLessonAuthoring={liveLessonAuthoring}
+        onLessonMaterialsInvalidate={onLessonMaterialsInvalidate}
       />
     );
   }
@@ -45,6 +57,9 @@ export function CurriculumBuilderWorkspace({ lesson, onLessonTitleChange, onLess
         lesson={lesson}
         onLessonTitleChange={onLessonTitleChange}
         onLessonSave={onLessonSave}
+        saveLiveRichLesson={saveLiveRichLesson}
+        liveLessonAuthoring={liveLessonAuthoring}
+        onLessonMaterialsInvalidate={onLessonMaterialsInvalidate}
       />
     );
   }

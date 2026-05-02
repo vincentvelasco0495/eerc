@@ -1,17 +1,17 @@
 import 'src/global.css';
 
+import { SWRConfig } from 'swr';
 import { useEffect } from 'react';
 import { Provider } from 'react-redux';
 
 import { usePathname } from 'src/routes/hooks';
 
-import { useBootstrapLms } from 'src/hooks/use-lms';
-
 import { CONFIG } from 'src/global-config';
-import { configureAppStore } from 'src/app/store';
 import { LocalizationProvider } from 'src/locales';
+import { lmsSwrFetcher } from 'src/services/lms-swr';
 import { themeConfig, ThemeProvider } from 'src/theme';
 import { I18nProvider } from 'src/locales/i18n-provider';
+import { ReduxFlashBridge, configureAppStore } from 'src/app/store';
 
 import { Snackbar } from 'src/components/snackbar';
 import { ProgressBar } from 'src/components/progress-bar';
@@ -46,38 +46,43 @@ function ScrollToTop() {
 }
 
 function StoreBootstrapper({ children }) {
-  useBootstrapLms();
-
-  return children;
+  return (
+    <>
+      <ReduxFlashBridge />
+      {children}
+    </>
+  );
 }
 
 export default function AppProviders({ children }) {
   return (
     <Provider store={store}>
-      <StoreBootstrapper>
-        <I18nProvider>
-          <AuthProvider>
-            <SettingsProvider defaultSettings={defaultSettings}>
-              <LocalizationProvider>
-                <ThemeProvider
-                  modeStorageKey={themeConfig.modeStorageKey}
-                  defaultMode={themeConfig.defaultMode}
-                >
-                  <MotionLazy>
-                    <CheckoutProvider>
-                      <ScrollToTop />
-                      <Snackbar />
-                      <ProgressBar />
-                      <SettingsDrawer defaultSettings={defaultSettings} />
-                      {children}
-                    </CheckoutProvider>
-                  </MotionLazy>
-                </ThemeProvider>
-              </LocalizationProvider>
-            </SettingsProvider>
-          </AuthProvider>
-        </I18nProvider>
-      </StoreBootstrapper>
+      <SWRConfig value={{ fetcher: lmsSwrFetcher, revalidateOnFocus: false }}>
+        <StoreBootstrapper>
+          <I18nProvider>
+            <AuthProvider>
+              <SettingsProvider defaultSettings={defaultSettings}>
+                <LocalizationProvider>
+                  <ThemeProvider
+                    modeStorageKey={themeConfig.modeStorageKey}
+                    defaultMode={themeConfig.defaultMode}
+                  >
+                    <MotionLazy>
+                      <CheckoutProvider>
+                        <ScrollToTop />
+                        <Snackbar />
+                        <ProgressBar />
+                        <SettingsDrawer defaultSettings={defaultSettings} />
+                        {children}
+                      </CheckoutProvider>
+                    </MotionLazy>
+                  </ThemeProvider>
+                </LocalizationProvider>
+              </SettingsProvider>
+            </AuthProvider>
+          </I18nProvider>
+        </StoreBootstrapper>
+      </SWRConfig>
     </Provider>
   );
 }

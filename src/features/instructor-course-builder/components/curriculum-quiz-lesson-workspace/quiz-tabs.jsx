@@ -2,12 +2,11 @@ import Box from '@mui/material/Box';
 
 import { styles } from './styles';
 
-const TAB_IDS = ['questions', 'settings', 'qa'];
+const TAB_IDS = ['questions', 'settings'];
 
 const LABELS = {
   questions: 'Questions',
   settings: 'Settings',
-  qa: 'Q&A',
 };
 
 export function QuizTabs({ activeTab, onTabChange, questionCount }) {

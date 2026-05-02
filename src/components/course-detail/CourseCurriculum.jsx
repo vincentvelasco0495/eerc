@@ -326,7 +326,8 @@ export function CourseCurriculum({ modules }) {
 
                       {expandable && isOpen ? (
                         <SubPeek id={`lesson-peek-${lesson.id}`} role="region" aria-labelledby={`lesson-toggle-${lesson.id}`}>
-                          Quick outline and resources for “{lesson.title}” — swap with CMS lesson body when wired.
+                          {lesson.peekBody ??
+                            `Quick outline and resources for “${lesson.title}” — swap with CMS lesson body when wired.`}
                         </SubPeek>
                       ) : null}
                     </LessonItem>

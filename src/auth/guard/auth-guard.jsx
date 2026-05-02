@@ -1,23 +1,13 @@
 import { useState, useEffect } from 'react';
 
-import { paths } from 'src/routes/paths';
 import { useRouter, usePathname } from 'src/routes/hooks';
-
-import { CONFIG } from 'src/global-config';
 
 import { SplashScreen } from 'src/components/loading-screen';
 
 import { useAuthContext } from '../hooks';
+import { getAuthSignInPath } from '../utils';
 
 // ----------------------------------------------------------------------
-
-const signInPaths = {
-  jwt: paths.auth.jwt.signIn,
-  auth0: paths.auth.auth0.signIn,
-  amplify: paths.auth.amplify.signIn,
-  firebase: paths.auth.firebase.signIn,
-  supabase: paths.auth.supabase.signIn,
-};
 
 export function AuthGuard({ children }) {
   const router = useRouter();
@@ -38,9 +28,7 @@ export function AuthGuard({ children }) {
     }
 
     if (!authenticated) {
-      const { method } = CONFIG.auth;
-
-      const signInPath = signInPaths[method];
+      const signInPath = getAuthSignInPath();
       const redirectPath = createRedirectPath(signInPath);
 
       router.replace(redirectPath);

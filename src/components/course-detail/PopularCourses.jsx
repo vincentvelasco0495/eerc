@@ -1,5 +1,7 @@
 import styled from 'styled-components';
 
+import { RouterLink } from 'src/routes/components';
+
 import { colors } from './course-detail-tokens';
 
 const Heading = styled.h2`
@@ -29,7 +31,7 @@ const ItemWrap = styled.li`
   }
 `;
 
-const LinkRow = styled.a`
+const LinkRow = styled(RouterLink)`
   display: flex;
   align-items: center;
   gap: 14px;
@@ -145,10 +147,17 @@ export function PopularCourses({ title = 'Popular courses', items }) {
       <List>
         {items.map((item) => (
           <ItemWrap key={item.id}>
-            <LinkRow href="#" onClick={(e) => e.preventDefault()}>
+            <LinkRow
+              href={item.href ?? '#'}
+              onClick={(e) => {
+                if (!item.href || item.href === '#') {
+                  e.preventDefault();
+                }
+              }}
+            >
               <Thumb>
                 <ThumbImg src={item.imageUrl} alt="" loading="lazy" />
-                <Badge $tone={item.badgeTone}>{item.badge}</Badge>
+                {item.badge ? <Badge $tone={item.badgeTone ?? 'special'}>{item.badge}</Badge> : null}
               </Thumb>
               <Body>
                 <RowTitle>{item.title}</RowTitle>

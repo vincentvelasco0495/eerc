@@ -19,6 +19,8 @@ import { css } from './styles';
 export function CourseContinuationSection({
   learnHtml,
   onLearnHtmlChange,
+  audienceHtml,
+  onAudienceHtmlChange,
   previewDescription,
   onPreviewDescriptionChange,
   featuredCourse,
@@ -32,6 +34,7 @@ export function CourseContinuationSection({
   certificateInfo,
   onCertificateInfoChange,
   onSave,
+  hideEmbeddedSaveFooter = false,
 }) {
   return (
     <>
@@ -51,6 +54,25 @@ export function CourseContinuationSection({
         }}
         tinymceResizeBounds={{ min: 100, max: 320 }}
       />
+
+      {typeof onAudienceHtmlChange === 'function' ? (
+        <>
+          <Typography sx={[css.sectionHeadingMuted, { mt: 4 }]} component="h2">
+            Who is the target audience?
+          </Typography>
+          <Editor
+            value={audienceHtml ?? ''}
+            onChange={onAudienceHtmlChange}
+            chrome="tinymce"
+            sx={{
+              mt: 1,
+              minHeight: 220,
+              maxHeight: 420,
+            }}
+            tinymceResizeBounds={{ min: 100, max: 320 }}
+          />
+        </>
+      ) : null}
 
       <Box sx={{ mt: 3 }}>
         <Typography sx={css.fieldLabel} component="label" htmlFor="course-preview-description">
@@ -138,19 +160,21 @@ export function CourseContinuationSection({
         </Grid>
       </Grid>
 
-      <Box sx={css.footerRow}>
-        <Button
-          variant="contained"
-          color="primary"
-          sx={css.saveBtn}
-          onClick={() => {
-            onSave?.();
-            toast.success('Course settings saved (demo).');
-          }}
-        >
-          Save
-        </Button>
-      </Box>
+      {!hideEmbeddedSaveFooter ? (
+        <Box sx={css.footerRow}>
+          <Button
+            variant="contained"
+            color="primary"
+            sx={css.saveBtn}
+            onClick={() => {
+              onSave?.();
+              toast.success('Course settings saved (demo).');
+            }}
+          >
+            Save
+          </Button>
+        </Box>
+      ) : null}
     </>
   );
 }

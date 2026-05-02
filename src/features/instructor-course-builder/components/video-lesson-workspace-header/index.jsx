@@ -8,7 +8,12 @@ import { Iconify } from 'src/components/iconify';
 
 import { styles } from './styles';
 
-export function VideoLessonWorkspaceHeader({ lessonTitle, onLessonTitleChange, onCreate }) {
+export function VideoLessonWorkspaceHeader({
+  lessonTitle,
+  onLessonTitleChange,
+  onCreate,
+  actionLabel = 'Create',
+}) {
   return (
     <Box sx={styles.shell}>
       <Stack sx={styles.inner}>
@@ -34,7 +39,7 @@ export function VideoLessonWorkspaceHeader({ lessonTitle, onLessonTitleChange, o
         />
 
         <Button variant="contained" color="primary" onClick={onCreate} sx={styles.createButton}>
-          Create
+          {actionLabel}
         </Button>
       </Stack>
     </Box>

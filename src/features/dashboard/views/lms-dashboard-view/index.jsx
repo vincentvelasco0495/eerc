@@ -20,11 +20,11 @@ import { LmsPageShell } from 'src/components/layout/lms-page-shell';
 import { styles } from './styles';
 
 export function LmsDashboardView() {
-  const user = useLmsUser();
-  const courses = useLmsCourses();
-  const analytics = useLmsAnalytics();
+  const { user } = useLmsUser();
+  const { courses } = useLmsCourses(1, 200);
+  const { analytics } = useLmsAnalytics();
   const featuredCourse = courses[0];
-  const featuredModules = useLmsModulesByCourse(featuredCourse?.id ?? '');
+  const { modules: featuredModules } = useLmsModulesByCourse(featuredCourse?.id ?? '');
 
   return (
     <LmsPageShell

@@ -1,3 +1,4 @@
+import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import { useTheme } from '@mui/material/styles';
@@ -10,36 +11,56 @@ import { styles } from './styles';
 import { CurriculumDragHandle } from '../curriculum-drag-handle';
 import { CurriculumLessonTypeIcon } from '../curriculum-lesson-type-icon';
 
-export function CurriculumLessonRow({ lesson, selected, onSelect }) {
+export function CurriculumLessonRow({
+  lesson,
+  selected,
+  onSelect,
+  showDeleteLesson = false,
+  onDeleteLesson,
+}) {
   const theme = useTheme();
 
   return (
-    <Stack
-      direction="row"
-      alignItems="center"
-      spacing={1.25}
+    <Box
+      className="lesson-item"
       onClick={() => onSelect?.(lesson.id)}
-      sx={styles.row(theme, { selected, draft: !!lesson.draft })}
+      sx={styles.lessonItem(theme, { selected, draft: !!lesson.draft })}
     >
-      <CurriculumDragHandle />
-      <CurriculumLessonTypeIcon type={lesson.type} />
-      <Typography variant="body2" sx={styles.title} noWrap>
-        {lesson.title}
-      </Typography>
-      {lesson.draft ? <Chip label="DRAFT" size="small" sx={styles.draftChip} /> : null}
+      <Stack direction="row" alignItems="center" sx={styles.leftCluster}>
+        <CurriculumDragHandle />
+        <CurriculumLessonTypeIcon type={lesson.type} />
+        <Typography variant="body2" sx={styles.title} noWrap>
+          {lesson.title}
+        </Typography>
+        {lesson.draft ? <Chip label="DRAFT" size="small" sx={styles.draftChip} /> : null}
+      </Stack>
+
       <Stack
         direction="row"
-        spacing={0.25}
-        className="curriculum-row-actions"
-        sx={styles.actions(theme)}
+        alignItems="center"
+        className="lesson-actions"
+        sx={{
+          gap: '8px',
+          minWidth: showDeleteLesson ? 72 : 36,
+        }}
       >
-        <IconButton size="small" sx={styles.iconButton}>
+        <IconButton size="small" sx={styles.iconButton} aria-label="Edit lesson">
           <Iconify icon="solar:pen-bold-duotone" width={18} />
         </IconButton>
-        <IconButton size="small" sx={styles.iconButton}>
-          <Iconify icon="solar:trash-bin-trash-bold-duotone" width={18} />
-        </IconButton>
+        {showDeleteLesson && typeof onDeleteLesson === 'function' ? (
+          <IconButton
+            size="small"
+            sx={styles.iconButton}
+            aria-label="Delete lesson"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteLesson(lesson);
+            }}
+          >
+            <Iconify icon="solar:trash-bin-trash-bold-duotone" width={18} />
+          </IconButton>
+        ) : null}
       </Stack>
-    </Stack>
+    </Box>
   );
 }

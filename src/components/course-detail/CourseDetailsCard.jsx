@@ -79,6 +79,18 @@ function RowIcon({ name }) {
           <path d="M10 9l6 3-6 3V9z" fill="#6b7280" />
         </svg>
       );
+    case 'clipboard':
+      return (
+        <svg {...common} aria-hidden>
+          <path
+            d="M9 2h6v2H9V2zM8 6h8a2 2 0 012 2v12a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2z"
+            stroke="#6b7280"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <path d="M9 11h6M9 14h6M9 17h4" stroke="#6b7280" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      );
     case 'check':
       return (
         <svg {...common} aria-hidden>

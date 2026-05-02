@@ -1,5 +1,7 @@
 import styled from 'styled-components';
 
+import { RouterLink } from 'src/routes/components';
+
 import { colors } from './course-detail-tokens';
 
 const Badge = styled.span`
@@ -105,6 +107,13 @@ const Root = styled.article`
   }
 `;
 
+const CardLink = styled(RouterLink)`
+  display: block;
+  height: 100%;
+  text-decoration: none;
+  color: inherit;
+`;
+
 /** Grid card — related courses strip */
 export function CourseCard({
   badge,
@@ -115,12 +124,13 @@ export function CourseCard({
   priceStrike,
   instructorName,
   ratingValue,
+  href,
 }) {
   const full = Math.round(ratingValue);
   const empty = Math.max(0, 5 - full);
 
-  return (
-    <Root>
+  const inner = (
+    <Root style={href ? { height: '100%' } : undefined}>
       <Media>
         <MediaImg src={imageUrl} alt="" loading="lazy" />
         {badge ? <Badge $tone={badgeTone}>{badge}</Badge> : null}
@@ -139,4 +149,6 @@ export function CourseCard({
       </Lower>
     </Root>
   );
+
+  return href ? <CardLink href={href}>{inner}</CardLink> : inner;
 }

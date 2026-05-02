@@ -29,6 +29,7 @@ const InstructorGradebookPage = lazy(() => import('src/pages/dashboard/instructo
 const InstructorCourseCurriculumPage = lazy(() =>
   import('src/pages/dashboard/instructor-course-curriculum')
 );
+const InstructorCourseEditPage = lazy(() => import('src/pages/dashboard/instructor-course-edit'));
 const InstructorAssignmentsPage = lazy(() => import('src/pages/dashboard/instructor-assignments'));
 const SettingsPage = lazy(() => import('src/pages/dashboard/settings'));
 const StudentProfilePage = lazy(() => import('src/pages/dashboard/student-profile'));
@@ -72,6 +73,7 @@ export const dashboardRoutes = [
     element: dashboardLayoutElement,
     children: [
       { path: 'courses', element: <CourseListPage /> },
+      { path: 'course-details/:slug', element: <CourseDetailsPage /> },
       { path: 'courses/:courseId', element: <CourseDetailsPage /> },
       { path: 'modules/:moduleId', element: <ModuleDetailsPage /> },
       { path: 'quizzes', element: <QuizListPage /> },
@@ -84,6 +86,7 @@ export const dashboardRoutes = [
       { path: 'instructor-settings', element: <InstructorSettingsPage /> },
       { path: 'instructor-gradebook', element: <InstructorGradebookPage /> },
       { path: 'instructor-course-curriculum', element: <InstructorCourseCurriculumPage /> },
+      { path: 'instructor-course/:courseLookup/edit', element: <InstructorCourseEditPage /> },
       { path: 'instructor-assignments', element: <InstructorAssignmentsPage /> },
       { path: 'assignments', element: <AssignmentsPage /> },
       { path: 'settings', element: <SettingsPage /> },

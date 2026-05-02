@@ -12,12 +12,14 @@ import { Scrollbar } from 'src/components/scrollbar';
 
 import { Nav, NavUl } from '../components';
 import { NavList } from './nav-mobile-list';
+import { useDashboardEntry } from '../../use-dashboard-entry';
 import { SignInButton } from '../../../components/sign-in-button';
 
 // ----------------------------------------------------------------------
 
 export function NavMobile({ data, open, onClose, slots, sx }) {
   const pathname = usePathname();
+  const { goToDashboardOrSignIn, loading: authLoadingForDashboard } = useDashboardEntry();
   const isHomePage = pathname === '/';
 
   useEffect(() => {
@@ -84,7 +86,13 @@ export function NavMobile({ data, open, onClose, slots, sx }) {
           }}
         >
           {isHomePage ? (
-            <Button fullWidth variant="contained" href={paths.dashboard.root}>
+            <Button
+              fullWidth
+              type="button"
+              variant="contained"
+              disabled={authLoadingForDashboard}
+              onClick={goToDashboardOrSignIn}
+            >
               Go to dashboard
             </Button>
           ) : (

@@ -48,7 +48,7 @@ function StudentProfileSidebarItem({ item, onLogout }) {
   );
 }
 
-export function StudentProfileSidebar({ user, navGroups }) {
+export function StudentProfileSidebar({ user, navGroups, disableSticky = false }) {
   const router = useRouter();
   const { checkUserSession } = useAuthContext();
   const { logout: signOutAuth0 } = useAuth0();
@@ -72,7 +72,13 @@ export function StudentProfileSidebar({ user, navGroups }) {
   }, [checkUserSession, router, signOutAuth0]);
 
   return (
-    <Box sx={styles.stickyWrap}>
+    <Box
+      sx={
+        disableSticky
+          ? { ...styles.stickyWrap, position: 'static', top: 'auto' }
+          : styles.stickyWrap
+      }
+    >
       <Card sx={styles.card}>
         <Stack spacing={3} sx={styles.stackPadding}>
           <Stack direction="row" spacing={1.5} alignItems="center">

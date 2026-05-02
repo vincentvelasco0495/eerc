@@ -9,10 +9,10 @@ import { styles, tabCountBadgeSx } from './styles';
 export function StudentProfileCourseTabs({ value, tabs, onChange }) {
   return (
     <Stack
-      direction={{ xs: 'column', lg: 'row' }}
-      spacing={2}
+      direction={{ xs: 'column', sm: 'row' }}
+      spacing={{ xs: 1.5, sm: 2 }}
       justifyContent="space-between"
-      alignItems={{ xs: 'flex-start', lg: 'center' }}
+      alignItems={{ xs: 'stretch', sm: 'center' }}
     >
       <Typography variant="h4" sx={styles.heading}>
         Enrolled courses
@@ -23,6 +23,7 @@ export function StudentProfileCourseTabs({ value, tabs, onChange }) {
         onChange={(_, nextValue) => onChange(nextValue)}
         variant="scrollable"
         scrollButtons="auto"
+        allowScrollButtonsMobile
         sx={styles.tabs}
       >
         {tabs.map((tab) => (

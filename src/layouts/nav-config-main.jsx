@@ -22,15 +22,15 @@ export const navData = [
         items: [
           {
             title: 'Civil Engineering',
-            path: paths.dashboard.courses.details('course-ce-review'),
+            path: paths.programCourseDetail,
           },
           {
             title: 'Master Plumbing',
-            path: paths.dashboard.courses.details('course-plumbing-mastery'),
+            path: paths.programCourseDetail,
           },
           {
             title: 'Materials Engineering',
-            path: paths.dashboard.courses.details('course-materials-intensive'),
+            path: paths.programCourseDetail,
           },
         ],
       },

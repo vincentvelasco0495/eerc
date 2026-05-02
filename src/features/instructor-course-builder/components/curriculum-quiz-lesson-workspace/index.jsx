@@ -3,7 +3,6 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
-import Typography from '@mui/material/Typography';
 
 import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
@@ -93,6 +92,16 @@ export function CurriculumQuizLessonWorkspace({ lesson, onLessonTitleChange, onL
     });
   }, []);
 
+  const allQuestionsCollapsed =
+    questions.length > 0 && questions.every((question) => question.collapsed);
+
+  const handleToggleAllQuestionsCollapsed = useCallback(() => {
+    setQuestions((prev) => {
+      const shouldCollapse = prev.some((q) => !q.collapsed);
+      return prev.map((q) => ({ ...q, collapsed: shouldCollapse }));
+    });
+  }, []);
+
   return (
     <Box sx={styles.root}>
       <QuizHeader
@@ -105,8 +114,17 @@ export function CurriculumQuizLessonWorkspace({ lesson, onLessonTitleChange, onL
         <QuizTabs activeTab={activeTab} onTabChange={setActiveTab} questionCount={questions.length} />
         {activeTab === 'questions' ? (
           <Box sx={styles.tabActions}>
-            <IconButton sx={styles.listIconBtn} aria-label="Layout" size="small">
-              <Iconify icon="solar:list-linear" width={22} />
+            <IconButton
+              sx={styles.listIconBtn}
+              aria-label={allQuestionsCollapsed ? 'Expand all questions' : 'Collapse all questions'}
+              aria-expanded={!allQuestionsCollapsed}
+              size="small"
+              onClick={handleToggleAllQuestionsCollapsed}
+            >
+              <Iconify
+                icon={allQuestionsCollapsed ? 'solar:double-alt-arrow-down-linear' : 'solar:list-linear'}
+                width={22}
+              />
             </IconButton>
             <Button variant="outlined" sx={styles.libraryBtn} onClick={() => toast.info('Questions library (demo).')}>
               Questions library
@@ -178,14 +196,8 @@ export function CurriculumQuizLessonWorkspace({ lesson, onLessonTitleChange, onL
             onSave={handleFooterSave}
           />
         </>
-      ) : activeTab === 'settings' ? (
-        <QuizSettingsPanel lesson={lesson} onLessonSave={onLessonSave} />
       ) : (
-        <Box sx={styles.placeholderPanel}>
-          <Typography color="text.secondary" textAlign="center">
-            Q&A — demo placeholder.
-          </Typography>
-        </Box>
+        <QuizSettingsPanel lesson={lesson} onLessonSave={onLessonSave} />
       )}
     </Box>
   );

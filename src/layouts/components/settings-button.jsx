@@ -9,7 +9,7 @@ import { varTap, varHover, transitionTap } from 'src/components/animate';
 
 // ----------------------------------------------------------------------
 
-export function SettingsButton({ sx, ...other }) {
+export function SettingsButton({ sx, dotForced = false, ...other }) {
   const settings = useSettingsContext();
 
   return (
@@ -23,7 +23,7 @@ export function SettingsButton({ sx, ...other }) {
       sx={[{ p: 0, width: 40, height: 40 }, ...(Array.isArray(sx) ? sx : [sx])]}
       {...other}
     >
-      <Badge color="error" variant="dot" invisible={!settings.canReset}>
+      <Badge color="error" variant="dot" invisible={!dotForced && !settings.canReset}>
         <SvgIcon>
           {/** https://icon-sets.iconify.design/solar/settings-bold-duotone/ */}
           <m.path

@@ -31,7 +31,7 @@ function buildDisplayOptions(firstName, lastName) {
 }
 
 export function InstructorSettingsView() {
-  const user = useLmsUser();
+  const { user } = useLmsUser();
   const [values, setValues] = useState(() => getInstructorSettingsInitialValues(user));
 
   useEffect(() => {

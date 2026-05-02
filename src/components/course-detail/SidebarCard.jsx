@@ -9,7 +9,7 @@ const variants = {
   `,
   completion: css`
     background: #eff6ff;
-    border: 1px solid #bfdbfe;
+    border: 1px solid #dbeafe;
   `,
   muted: css`
     background: #f9fafb;
@@ -21,6 +21,6 @@ const variants = {
 export const SidebarCard = styled.section`
   border-radius: ${radii.card};
   box-shadow: ${shadow.card};
-  padding: 20px;
+  padding: 18px;
   ${(props) => variants[props.$variant] ?? variants.default};
 `;

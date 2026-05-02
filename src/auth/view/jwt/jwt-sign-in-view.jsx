@@ -15,22 +15,21 @@ import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 import { useRouter, useSearchParams } from 'src/routes/hooks';
 
+import { CONFIG } from 'src/global-config';
+
 import { Iconify } from 'src/components/iconify';
 import { Form, Field, schemaUtils } from 'src/components/hook-form';
 
 import { useAuthContext } from '../../hooks';
 import { FormHead } from '../../components/form-head';
 import { getErrorMessage, resolvePostLoginUrl } from '../../utils';
-import { DEMO_SIGN_IN_USERS, signInWithPassword } from '../../context/jwt';
+import { DEMO_SIGN_IN_USERS, signInWithPassword, isLaravelLmsApiEnabled } from '../../context/jwt';
 
 // ----------------------------------------------------------------------
 
 export const SignInSchema = z.object({
   email: schemaUtils.email(),
-  password: z
-    .string()
-    .min(1, { error: 'Password is required!' })
-    .min(6, { error: 'Password must be at least 6 characters!' }),
+  password: z.string().min(1, { error: 'Password is required!' }),
 });
 
 // ----------------------------------------------------------------------
@@ -95,7 +94,7 @@ export function JwtSignInView() {
         <Field.Text
           name="password"
           label="Password"
-          placeholder="6+ characters"
+          placeholder="Password"
           type={showPassword.value ? 'text' : 'password'}
           slotProps={{
             inputLabel: { shrink: true },
@@ -144,9 +143,19 @@ export function JwtSignInView() {
       />
 
       <Alert severity="info" sx={{ mb: 3 }}>
-        <strong>Instructor:</strong> {instructorDemo.email} — password <strong>{instructorDemo.password}</strong>
-        <br />
-        <strong>Student:</strong> {studentDemo.email} — password <strong>{studentDemo.password}</strong>
+        {isLaravelLmsApiEnabled() ? (
+          <>
+            Sign in against the LMS API at <strong>{CONFIG.serverUrl}</strong>. Use an account from your database
+            (e.g. seeded users) or register first.
+          </>
+        ) : (
+          <>
+            <strong>Instructor:</strong> {instructorDemo.email} — password{' '}
+            <strong>{instructorDemo.password}</strong>
+            <br />
+            <strong>Student:</strong> {studentDemo.email} — password <strong>{studentDemo.password}</strong>
+          </>
+        )}
       </Alert>
 
       {!!errorMessage && (

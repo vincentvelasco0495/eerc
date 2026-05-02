@@ -51,7 +51,12 @@ function FontSizeStepper({ editor, fontSize }) {
         label="Decrease font size"
         disabled={safeIdx <= 0}
         onClick={() => chain().setFontSize(FONT_SIZE_STEPS[safeIdx - 1]).run()}
-        sx={{ width: 24, height: 24, minWidth: 24, borderRadius: 0 }}
+        sx={{
+          width: { xs: 32, sm: 24 },
+          height: { xs: 32, sm: 24 },
+          minWidth: { xs: 32, sm: 24 },
+          borderRadius: 0,
+        }}
       >
         <Box sx={{ typography: 'subtitle2', lineHeight: 1, fontWeight: 700 }}>−</Box>
       </TmIconButton>
@@ -71,7 +76,12 @@ function FontSizeStepper({ editor, fontSize }) {
         label="Increase font size"
         disabled={safeIdx >= FONT_SIZE_STEPS.length - 1}
         onClick={() => chain().setFontSize(FONT_SIZE_STEPS[safeIdx + 1]).run()}
-        sx={{ width: 24, height: 24, minWidth: 24, borderRadius: 0 }}
+        sx={{
+          width: { xs: 32, sm: 24 },
+          height: { xs: 32, sm: 24 },
+          minWidth: { xs: 32, sm: 24 },
+          borderRadius: 0,
+        }}
       >
         <Box sx={{ typography: 'subtitle2', lineHeight: 1, fontWeight: 700 }}>+</Box>
       </TmIconButton>
@@ -125,7 +135,7 @@ function ListMenu({ editor }) {
         onClick={onOpen}
         disableRipple
         sx={{
-          height: TINYMCE.controlHeight,
+          height: { xs: 36, sm: TINYMCE.controlHeight },
           px: 0.75,
           gap: 0.25,
           borderRadius: TINYMCE.buttonRadius,
@@ -133,7 +143,7 @@ function ListMenu({ editor }) {
           backgroundColor: 'common.white',
         }}
       >
-        <SvgIcon sx={{ fontSize: 18 }}>{toolbarIcons.bulletList}</SvgIcon>
+        <SvgIcon sx={{ fontSize: { xs: 20, sm: 18 } }}>{toolbarIcons.bulletList}</SvgIcon>
         <Iconify width={12} icon="eva:arrow-ios-downward-fill" sx={{ color: 'text.secondary' }} />
       </ButtonBase>
       <Menu anchorEl={anchorEl} open={open} onClose={onClose}>
@@ -170,7 +180,7 @@ function NumberedListMenu({ editor }) {
         onClick={onOpen}
         disableRipple
         sx={{
-          height: TINYMCE.controlHeight,
+          height: { xs: 36, sm: TINYMCE.controlHeight },
           px: 0.75,
           gap: 0.25,
           borderRadius: TINYMCE.buttonRadius,
@@ -178,7 +188,7 @@ function NumberedListMenu({ editor }) {
           backgroundColor: 'common.white',
         }}
       >
-        <SvgIcon sx={{ fontSize: 18 }}>{toolbarIcons.orderedList}</SvgIcon>
+        <SvgIcon sx={{ fontSize: { xs: 20, sm: 18 } }}>{toolbarIcons.orderedList}</SvgIcon>
         <Iconify width={12} icon="eva:arrow-ios-downward-fill" sx={{ color: 'text.secondary' }} />
       </ButtonBase>
       <Menu anchorEl={anchorEl} open={open} onClose={onClose}>
@@ -327,10 +337,10 @@ export function TinyMceToolbar({ editor, fullItem, fullscreen, onToggleFullscree
         <ToolbarGroup
           sx={{
             '& .MuiButtonBase-root': {
-              width: 26,
-              height: 26,
-              minWidth: 26,
-              p: '3px',
+              width: { xs: 32, sm: 26 },
+              height: { xs: 32, sm: 26 },
+              minWidth: { xs: 32, sm: 26 },
+              p: { xs: '5px', sm: '3px' },
             },
           }}
         >

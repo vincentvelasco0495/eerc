@@ -28,8 +28,8 @@ export function TmSelectControl({
         sx={(theme) => ({
           px: 0.75,
           gap: 0,
-          minWidth,
-          height: TINYMCE.controlHeight,
+          minWidth: { xs: 108, sm: minWidth },
+          height: { xs: 36, sm: TINYMCE.controlHeight },
           justifyContent: 'space-between',
           borderRadius: TINYMCE.buttonRadius,
           typography: 'caption',

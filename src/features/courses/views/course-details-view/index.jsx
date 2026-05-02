@@ -30,249 +30,18 @@ import {
   useLmsQuizzes,
   useLmsPrograms,
   useLmsModulesByCourse,
+  useResolvedCourseIdFromLookup,
 } from 'src/hooks/use-lms';
 
 import { DashboardContent } from 'src/layouts/dashboard';
+import { getCourseCopy } from 'src/features/courses/data/course-page-copy';
+import { mergeTabsContentFromCourseApi } from 'src/features/courses/utils/merge-course-tabs-from-api';
 
 import { Iconify } from 'src/components/iconify';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import { lmsPageShellStyles } from 'src/components/layout/lms-page-shell.styles';
 
 import { styles, courseArtSx, heroPanelSx, noticeIconBoxSx } from './styles';
-
-const COURSE_PAGE_COPY = {
-  'course-ce-review': {
-    category: 'Civil Engineering',
-    badge: 'NEW',
-    description:
-      'A comprehensive Civil Engineering review course focused on hydraulics, structures, and environmental systems. It helps learners organize technical concepts, practice board-style problems, and build confidence for licensure preparation.',
-    body: [
-      'This structured review track is designed for engineering learners who need a cleaner way to study major subjects, revisit difficult formulas, and move through guided modules in a logical sequence. Lessons combine recorded walkthroughs, technical references, and review checkpoints in one course experience.',
-      'Each module is arranged to support both theory and application. Learners can move from concept refreshers into practice drills, follow instructor guidance, and prepare for mock-board style assessments without losing context between topics.',
-    ],
-    learn: [
-      'Strengthen hydraulics, structures, and environmental engineering fundamentals.',
-      'Practice board-style computations through guided module drills.',
-      'Review formulas, references, and technical problem-solving workflows in one place.',
-      'Build a repeatable study path for coaching sessions and exam preparation.',
-    ],
-    audience: [
-      'Civil Engineering graduates preparing for professional licensure exams.',
-      'Review-center learners who need structured technical modules and practice sessions.',
-      'Working professionals refreshing core concepts before certification or promotion.',
-    ],
-    faqs: [
-      {
-        question: 'Is this course suitable for first-time board review learners?',
-        answer:
-          'Yes. The course starts with concept refreshers, then gradually builds into guided drills and structured practice sessions.',
-      },
-      {
-        question: 'Does the course include downloadable references?',
-        answer:
-          'Yes. Modules can include PDFs, e-books, and reference materials alongside the main lesson flow.',
-      },
-      {
-        question: 'Can this be used by review centers for group cohorts?',
-        answer:
-          'Yes. The layout supports individual study as well as organized cohort delivery with instructor oversight.',
-      },
-    ],
-    notices: [
-      'Streaming is enabled for core lecture content to keep review materials secure.',
-      'Progress is tracked per module so instructors can quickly identify weak areas.',
-      'Mock-board coaching sessions can be layered on top of this core review sequence.',
-    ],
-    reviews: [
-      {
-        author: 'Mark Dela Cruz',
-        role: 'Civil Engineering examinee',
-        rating: 5,
-        content:
-          'The hydraulics and structures modules are very clear. It feels like a focused review center workflow instead of scattered files and chats.',
-      },
-      {
-        author: 'Angela Ramos',
-        role: 'Review program coordinator',
-        rating: 4.5,
-        content:
-          'The guided module flow and technical references make it much easier to support our learners and track what they need next.',
-      },
-    ],
-  },
-  'course-plumbing-mastery': {
-    category: 'Master Plumbing',
-    badge: 'HOT',
-    description:
-      'An exam-focused Master Plumbing course that covers code interpretation, pipe sizing, sanitary systems, and practical troubleshooting for faster review progress.',
-    body: [
-      'This course is built for plumbing licensure preparation with a practical balance of technical explanation, code review, and solution walkthroughs. Lessons are organized to help learners move from system concepts into field-relevant applications.',
-      'Review-center teams can use it to deliver structured plumbing modules, timed practice, and final coaching sessions while keeping learner progress and curriculum visibility in one place.',
-    ],
-    learn: [
-      'Interpret plumbing code requirements with more confidence.',
-      'Practice pipe sizing, sanitary system design, and fixture-unit calculations.',
-      'Review troubleshooting scenarios with guided explanations and technical references.',
-      'Prepare for mock-board assessments with structured progress checkpoints.',
-    ],
-    audience: [
-      'Master Plumbing examinees preparing for board review programs.',
-      'Learners who want more guided practice on code-based scenarios.',
-      'Review-center instructors building a reusable plumbing course workflow.',
-    ],
-    faqs: [
-      {
-        question: 'Does this course focus on code-heavy topics?',
-        answer:
-          'Yes. Code interpretation and applied problem-solving are central parts of the program content.',
-      },
-      {
-        question: 'Are practice scenarios included?',
-        answer:
-          'Yes. The course includes guided drills, module-based reviews, and final coaching content.',
-      },
-      {
-        question: 'Can instructors use this for live sessions too?',
-        answer:
-          'Yes. The structure works well for both recorded delivery and live review-center sessions.',
-      },
-    ],
-    notices: [
-      'Code review modules are arranged to support both self-paced and guided coaching.',
-      'Technical references can be attached per lesson to improve exam readiness.',
-      'Learner progress highlights which areas need remediation before mock exams.',
-    ],
-    reviews: [
-      {
-        author: 'Jose Mendoza',
-        role: 'Master Plumbing examinee',
-        rating: 5,
-        content:
-          'The pipe sizing practice and code discussions are easy to follow. It feels like a modern review center platform.',
-      },
-      {
-        author: 'Rhea Santos',
-        role: 'Program mentor',
-        rating: 4.5,
-        content:
-          'The course structure makes it easier to coach learners and point them to the exact lesson or drill they need.',
-      },
-    ],
-  },
-  'course-materials-intensive': {
-    category: 'Materials Engineering',
-    badge: 'ADVANCED',
-    description:
-      'A deep Materials Engineering review experience covering metallurgy, thermodynamics, failures, and materials behavior with guided modules and exam-ready practice.',
-    body: [
-      'This program is designed for learners who need a more organized way to study materials characterization, thermal processes, and failure analysis. The course combines conceptual refreshers with review checkpoints so technical topics stay manageable.',
-      'It is especially useful for programs that want structured digital delivery of advanced lessons, references, and coaching notes across a longer review timeline.',
-    ],
-    learn: [
-      'Review metallurgical behavior, heat treatment, and material response concepts.',
-      'Connect thermodynamics principles with manufacturing and performance scenarios.',
-      'Practice failure analysis reasoning in a guided learning sequence.',
-      'Use structured references and review modules for long-form technical preparation.',
-    ],
-    audience: [
-      'Materials Engineering learners preparing for intensive exam review.',
-      'Advanced students who want clearer module progression across difficult topics.',
-      'Institutions delivering long-form technical coaching and digital content.',
-    ],
-    faqs: [
-      {
-        question: 'Is this course best for advanced learners?',
-        answer:
-          'It is designed for intermediate to advanced learners, but the guided sequence still helps structure core refreshers.',
-      },
-      {
-        question: 'What topics are emphasized most?',
-        answer:
-          'Metallurgy, thermodynamics, material behavior, heat treatment, and failure analysis are all emphasized.',
-      },
-      {
-        question: 'Can learners revisit references after the lesson?',
-        answer:
-          'Yes. Modules can include PDFs, e-books, and structured summaries for later study.',
-      },
-    ],
-    notices: [
-      'Advanced modules are arranged to keep high-density technical topics easier to revisit.',
-      'Reference materials can be paired with each module to support independent review.',
-      'The course flow is ideal for longer intensive programs and exam-season schedules.',
-    ],
-    reviews: [
-      {
-        author: 'Paula Reyes',
-        role: 'Materials Engineering learner',
-        rating: 5,
-        content:
-          'The modules are organized really well. Difficult topics like heat treatment and failure analysis feel less overwhelming.',
-      },
-      {
-        author: 'Dr. Ian Torres',
-        role: 'Technical reviewer',
-        rating: 4.5,
-        content:
-          'This layout works well for advanced engineering topics because the references, modules, and progress flow stay connected.',
-      },
-    ],
-  },
-  'course-how-to-design-components': {
-    category: 'Environmental Sciences',
-    badge: 'SPECIAL',
-    description:
-      'A UX-focused sprint on structuring screens so layouts stay consistent, typography stays readable, and learners can skim without losing hierarchy. ',
-    body: [
-      'Interface design fails quietly: spacing drifts, type scales collide, and “almost right” grids create cognitive drag. This course anchors you in repeatable composition habits—establishing grids, aligning modules, and reinforcing affordances so instructional content reads as calmly as intended.',
-      "You'll move through short theory bursts and applied layout exercises modeled on LMS patterns: hero regions, stacked lessons, FAQs, notices, and review surfaces.",
-    ],
-    learn: [
-      'Build responsive layout shells that behave predictably across breakpoints.',
-      'Pair typography scale ramps with instructional density for long-read pages.',
-      'Design component inventories that naming, props, and states can share.',
-      'Critique layouts with checkpoints that unblock engineering sooner.',
-      'Ship teaser and catalog cards that harmonize thumbnails, badges, and CTAs.',
-    ],
-    audience: [
-      'Product designers supporting education or LMS experiences.',
-      'Frontend engineers prototyping curriculum pages.',
-      'Instructional designers who own layout fidelity with engineering.',
-      'Teams standardizing dashboards, courses, and resource hubs.',
-    ],
-    faqs: [
-      {
-        question: 'Do we cover design systems?',
-        answer:
-          "You'll practice modular regions and repeatable tokens—the same ingredients design systems formalize.",
-      },
-      {
-        question: 'Are Figma files required?',
-        answer:
-          'No. Exercises are layout principles; you can sketch in any tool or in-browser.',
-      },
-      {
-        question: 'Is this only for web?',
-        answer:
-          'Patterns apply to web-first LMS UIs; responsive thinking still helps native layouts.',
-      },
-    ],
-    notices: [
-      'Preview builds use sample Environmental Sciences metadata to mirror catalog cards.',
-      'Completion state in the sidebar is a mock for instructor preview only.',
-      'Swap copy in Settings to align with your production program description.',
-    ],
-    reviews: [
-      {
-        author: 'Jamie Ortega',
-        role: 'Product designer',
-        rating: 4.5,
-        content:
-          'Clear structure for teaching pages. The module on hierarchy alone saved us a round of visual QA.',
-      },
-    ],
-  },
-};
 
 const ARCHIVE_OPTIONS = ['Current intake', 'May 2026', 'April 2026', 'March 2026'];
 
@@ -283,22 +52,6 @@ const TAB_OPTIONS = [
   { value: 'notice', label: 'Notice' },
   { value: 'reviews', label: 'Reviews' },
 ];
-
-function getCourseCopy(course) {
-  return (
-    COURSE_PAGE_COPY[course.id] ?? {
-      category: 'Engineering Program',
-      badge: 'FEATURED',
-      description: course.description,
-      body: [course.description],
-      learn: course.subjects,
-      audience: ['Learners preparing for guided technical review.'],
-      faqs: [],
-      notices: [],
-      reviews: [],
-    }
-  );
-}
 
 function SidebarDetailRow({ icon, label, value }) {
   return (
@@ -324,7 +77,11 @@ function PopularCourseItem({ course }) {
       : 4.8;
 
   return (
-    <Box component={RouterLink} href={paths.dashboard.courses.details(course.id)} sx={styles.popularCourseLink}>
+    <Box
+      component={RouterLink}
+      href={paths.dashboard.courseDetails(course.slug)}
+      sx={styles.popularCourseLink}
+    >
       <Box sx={{ position: 'relative', ...styles.popularCourseThumb, ...courseArtSx(course.id, true) }}>
         <Chip label={copy.badge} color="warning" size="small" sx={{ position: 'absolute', top: 6, left: 6 }} />
       </Box>
@@ -359,7 +116,7 @@ function RelatedCourseCard({ course: related }) {
   return (
     <Card
       component={RouterLink}
-      href={paths.dashboard.courses.details(related.id)}
+      href={paths.dashboard.courseDetails(related.slug)}
       sx={styles.relatedCourseCard}
     >
       <Box
@@ -395,13 +152,14 @@ function RelatedCourseCard({ course: related }) {
   );
 }
 
-export function CourseDetailsView({ courseId }) {
+export function CourseDetailsView({ courseLookup }) {
   const [tabValue, setTabValue] = useState('description');
+  const courseId = useResolvedCourseIdFromLookup(courseLookup);
   const course = useLmsCourse(courseId);
-  const courses = useLmsCourses();
-  const programs = useLmsPrograms();
-  const modules = useLmsModulesByCourse(courseId);
-  const lmsQuizzes = useLmsQuizzes();
+  const { courses } = useLmsCourses(1, 500);
+  const { programs } = useLmsPrograms();
+  const { modules } = useLmsModulesByCourse(courseId);
+  const { quizzes: lmsQuizzes } = useLmsQuizzes();
 
   const relatedCourses = useMemo(
     () => courses.filter((item) => item.id !== courseId).slice(0, 3),
@@ -422,6 +180,11 @@ export function CourseDetailsView({ courseId }) {
   }
 
   const copy = getCourseCopy(course);
+  const tabs = mergeTabsContentFromCourseApi(course, copy);
+  const heroDescription =
+    typeof course.description === 'string' && course.description.trim()
+      ? course.description.trim()
+      : (tabs.paragraphs[0] ?? copy.description ?? '');
   const program = programs.find((item) => item.id === course.programId);
   const videoLessons = modules.filter((moduleItem) => moduleItem.resources.includes('Video')).length;
   const videoDetailValue =
@@ -438,11 +201,19 @@ export function CourseDetailsView({ courseId }) {
     ? copy.reviews.reduce((sum, review) => sum + review.rating, 0) / copy.reviews.length
     : 4.8;
 
+  const formattedAverageRating = (() => {
+    if (!Number.isFinite(averageRating)) {
+      return '—';
+    }
+    const roundedTenth = Number(averageRating.toFixed(1));
+    const asInt = Math.round(roundedTenth);
+    return Math.abs(roundedTenth - asInt) < 1e-6 ? String(asInt) : roundedTenth.toFixed(1);
+  })();
+
   return (
     <DashboardContent maxWidth={false}>
       <Stack spacing={4.5} sx={lmsPageShellStyles.content}>
         <CustomBreadcrumbs
-          heading={course.title}
           links={[
             { name: 'Dashboard', href: paths.dashboard.root },
             { name: 'Programs', href: paths.dashboard.courses.root },
@@ -453,84 +224,116 @@ export function CourseDetailsView({ courseId }) {
         <Grid container spacing={{ xs: 4, lg: 5 }} alignItems="flex-start">
           <Grid size={{ xs: 12, lg: 8 }} sx={{ order: { xs: 1, lg: 2 } }}>
             <Stack spacing={3}>
-              <Stack
-                direction={{ xs: 'column', md: 'row' }}
-                justifyContent="space-between"
-                alignItems={{ xs: 'flex-start', md: 'center' }}
-                spacing={2}
-              >
-                <Stack direction="row" spacing={1.2} alignItems="center" flexWrap="wrap" useFlexGap>
-                  <Typography variant="body2" sx={styles.metaLine}>
-                    {copy.category}, {course.subjects.join(' & ')}
-                  </Typography>
-                  <Chip label={copy.badge} color="success" size="small" />
+              <Stack spacing={2}>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  flexWrap="wrap"
+                  spacing={1.25}
+                  useFlexGap
+                >
+                  {copy.badge ? (
+                    <Chip label={copy.badge} color="warning" variant="filled" size="small" sx={styles.heroBadgeChip} />
+                  ) : (
+                    <Box />
+                  )}
+
+                  <Stack direction="row" spacing={0.5}>
+                    <Button
+                      variant="text"
+                      color="inherit"
+                      startIcon={<Iconify icon="solar:heart-linear" />}
+                      sx={styles.toolbarTextButton}
+                    >
+                      Add to wishlist
+                    </Button>
+                    <Button
+                      variant="text"
+                      color="inherit"
+                      startIcon={<Iconify icon="solar:share-linear" />}
+                      sx={styles.toolbarTextButton}
+                    >
+                      Share
+                    </Button>
+                  </Stack>
                 </Stack>
 
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    variant="text"
-                    color="inherit"
-                    startIcon={<Iconify icon="solar:heart-linear" />}
-                    sx={styles.toolbarTextButton}
+                <Box sx={styles.heroMetaRow}>
+                  <Stack
+                    direction="row"
+                    spacing={1.5}
+                    alignItems="center"
+                    sx={styles.heroMetaCategoryGroup}
                   >
-                    Add to wishlist
-                  </Button>
-                  <Button
-                    variant="text"
-                    color="inherit"
-                    startIcon={<Iconify icon="solar:share-linear" />}
-                    sx={styles.toolbarTextButton}
+                    <Iconify
+                      icon="solar:bookmark-square-linear"
+                      width={22}
+                      sx={{ color: 'primary.main', flexShrink: 0 }}
+                    />
+                    <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
+                      <Box component="span" sx={styles.heroCategoryLabelBold}>
+                        Category:
+                      </Box>{' '}
+                      <Box component="span" sx={styles.heroCategoryValueMuted}>
+                        {copy.category}
+                      </Box>
+                    </Typography>
+                  </Stack>
+
+                  <Stack
+                    direction="row"
+                    spacing={1.5}
+                    alignItems="center"
+                    sx={styles.heroMetaCenterGroup}
                   >
-                    Share
-                  </Button>
-                </Stack>
-              </Stack>
+                    <Avatar sx={styles.mentorAvatar}>
+                      {course.mentor
+                        .split(' ')
+                        .slice(0, 2)
+                        .map((item) => item[0])
+                        .join('')}
+                    </Avatar>
+                    <Stack spacing={0.35} sx={{ minWidth: 0 }}>
+                      <Typography variant="caption" sx={styles.heroInstructorOverline}>
+                        INSTRUCTOR
+                      </Typography>
+                      <Typography variant="subtitle1" component="div" sx={styles.heroInstructorName} noWrap>
+                        {course.mentor}
+                      </Typography>
+                    </Stack>
+                  </Stack>
 
-              <Typography variant="h2" sx={styles.pageTitle}>
-                {course.title}
-              </Typography>
-
-              <Typography variant="body1" sx={styles.heroDescription}>
-                {copy.description}
-              </Typography>
-
-              <Stack
-                direction={{ xs: 'column', md: 'row' }}
-                spacing={{ xs: 2, md: 3 }}
-                divider={<Divider orientation="vertical" flexItem sx={styles.verticalDivider} />}
-                sx={styles.metaRow}
-              >
-                <Stack direction="row" spacing={1.25} alignItems="center">
-                  <Avatar sx={styles.mentorAvatar}>
-                    {course.mentor
-                      .split(' ')
-                      .slice(0, 2)
-                      .map((item) => item[0])
-                      .join('')}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="caption" sx={styles.instructorCaption}>
-                      Instructor
+                  <Stack
+                    spacing={0.5}
+                    sx={{
+                      ...styles.heroMetaReviewsGroup,
+                      width: { xs: '100%', md: 'auto' },
+                      alignItems: { xs: 'flex-start', md: 'flex-end' },
+                    }}
+                  >
+                    <Stack direction="row" alignItems="center" spacing={1.25} flexWrap="wrap">
+                      <Rating readOnly precision={0.5} value={averageRating} size="small" />
+                      <Typography component="span" variant="subtitle1" sx={styles.heroMetaAvgLabel}>
+                        {formattedAverageRating}
+                      </Typography>
+                    </Stack>
+                    <Typography variant="caption" sx={styles.heroMetaRatingsCaption}>
+                      {copy.reviews.length}{' '}
+                      {copy.reviews.length === 1 ? 'review' : 'reviews'}
                     </Typography>
-                    <Typography variant="subtitle2" sx={styles.instructorName}>
-                      {course.mentor}
-                    </Typography>
-                  </Box>
-                </Stack>
-
-                <Box>
-                  <Typography variant="h6" sx={styles.enrolledCount}>
-                    {course.learners.toLocaleString()}
-                  </Typography>
-                  <Typography variant="caption">Students enrolled</Typography>
+                  </Stack>
                 </Box>
 
-                <Stack spacing={0.35}>
-                  <Rating readOnly precision={0.5} value={averageRating} size="small" />
-                  <Typography variant="caption">
-                    {copy.reviews.length} {copy.reviews.length === 1 ? 'review' : 'reviews'}
-                  </Typography>
-                </Stack>
+                <Divider sx={styles.heroMetaTitleDivider} />
+
+                <Typography variant="h2" sx={styles.pageTitle}>
+                  {course.title}
+                </Typography>
+
+                <Typography variant="body1" sx={styles.heroDescription}>
+                  {heroDescription}
+                </Typography>
               </Stack>
 
               <Card sx={styles.tabbedCard}>
@@ -564,8 +367,8 @@ export function CourseDetailsView({ courseId }) {
                       </Box>
 
                       <Stack spacing={2}>
-                        {copy.body.map((paragraph) => (
-                          <Typography key={paragraph} variant="body1" sx={styles.bodyParagraph}>
+                        {tabs.paragraphs.map((paragraph, pIndex) => (
+                          <Typography key={`desc-p-${pIndex}`} variant="body1" sx={styles.bodyParagraph}>
                             {paragraph}
                           </Typography>
                         ))}
@@ -574,8 +377,8 @@ export function CourseDetailsView({ courseId }) {
                       <Stack spacing={1.5}>
                         <Typography variant="h4">What you&apos;ll learn</Typography>
                         <Stack component="ul" spacing={1.1} sx={styles.learnList}>
-                          {copy.learn.map((item) => (
-                            <Typography key={item} component="li" variant="body1" sx={styles.learnListItem}>
+                          {tabs.learningOutcomes.map((item, i) => (
+                            <Typography key={`learn-${i}`} component="li" variant="body1" sx={styles.learnListItem}>
                               {item}
                             </Typography>
                           ))}
@@ -585,8 +388,8 @@ export function CourseDetailsView({ courseId }) {
                       <Stack spacing={1.5}>
                         <Typography variant="h4">Who is the target audience?</Typography>
                         <Stack component="ul" spacing={1.1} sx={styles.learnList}>
-                          {copy.audience.map((item) => (
-                            <Typography key={item} component="li" variant="body1" sx={styles.learnListItem}>
+                          {tabs.audience.map((item, i) => (
+                            <Typography key={`aud-${i}`} component="li" variant="body1" sx={styles.learnListItem}>
                               {item}
                             </Typography>
                           ))}
@@ -642,9 +445,9 @@ export function CourseDetailsView({ courseId }) {
 
                   <TabPanel value="faq" sx={styles.tabPanel}>
                     <Stack spacing={1.5}>
-                      {copy.faqs.map((item, index) => (
+                      {tabs.faqPairs.map((item, index) => (
                         <Accordion
-                          key={item.question}
+                          key={`faq-${index}`}
                           defaultExpanded={index === 0}
                           disableGutters
                           elevation={0}
@@ -665,8 +468,13 @@ export function CourseDetailsView({ courseId }) {
 
                   <TabPanel value="notice" sx={styles.tabPanel}>
                     <Stack spacing={1.5}>
-                      {copy.notices.map((item) => (
-                        <Card key={item} sx={styles.moduleCard}>
+                      {(tabs.noticeHeading ? (
+                        <Typography variant="h5" sx={{ mb: -0.5 }}>
+                          {tabs.noticeHeading}
+                        </Typography>
+                      ) : null)}
+                      {tabs.noticeStrings.map((item, nIndex) => (
+                        <Card key={`notice-${nIndex}`} sx={styles.moduleCard}>
                           <CardContent sx={styles.moduleCardContent}>
                             <Stack direction="row" spacing={1.5} alignItems="flex-start">
                               <Box sx={noticeIconBoxSx}>

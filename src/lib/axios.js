@@ -2,6 +2,10 @@ import axios from 'axios';
 
 import { CONFIG } from 'src/global-config';
 
+import { JWT_STORAGE_KEY } from 'src/auth/context/jwt/constant';
+
+import { LMS_SANCTUM_TOKEN_KEY } from './lms-api-auth-keys';
+
 // ----------------------------------------------------------------------
 
 const axiosInstance = axios.create({
@@ -11,23 +15,46 @@ const axiosInstance = axios.create({
   },
 });
 
-/**
- * Optional: Add token (if using auth)
- *
- axiosInstance.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
+axiosInstance.interceptors.request.use((config) => {
+  if (
+    typeof FormData !== 'undefined' &&
+    config.data instanceof FormData
+  ) {
+    const headers = config.headers;
+    /* Let the runtime set multipart boundary—default `application/json` breaks file uploads */
+    if (headers && typeof headers.delete === 'function') {
+      headers.delete('Content-Type');
+    } else if (headers) {
+      delete headers['Content-Type'];
+      delete headers['content-type'];
+    }
+  }
+
+  if (typeof sessionStorage === 'undefined') {
+    return config;
+  }
+  const sanctum = sessionStorage.getItem(LMS_SANCTUM_TOKEN_KEY);
+  const jwt = sessionStorage.getItem(JWT_STORAGE_KEY);
+  const token = sanctum || jwt;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
-*
-*/
 
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    const message = error?.response?.data?.message || error?.message || 'Something went wrong!';
+    const data = error?.response?.data;
+    let message = data?.message || error?.message || 'Something went wrong!';
+
+    if (data?.errors && typeof data.errors === 'object') {
+      const msgs = Object.values(data.errors).flat().filter(Boolean);
+      if (msgs.length) {
+        message = msgs.join(' ');
+      }
+    }
+
     console.error('Axios error:', message);
     return Promise.reject(new Error(message));
   }

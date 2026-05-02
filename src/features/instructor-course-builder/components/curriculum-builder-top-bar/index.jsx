@@ -24,6 +24,8 @@ export function CurriculumBuilderTopBar({
   publishAnchor,
   onOpenPublishMenu,
   onClosePublishMenu,
+  /** Learner preview link (defaults to static reference page). */
+  viewHref,
 }) {
   return (
     <Box sx={styles.root}>
@@ -81,7 +83,7 @@ export function CurriculumBuilderTopBar({
           </Menu>
           <Button
             component={RouterLink}
-            href={paths.courseDetailDemo}
+            href={viewHref ?? paths.courseDetailDemo}
             variant="outlined"
             color="inherit"
             sx={styles.viewButton}

@@ -9,25 +9,27 @@ import IconButton from '@mui/material/IconButton';
 import FormControl from '@mui/material/FormControl';
 import InputAdornment from '@mui/material/InputAdornment';
 
+import { LMS_PROGRAM_SELECT_OPTIONS } from 'src/constants/lms';
+
 import { Editor } from 'src/components/editor';
 import { Iconify } from 'src/components/iconify';
 
 import { css } from './styles';
-
-const LEVEL_OPTS = [
-  { value: 'beginner', label: 'Beginner' },
-  { value: 'intermediate', label: 'Intermediate' },
-  { value: 'advanced', label: 'Advanced' },
-];
 
 export function CourseInfoSection({
   courseName,
   onCourseNameChange,
   slug,
   onSlugChange,
+  slugReadOnly = false,
   fullCourseUrlPrefix,
-  level,
-  onLevelChange,
+  programId,
+  onProgramIdChange,
+  programDisabled = false,
+  mentorDisplayName,
+  onMentorDisplayNameChange,
+  bannerImageUrl = '',
+  onBannerImageUrlChange,
   ownerName,
   coInstructor,
   onCoInstructorChange,
@@ -80,7 +82,9 @@ export function CourseInfoSection({
           size="small"
           value={slug}
           onChange={(e) => onSlugChange(e.target.value)}
+          disabled={slugReadOnly}
           InputProps={{
+            readOnly: slugReadOnly,
             endAdornment: (
               <InputAdornment position="end">
                 <IconButton size="small" edge="end" aria-label="Edit slug">
@@ -94,11 +98,15 @@ export function CourseInfoSection({
       </Box>
 
       <Box sx={{ mt: 2.5 }}>
-        <Typography sx={css.fieldLabel}>Level</Typography>
-        <FormControl fullWidth size="small">
-          <Select value={level} onChange={(e) => onLevelChange(e.target.value)} sx={{ borderRadius: '8px' }}>
-            {LEVEL_OPTS.map((o) => (
-              <MenuItem key={o.value} value={o.value}>
+        <Typography sx={css.fieldLabel}>Programs</Typography>
+        <FormControl fullWidth size="small" disabled={programDisabled}>
+          <Select
+            value={programId}
+            onChange={(e) => onProgramIdChange(e.target.value)}
+            sx={{ borderRadius: '8px' }}
+          >
+            {LMS_PROGRAM_SELECT_OPTIONS.map((o) => (
+              <MenuItem key={o.id} value={o.id}>
                 {o.label}
               </MenuItem>
             ))}
@@ -141,6 +149,39 @@ export function CourseInfoSection({
           </FormControl>
         </Grid>
       </Grid>
+
+      {typeof onMentorDisplayNameChange === 'function' ? (
+        <Box sx={{ mt: 2.5 }}>
+          <Typography sx={css.fieldLabel} component="label" htmlFor="mentor-display-settings">
+            Mentor display name
+          </Typography>
+          <TextField
+            id="mentor-display-settings"
+            fullWidth
+            size="small"
+            value={mentorDisplayName ?? ''}
+            onChange={(e) => onMentorDisplayNameChange(e.target.value)}
+            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+          />
+        </Box>
+      ) : null}
+
+      {typeof onBannerImageUrlChange === 'function' ? (
+        <Box sx={{ mt: 2.5 }}>
+          <Typography sx={css.fieldLabel} component="label" htmlFor="banner-url-settings">
+            Banner image URL
+          </Typography>
+          <TextField
+            id="banner-url-settings"
+            fullWidth
+            size="small"
+            placeholder="https://…"
+            value={bannerImageUrl}
+            onChange={(e) => onBannerImageUrlChange(e.target.value)}
+            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+          />
+        </Box>
+      ) : null}
 
       <Box sx={{ mt: 3 }}>
         <Typography sx={css.fieldLabel}>Image</Typography>

@@ -7,11 +7,11 @@ import { Subscript } from '@tiptap/extension-subscript';
 import { Underline } from '@tiptap/extension-underline';
 import { Superscript } from '@tiptap/extension-superscript';
 import TextAlignExtension from '@tiptap/extension-text-align';
-import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Placeholder as PlaceholderExtension } from '@tiptap/extensions';
 import { TextStyleKit } from '@tiptap/extension-text-style/text-style-kit';
 import CodeBlockLowlightExtension from '@tiptap/extension-code-block-lowlight';
 import { useEditor, EditorContent, ReactNodeViewRenderer } from '@tiptap/react';
+import { useRef, useMemo, useState, useEffect, useCallback, useLayoutEffect } from 'react';
 
 import Box from '@mui/material/Box';
 import Portal from '@mui/material/Portal';
@@ -50,10 +50,22 @@ export function Editor({
   ref: contentRef,
   value: initialContent = '',
   placeholder = 'Write something awesome...',
+  /**
+   * When this value changes (e.g. LMS save + refetch epoch), HTML is reapplied from `value`.
+   * Avoids relying on TipTap’s one-shot `content` initializer so server snapshots repopulate the UI.
+   */
+  contentRevision = undefined,
+  /**
+   * Prefer this HTML when `contentRevision` advances (same render as fresh `/modules` payload).
+   * Avoids a race where React state `value` is still stale while `contentRevision` already bumped.
+   */
+  revisionApplyHtml = undefined,
   ...other
 }) {
   const [fullscreen, setFullscreen] = useState(false);
   const [rerenderKey, setRerenderKey] = useState(0);
+
+  const syncedContentRevisionRef = useRef(null);
 
   const tmResizeBounds = tinymceResizeBounds ?? { min: 150, max: 600 };
 
@@ -128,14 +140,35 @@ export function Editor({
     [editor]
   );
 
+  useLayoutEffect(() => {
+    if (contentRevision === undefined || contentRevision === null || !editor || editor.isDestroyed) {
+      return;
+    }
+
+    const rev = String(contentRevision);
+    if (syncedContentRevisionRef.current === rev) {
+      return;
+    }
+
+    syncedContentRevisionRef.current = rev;
+
+    const slice =
+      revisionApplyHtml !== undefined && revisionApplyHtml !== null ? revisionApplyHtml : (initialContent ?? '');
+    const html = String(slice);
+    editor.commands.setContent(html.trim() === '' ? '<p></p>' : html, false);
+  }, [contentRevision, initialContent, revisionApplyHtml, editor]);
+
   useEffect(() => {
+    if (contentRevision !== undefined) {
+      return undefined;
+    }
     const timer = setTimeout(() => {
       if (!editor?.isDestroyed && editor?.isEmpty && initialContent !== '<p></p>') {
         editor?.commands.setContent(initialContent);
       }
     }, 200);
     return () => clearTimeout(timer);
-  }, [initialContent, editor]);
+  }, [contentRevision, initialContent, editor]);
 
   useEffect(() => {
     if (resetValue && !initialContent) {

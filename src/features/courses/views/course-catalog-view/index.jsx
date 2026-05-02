@@ -15,8 +15,8 @@ import { LmsPageShell } from 'src/components/layout/lms-page-shell';
 import { styles } from './styles';
 
 export function CourseCatalogView() {
-  const programs = useLmsPrograms();
-  const courses = useLmsCourses();
+  const { programs } = useLmsPrograms();
+  const { courses } = useLmsCourses(1, 200);
   const totalLearners = courses.reduce((sum, course) => sum + course.learners, 0);
 
   return (

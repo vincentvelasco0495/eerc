@@ -15,7 +15,7 @@ import { LmsPageShell } from 'src/components/layout/lms-page-shell';
 import { styles } from './styles';
 
 export function AnalyticsDashboardView() {
-  const analytics = useLmsAnalytics();
+  const { analytics } = useLmsAnalytics();
   const suggestedModules = useSuggestedModules();
 
   return (

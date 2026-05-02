@@ -3,11 +3,13 @@ import { useMemo, useEffect, useCallback } from 'react';
 
 import { CONFIG } from 'src/global-config';
 import axios, { endpoints } from 'src/lib/axios';
+import { getLmsSanctumToken, setLmsSanctumSession } from 'src/lib/lms-sanctum-session';
 
 import { JWT_STORAGE_KEY } from './constant';
 import { AuthContext } from '../auth-context';
 import { setSession, isValidToken } from './utils';
 import { getDemoProfileFromAccessToken } from './demo-credentials';
+import { isLaravelLmsApiEnabled, mapLmsUserToAuthSessionUser } from './laravel-lms-api';
 
 // ----------------------------------------------------------------------
 
@@ -26,6 +28,18 @@ export function AuthProvider({ children }) {
 
   const checkUserSession = useCallback(async () => {
     try {
+      if (isLaravelLmsApiEnabled() && getLmsSanctumToken()) {
+        try {
+          const res = await axios.get('/api/user');
+          const token = getLmsSanctumToken();
+          const user = normalizeJwtSessionUser(mapLmsUserToAuthSessionUser(res.data, token));
+          setState({ user, loading: false });
+          return user;
+        } catch {
+          setLmsSanctumSession(null);
+        }
+      }
+
       const accessToken = sessionStorage.getItem(JWT_STORAGE_KEY);
 
       if (accessToken && isValidToken(accessToken)) {

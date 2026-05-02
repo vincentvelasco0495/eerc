@@ -1,5 +1,12 @@
 export const LMS_PROGRAMS = ['CE', 'Master Plumbing', 'Materials Engineering'];
 
+/** Program ids + display labels (enrollment form, course settings, etc.). */
+export const LMS_PROGRAM_SELECT_OPTIONS = [
+  { id: 'program-ce', label: 'Civil Engineering' },
+  { id: 'program-plumbing', label: 'Master Plumbing' },
+  { id: 'program-materials', label: 'Materials Engineering' },
+];
+
 export const LEARNING_FLOW_STEPS = [
   'Review',
   'Practice',

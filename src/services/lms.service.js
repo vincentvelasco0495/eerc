@@ -66,6 +66,9 @@ const courses = [
     nextModuleId: 'module-hydraulics-review',
     tags: ['Streaming only', 'Board exam'],
     subjects: ['Hydraulics', 'Structures', 'Environmental Engineering'],
+    marketing: {
+      bannerImageUrl: 'https://picsum.photos/seed/eerc-banner-course-ce-review/1200/675',
+    },
   },
   {
     id: 'course-plumbing-mastery',
@@ -82,6 +85,9 @@ const courses = [
     nextModuleId: 'module-pipe-sizing-practice',
     tags: ['Practice heavy', 'Case studies'],
     subjects: ['Plumbing Code', 'Pipe Design', 'Sanitary Systems'],
+    marketing: {
+      bannerImageUrl: 'https://picsum.photos/seed/eerc-banner-course-plumbing-mastery/1200/675',
+    },
   },
   {
     id: 'course-materials-intensive',
@@ -98,6 +104,9 @@ const courses = [
     nextModuleId: 'module-heat-treatment-refresher',
     tags: ['Lab aligned', 'Coaching'],
     subjects: ['Metallurgy', 'Thermodynamics', 'Failure Analysis'],
+    marketing: {
+      bannerImageUrl: 'https://picsum.photos/seed/eerc-banner-course-materials-intensive/1200/675',
+    },
   },
   {
     id: 'course-how-to-design-components',
@@ -119,6 +128,9 @@ const courses = [
     videoHoursLabel: '5 hours',
     /** First sidebar card mimics learner “course complete” preview in instructor View. */
     previewCompleted: true,
+    marketing: {
+      bannerImageUrl: 'https://picsum.photos/seed/eerc-banner-course-design-components/1200/675',
+    },
   },
 ];
 
@@ -449,26 +461,86 @@ function buildProgressSummary() {
   };
 }
 
-export async function fetchLmsBootstrap() {
-  await delay();
+export async function mockResponseForKey(key) {
+  if (typeof key !== 'string') {
+    return null;
+  }
 
-  return {
-    user,
-    programs,
-    courses,
-    modules,
-    quizzes,
-    quizResults,
-    leaderboard,
-    enrollments,
-    admin,
-    analytics: buildProgressSummary(),
-    meta: {
+  await delay(30);
+  const [rawPath, qs = ''] = key.split('?');
+  const path = rawPath || '';
+  const params = new URLSearchParams(qs);
+
+  if (path === '/api/user') {
+    return user;
+  }
+
+  if (path === '/api/meta') {
+    return {
       todayLabel: createTodayLabel(),
       leaderboardPeriods: LEADERBOARD_PERIODS,
       learningFlowSteps: LEARNING_FLOW_STEPS,
-    },
-  };
+    };
+  }
+
+  if (path === '/api/programs') {
+    return { data: programs };
+  }
+
+  if (path === '/api/courses') {
+    const page = Math.max(1, parseInt(params.get('page') || '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt(params.get('limit') || '100', 10)));
+    const start = (page - 1) * limit;
+    const slice = courses.slice(start, start + limit);
+    const lastPage = Math.max(1, Math.ceil(courses.length / limit));
+
+    return { data: slice, meta: { page, limit, total: courses.length, lastPage } };
+  }
+
+  if (path === '/api/enrollments') {
+    return { data: enrollments };
+  }
+
+  if (path === '/api/modules') {
+    const courseId = params.get('courseId');
+    const ids = params.get('ids');
+    if (ids) {
+      const idList = ids.split(',').map((s) => s.trim()).filter(Boolean);
+      const order = new Map(idList.map((id, i) => [id, i]));
+      return {
+        data: [...modules].filter((m) => order.has(m.id)).sort((a, b) => order.get(a.id) - order.get(b.id)),
+      };
+    }
+    if (courseId) {
+      return { data: modules.filter((m) => m.courseId === courseId) };
+    }
+    return { data: [] };
+  }
+
+  if (path === '/api/quizzes') {
+    const moduleId = params.get('moduleId');
+    const list = moduleId ? quizzes.filter((q) => q.moduleId === moduleId) : quizzes;
+    return { data: list };
+  }
+
+  if (path === '/api/quiz-results') {
+    return { data: quizResults };
+  }
+
+  if (path === '/api/leaderboard') {
+    const type = params.get('type') || 'daily';
+    return { data: leaderboard[type] ?? [] };
+  }
+
+  if (path === '/api/analytics') {
+    return buildProgressSummary();
+  }
+
+  if (path === '/api/admin') {
+    return admin;
+  }
+
+  return null;
 }
 
 export async function submitEnrollmentRequest(courseId) {

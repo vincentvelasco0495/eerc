@@ -10,6 +10,7 @@ export function InstructorProfileTabs({ value, tabs, onChange }) {
       onChange={(_, nextValue) => onChange(nextValue)}
       variant="scrollable"
       scrollButtons="auto"
+      allowScrollButtonsMobile
       sx={styles.tabs}
     >
       {tabs.map((tab) => (

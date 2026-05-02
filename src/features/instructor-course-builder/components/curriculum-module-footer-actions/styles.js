@@ -1,9 +1,8 @@
 export const styles = {
   root: {
-    px: 1.75,
+    px: { xs: 1.25, sm: 1.75 },
     pb: 1.75,
     pt: 1.5,
-    gap: 1.25,
   },
   addIconWrap: {
     width: 20,
@@ -16,7 +15,7 @@ export const styles = {
   },
   addIcon: { color: 'common.white' },
   addButton: {
-    minHeight: 36,
+    minHeight: { xs: 40, sm: 36 },
     px: 1,
     py: 0.5,
     fontWeight: 600,
@@ -24,28 +23,7 @@ export const styles = {
     lineHeight: 1.25,
     textTransform: 'none',
     color: 'primary.main',
+    justifyContent: { xs: 'flex-start', sm: 'center' },
     '& .MuiButton-startIcon': { mr: 0.625, ml: -0.125 },
   },
-  searchIcon: { color: 'text.disabled' },
-  searchButton: (theme) => ({
-    minHeight: 36,
-    px: 1.75,
-    py: 0.5,
-    fontWeight: 600,
-    fontSize: '0.875rem',
-    lineHeight: 1.25,
-    textTransform: 'none',
-    borderRadius: 1.5,
-    color: 'text.secondary',
-    border: '1px solid',
-    borderColor: theme.palette.grey[300],
-    bgcolor: theme.palette.grey[100],
-    boxShadow: 'none',
-    '&:hover': {
-      borderColor: theme.palette.grey[400],
-      bgcolor: theme.palette.grey[200],
-      boxShadow: 'none',
-    },
-    '& .MuiButton-startIcon': { mr: 0.625, ml: -0.125 },
-  }),
 };

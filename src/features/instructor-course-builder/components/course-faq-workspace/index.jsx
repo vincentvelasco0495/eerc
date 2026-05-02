@@ -32,27 +32,47 @@ const INITIAL_ITEMS = [
   },
 ];
 
-/** Navbar → FAQ tab: expandable Q/A pairs, add/remove, demo save */
-export function CourseFaqWorkspace() {
-  const [items, setItems] = useState(() => INITIAL_ITEMS.map((item) => ({ ...item })));
+/**
+ * FAQ tab — demo mode uses local state; live LMS passes `items` + `onItemsChange` + `onPersist`.
+ */
+export function CourseFaqWorkspace({ items: controlledItems, onItemsChange, onPersist } = {}) {
+  const [internalItems, setInternalItems] = useState(() => INITIAL_ITEMS.map((item) => ({ ...item })));
 
-  const toggleExpanded = useCallback((id) => {
-    setItems((prev) =>
-      prev.map((row) => (row.id === id ? { ...row, expanded: !row.expanded } : row))
-    );
-  }, []);
+  const isControlled = Array.isArray(controlledItems) && typeof onItemsChange === 'function';
+  const items = isControlled ? controlledItems : internalItems;
 
-  const patchRow = useCallback((id, partial) => {
-    setItems((prev) =>
-      prev.map((row) => (row.id === id ? { ...row, ...partial } : row))
-    );
-  }, []);
+  const setItems = useCallback(
+    (updater) => {
+      if (isControlled) {
+        onItemsChange((prev) => updater(Array.isArray(prev) ? prev : []));
+      } else {
+        setInternalItems((prev) => updater(prev));
+      }
+    },
+    [isControlled, onItemsChange]
+  );
+
+  const toggleExpanded = useCallback(
+    (id) => {
+      setItems((prev) =>
+        prev.map((row) => (row.id === id ? { ...row, expanded: !row.expanded } : row))
+      );
+    },
+    [setItems]
+  );
+
+  const patchRow = useCallback(
+    (id, partial) => {
+      setItems((prev) => prev.map((row) => (row.id === id ? { ...row, ...partial } : row)));
+    },
+    [setItems]
+  );
 
   const handleDelete = useCallback(
     (id) => {
       setItems((prev) => prev.filter((row) => row.id !== id));
     },
-    []
+    [setItems]
   );
 
   const addQuestion = useCallback(() => {
@@ -65,11 +85,19 @@ export function CourseFaqWorkspace() {
         expanded: true,
       },
     ]);
-  }, []);
+  }, [setItems]);
 
-  const handleSave = useCallback(() => {
-    toast.success('FAQ saved (demo).');
-  }, []);
+  const handleSave = useCallback(async () => {
+    if (onPersist) {
+      try {
+        await onPersist();
+      } catch (e) {
+        toast.error(e?.message ?? 'Save failed.');
+      }
+    } else {
+      toast.success('FAQ saved (demo).');
+    }
+  }, [onPersist]);
 
   return (
     <Box sx={styles.workspaceRoot}>

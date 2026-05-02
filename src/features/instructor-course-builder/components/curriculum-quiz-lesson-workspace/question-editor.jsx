@@ -22,12 +22,12 @@ export function QuestionEditor({ questionText, onQuestionTextChange }) {
           placeholder="What does CPU stand for?"
           chrome="tinymce"
           sx={{
-            minHeight: 260,
-            maxHeight: 440,
+            minHeight: { xs: 200, sm: 260 },
+            maxHeight: { xs: 360, sm: 440 },
           }}
           tinymceResizeBounds={{
-            min: 120,
-            max: 340,
+            min: 100,
+            max: 320,
           }}
         />
       </Box>

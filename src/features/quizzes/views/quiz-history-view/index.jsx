@@ -17,7 +17,7 @@ import { LmsPageShell } from 'src/components/layout/lms-page-shell';
 import { styles } from './styles';
 
 export function QuizHistoryView() {
-  const results = useLmsQuizResults();
+  const { results } = useLmsQuizResults();
   const bestScore = Math.max(...results.map((result) => result.score));
 
   return (

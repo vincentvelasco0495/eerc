@@ -26,10 +26,10 @@ export function AdminPanelView() {
     title: 'New coaching module',
     assetType: 'Video',
   });
-  const admin = useAdminData();
+  const { admin } = useAdminData();
   const enrollment = useEnrollment();
-  const courses = useLmsCourses();
-  const modules = useLmsModulesByCourse(courses[0]?.id ?? '');
+  const { courses } = useLmsCourses(1, 200);
+  const { modules } = useLmsModulesByCourse(courses[0]?.id ?? '');
   const { toggleModuleVisibility, updateEnrollmentStatus, uploadModule } = useLmsActions();
 
   const userColumns = useMemo(

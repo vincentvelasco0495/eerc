@@ -48,6 +48,23 @@ export const styles = {
     border: '1px solid',
     borderColor: 'divider',
     boxShadow: 'none',
+    transition: (theme) => theme.transitions.create(['box-shadow', 'border-color'], { duration: 180 }),
+    '&:hover': {
+      borderColor: 'action.hover',
+      boxShadow: (theme) => theme.shadows[2],
+    },
+  },
+  previewClickable: {
+    cursor: 'pointer',
+    borderRadius: 1,
+    m: -0.5,
+    p: 0.5,
+    outlineOffset: 2,
+    transition: (theme) => theme.transitions.create(['box-shadow'], { duration: 180 }),
+    '&:focus-visible': {
+      outline: '2px solid',
+      outlineColor: 'primary.main',
+    },
   },
   cardContent: { p: 1.5 },
   categoryCaptionOuter: { opacity: 0.84 },
@@ -71,4 +88,28 @@ export const styles = {
   statusChip: { width: 'fit-content', textTransform: 'capitalize' },
   updatedCaption: { color: 'text.secondary' },
   updatedValue: { fontWeight: 600 },
+  menuTrigger: {
+    border: '1px solid',
+    borderColor: 'divider',
+    borderRadius: 1,
+  },
+  menuPaper: {
+    mt: 0.75,
+    minWidth: { xs: 'min(calc(100vw - 24px), 320px)', sm: 220 },
+    maxWidth: 'min(calc(100vw - 16px), 360px)',
+    maxHeight: 'min(70dvh, 420px)',
+    boxShadow: (theme) => theme.shadows[8],
+  },
+  menuItem: {
+    py: 1,
+    minHeight: { xs: 48, sm: 44 },
+    borderRadius: 1,
+    mx: 0.5,
+    '& .MuiListItemIcon-root': { color: 'text.secondary' },
+    '&:hover': {
+      bgcolor: 'action.hover',
+      '& .MuiListItemIcon-root': { color: 'primary.main' },
+      '& .MuiTypography-root': { color: 'primary.main' },
+    },
+  },
 };

@@ -7,10 +7,10 @@ import { CourseNotice } from './CourseNotice';
 import { tabKeys } from './course-detail-data';
 import { RelatedCourses } from './RelatedCourses';
 import { CourseCurriculum } from './CourseCurriculum';
-import { radii, space, colors, shadow } from './course-detail-tokens';
+import { radii, space, colors } from './course-detail-tokens';
 
 const HeroFigure = styled.figure`
-  margin: 0 0 ${space(3)};
+  margin: 0 0 ${space(2)};
 `;
 
 const HeroImg = styled.img`
@@ -19,8 +19,8 @@ const HeroImg = styled.img`
   border-radius: ${radii.card};
   aspect-ratio: 16 / 9;
   object-fit: cover;
-  box-shadow: ${shadow.card};
-  background: #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  background: #e8f4fc;
 `;
 
 const ProseStack = styled.div`

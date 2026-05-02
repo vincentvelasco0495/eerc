@@ -75,18 +75,27 @@ export function CourseNotice({ heading, items }) {
     <NoticeRoot aria-labelledby="course-notice-heading">
       <NoticeHeading id="course-notice-heading">{heading}</NoticeHeading>
       <List>
-        {items.map((row, i) => (
+        {items.map((row, i) => {
+          const title = typeof row.titleBold === 'string' ? row.titleBold.trim() : '';
+          const hasTitle = Boolean(title);
+
+          return (
           <Item key={row.id}>
             <Index>{i + 1}.</Index>
             <Body>
-              <TitleStrong>{row.titleBold}</TitleStrong>{' '}
-              <LinkParen href={row.href || '#'}>
-                ({row.linkLabel})
-              </LinkParen>
+              {hasTitle ? (
+                <>
+                  <TitleStrong>{title}</TitleStrong>{' '}
+                  {row.linkLabel ? (
+                    <LinkParen href={row.href || '#'}>({row.linkLabel})</LinkParen>
+                  ) : null}
+                </>
+              ) : null}
               {row.body}
             </Body>
           </Item>
-        ))}
+        );
+        })}
       </List>
     </NoticeRoot>
   );

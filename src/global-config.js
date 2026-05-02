@@ -7,7 +7,14 @@ import packageJson from '../package.json';
 export const CONFIG = {
   appName: 'EERC LMS',
   appVersion: packageJson.version,
+  /** Laravel API origin, e.g. `http://127.0.0.1:8000`. Empty keeps LMS on `lms.service.js` mocks. */
   serverUrl: import.meta.env.VITE_SERVER_URL ?? '',
+  /**
+   * When set (course slug or LMS `public_id`), `/instructor-course-curriculum` loads that course from
+   * the API instead of offline demo curriculum so text lessons + lesson materials uploads work.
+   * Override anytime with URL `?course=your-slug`.
+   */
+  instructorCurriculumCourseLookup: import.meta.env.VITE_INSTRUCTOR_CURRICULUM_COURSE_LOOKUP ?? '',
   assetsDir: import.meta.env.VITE_ASSETS_DIR ?? '',
   /**
    * Auth

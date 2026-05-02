@@ -32,7 +32,12 @@ export function FooterActions({ onAddQuestion, onQuestionBank, onSave }) {
         </Button>
       </Box>
       <Box sx={styles.footerEnd}>
-        <Button variant="contained" color="primary" sx={styles.footerBtn} onClick={onSave}>
+        <Button
+          variant="contained"
+          color="primary"
+          sx={{ ...styles.footerBtn, width: { xs: 1, sm: 'auto' } }}
+          onClick={onSave}
+        >
           Save
         </Button>
       </Box>

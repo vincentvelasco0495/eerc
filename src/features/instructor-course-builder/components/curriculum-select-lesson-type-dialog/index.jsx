@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -13,7 +13,30 @@ import { Iconify } from 'src/components/iconify';
 import { styles } from './styles';
 import { curriculumLessonTypePickerGroups } from '../../instructor-course-curriculum-data';
 
-export function CurriculumSelectLessonTypeDialog({ open, onClose, onSelectType }) {
+/** Same modal everywhere `CurriculumBuilderModuleCard` is used (demo + live LMS edit via `InstructorCourseCurriculumView`). */
+export function CurriculumSelectLessonTypeDialog({
+  open,
+  onClose,
+  onSelectType,
+  /** When set (e.g. `['quiz']` for live LMS), only those lesson types appear. */
+  attachableLessonTypes = null,
+}) {
+  const narrowedToLmsQuiz =
+    Array.isArray(attachableLessonTypes) && attachableLessonTypes.length > 0;
+
+  const pickerGroups = useMemo(() => {
+    if (!narrowedToLmsQuiz) {
+      return curriculumLessonTypePickerGroups;
+    }
+    const allowed = new Set(attachableLessonTypes);
+    return curriculumLessonTypePickerGroups
+      .map((group) => ({
+        ...group,
+        options: group.options.filter((o) => allowed.has(o.type)),
+      }))
+      .filter((group) => group.options.length > 0);
+  }, [narrowedToLmsQuiz, attachableLessonTypes]);
+
   const handlePick = useCallback(
     (type) => {
       onSelectType?.(type);
@@ -21,6 +44,10 @@ export function CurriculumSelectLessonTypeDialog({ open, onClose, onSelectType }
     },
     [onClose, onSelectType]
   );
+
+  const subtitleText = narrowedToLmsQuiz
+    ? 'Add a quiz to this module.'
+    : 'Select material type to continue';
 
   return (
     <Dialog
@@ -40,7 +67,7 @@ export function CurriculumSelectLessonTypeDialog({ open, onClose, onSelectType }
             <Typography component="span" sx={styles.title}>
               Select lesson type
             </Typography>
-            <Typography sx={styles.subtitle}>Select material type to continue</Typography>
+            <Typography sx={styles.subtitle}>{subtitleText}</Typography>
           </Box>
           <IconButton
             aria-label="Close"
@@ -54,7 +81,7 @@ export function CurriculumSelectLessonTypeDialog({ open, onClose, onSelectType }
       </DialogTitle>
 
       <DialogContent sx={styles.content}>
-        {curriculumLessonTypePickerGroups.map((group) => (
+        {pickerGroups.map((group) => (
           <Box key={group.id} sx={styles.section}>
             <Typography sx={styles.sectionLabel}>{group.label}</Typography>
             <Box sx={styles.tileGrid}>

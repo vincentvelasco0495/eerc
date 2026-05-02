@@ -44,6 +44,7 @@ export function RelatedCourses({ title = 'Related courses', items, omitOuterTopM
             priceStrike={c.priceStrike}
             instructorName={c.instructor}
             ratingValue={c.rating}
+            href={c.href}
           />
         ))}
       </Grid>

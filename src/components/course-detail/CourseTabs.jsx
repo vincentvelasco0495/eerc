@@ -1,9 +1,9 @@
 import styled from 'styled-components';
 
-import { radii, colors } from './course-detail-tokens';
+import { radii, space, colors } from './course-detail-tokens';
 
 const TabsRoot = styled.nav`
-  margin: 0 0 24px;
+  margin: 0 0 ${space(2.5)};
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 `;
@@ -19,7 +19,7 @@ const TabBtn = styled.button`
   appearance: none;
   position: relative;
   margin: 0;
-  padding: 12px 16px;
+  padding: 12px 20px;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -32,10 +32,10 @@ const TabBtn = styled.button`
   &::after {
     content: '';
     position: absolute;
-    left: 10px;
-    right: 10px;
+    left: 0;
+    right: 0;
     bottom: -1px;
-    height: 3px;
+    height: 2px;
     border-radius: ${radii.pill};
     background: ${(props) => (props.$active ? colors.primary : 'transparent')};
     transition: background 0.15s ease;

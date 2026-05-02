@@ -21,6 +21,7 @@ const LMS_HOME = '/student-profile';
  */
 const DASHBOARD_LAYOUT_FIRST_SEGMENTS = new Set([
   'courses',
+  'course-details',
   'modules',
   'quizzes',
   'analytics',
@@ -29,6 +30,7 @@ const DASHBOARD_LAYOUT_FIRST_SEGMENTS = new Set([
   'instructor-announcement',
   'instructor-settings',
   'instructor-gradebook',
+  'instructor-course',
   'instructor-course-curriculum',
   'instructor-assignments',
   'assignments',
@@ -55,6 +57,8 @@ export const paths = {
   faqs: '/faqs',
   /** Styled-components learner course-detail reference (`src/pages/course-detail/CourseDetail.jsx`). */
   courseDetailDemo: '/course-detail',
+  /** Programs nav — forked detail shell (`src/pages/program-course-detail/`). */
+  programCourseDetail: '/program-course-detail',
   page403: '/error/403',
   page404: '/error/404',
   page500: '/error/500',
@@ -86,7 +90,7 @@ export const paths = {
       resetPassword: `${ROOTS.AUTH}/amplify/reset-password`,
     },
     jwt: {
-      signIn: `${ROOTS.AUTH}/jwt/sign-in`,
+      signIn: '/login',
       signUp: `${ROOTS.AUTH}/jwt/sign-up`,
     },
     firebase: {
@@ -126,8 +130,11 @@ export const paths = {
     overview: LMS_HOME,
     courses: {
       root: `/courses`,
+      /** Legacy; prefer `courseDetails` — resolves by LMS id only. */
       details: (courseId) => `/courses/${courseId}`,
     },
+    /** Public-facing course landing URL slug (matches course settings URL field). */
+    courseDetails: (slug) => `/course-details/${slug}`,
     modules: {
       details: (moduleId) => `/modules/${moduleId}`,
     },
@@ -141,6 +148,8 @@ export const paths = {
     instructorGradebook: `/instructor-gradebook`,
     instructorAnnouncement: `/instructor-announcement`,
     instructorCourseCurriculum: `/instructor-course-curriculum`,
+    instructorCourseEdit: (slugOrPublicId) =>
+      `/instructor-course/${encodeURIComponent(String(slugOrPublicId ?? ''))}/edit`,
     instructorAssignments: `/instructor-assignments`,
     studentAssignments: `/assignments`,
     studentProfile: `/student-profile`,

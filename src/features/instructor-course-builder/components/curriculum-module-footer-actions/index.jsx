@@ -1,21 +1,23 @@
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
-import { useTheme } from '@mui/material/styles';
 
 import { Iconify } from 'src/components/iconify';
 
 import { styles } from './styles';
 
-export function CurriculumModuleFooterActions({ onAddLessonClick }) {
-  const theme = useTheme();
+export function CurriculumModuleFooterActions({ onAddLessonClick, addLessonUnavailableTitle }) {
+  const inactive = typeof onAddLessonClick !== 'function';
+  const titleHint = inactive ? addLessonUnavailableTitle : undefined;
 
   return (
-    <Stack direction="row" alignItems="center" flexWrap="wrap" sx={styles.root}>
+    <Stack direction="row" alignItems="center" sx={styles.root}>
       <Button
         variant="text"
         color="primary"
         disableElevation
+        disabled={inactive}
+        title={inactive ? titleHint : undefined}
         onClick={onAddLessonClick}
         startIcon={
           <Box sx={styles.addIconWrap}>
@@ -25,14 +27,6 @@ export function CurriculumModuleFooterActions({ onAddLessonClick }) {
         sx={styles.addButton}
       >
         Add a lesson
-      </Button>
-      <Button
-        variant="outlined"
-        disableElevation
-        startIcon={<Iconify icon="solar:magnifer-linear" width={18} sx={styles.searchIcon} />}
-        sx={styles.searchButton(theme)}
-      >
-        Search materials
       </Button>
     </Stack>
   );

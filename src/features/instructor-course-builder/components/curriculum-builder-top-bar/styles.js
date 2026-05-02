@@ -46,7 +46,12 @@ export const styles = {
       '&.Mui-selected': { color: 'primary.main' },
     },
   },
-  right: { flexShrink: 0 },
-  publishButton: { fontWeight: 700, boxShadow: 'none' },
-  viewButton: { fontWeight: 600 },
+  right: { flexShrink: 0, width: { xs: '100%', md: 'auto' } },
+  publishButton: {
+    fontWeight: 700,
+    boxShadow: 'none',
+    flex: { xs: 1, md: 'unset' },
+    minWidth: 0,
+  },
+  viewButton: { fontWeight: 600, flex: { xs: 1, md: 'unset' }, minWidth: 0 },
 };

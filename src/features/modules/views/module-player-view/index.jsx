@@ -12,7 +12,7 @@ import CardContent from '@mui/material/CardContent';
 
 import { paths } from 'src/routes/paths';
 
-import { useLmsUser, useLmsCourse, useLmsModule, useLmsAppState } from 'src/hooks/use-lms';
+import { useLmsUser, useLmsMeta, useLmsCourse, useLmsModule } from 'src/hooks/use-lms';
 
 import { LEARNING_FLOW_STEPS } from 'src/constants/lms';
 
@@ -24,9 +24,9 @@ import { styles } from './styles';
 
 export function ModulePlayerView({ moduleId }) {
   const [activeTab, setActiveTab] = useState('video');
-  const moduleItem = useLmsModule(moduleId);
-  const user = useLmsUser();
-  const appState = useLmsAppState();
+  const { module: moduleItem } = useLmsModule(moduleId);
+  const { user } = useLmsUser();
+  const meta = useLmsMeta();
   const course = useLmsCourse(moduleItem?.courseId);
 
   if (!moduleItem) {
@@ -46,7 +46,11 @@ export function ModulePlayerView({ moduleId }) {
         { name: 'Courses', href: paths.dashboard.courses.root },
         {
           name: course?.title ?? 'Course',
-          href: course ? paths.dashboard.courses.details(course.id) : paths.dashboard.courses.root,
+          href: course
+            ? course.slug
+              ? paths.dashboard.courseDetails(course.slug)
+              : paths.dashboard.courses.details(course.id)
+            : paths.dashboard.courses.root,
         },
         { name: 'Module player' },
       ]}
@@ -85,7 +89,7 @@ export function ModulePlayerView({ moduleId }) {
             activeTab={activeTab}
             moduleItem={moduleItem}
             username={user?.watermarkName ?? 'Learner'}
-            dateLabel={appState.meta.todayLabel}
+            dateLabel={meta.todayLabel}
             sessionWarning={user?.sessionWarning}
             onTabChange={(_, value) => setActiveTab(value)}
           />

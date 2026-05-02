@@ -5,7 +5,7 @@ export const curriculumBuilderCourse = {
   /** Prefix shown above the editable slug in Course → Settings. */
   baseUrlSlugPrefix: 'https://lms.example.com/courses',
   defaultSlug: 'how-to-design-components-right',
-  defaultLevel: 'advanced',
+  defaultProgramId: 'program-ce',
 };
 
 

@@ -24,11 +24,12 @@ export const styles = {
 
   header: {
     display: 'flex',
-    alignItems: 'center',
+    flexDirection: { xs: 'column', sm: 'row' },
+    alignItems: { xs: 'stretch', sm: 'center' },
     justifyContent: 'space-between',
     gap: 2,
-    px: 2.5,
-    py: 2,
+    px: { xs: 2, sm: 2.5 },
+    py: { xs: 1.75, sm: 2 },
     bgcolor: '#fff',
     borderBottom: `1px solid ${quizColors.border}`,
     borderRadius: '10px 10px 0 0',
@@ -37,27 +38,29 @@ export const styles = {
 
   headerLeft: {
     display: 'flex',
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 1.5,
+    gap: { xs: 1, sm: 1.5 },
     minWidth: 0,
     flex: 1,
+    width: { xs: '100%', sm: 'auto' },
   },
 
   headerQuizBadge: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: 0.75,
+    gap: { xs: 0.5, sm: 0.75 },
     flexShrink: 0,
-    px: 1.25,
-    py: 0.5,
+    px: { xs: 1, sm: 1.25 },
+    py: { xs: 0.375, sm: 0.5 },
     borderRadius: '999px',
     bgcolor: '#f3f4f6',
     border: `1px solid ${quizColors.border}`,
   },
 
   headerQuizIconWrap: {
-    width: 26,
-    height: 26,
+    width: { xs: 22, sm: 26 },
+    height: { xs: 22, sm: 26 },
     borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
@@ -68,10 +71,11 @@ export const styles = {
   },
 
   headerQuizBadgeLabel: {
-    fontSize: 13,
+    fontSize: { xs: 12, sm: 13 },
     fontWeight: 600,
     color: quizColors.text,
     letterSpacing: '0.02em',
+    whiteSpace: 'nowrap',
   },
 
   headerTitle: {
@@ -85,16 +89,19 @@ export const styles = {
 
   headerTitleField: {
     flex: 1,
-    minWidth: 120,
+    minWidth: 0,
+    m: 0,
     '& .MuiOutlinedInput-root': {
       bgcolor: 'background.paper',
       borderRadius: 2,
-      fontSize: 15,
+      fontSize: { xs: 14, sm: 15 },
       fontWeight: 600,
     },
     '& .MuiOutlinedInput-input': {
-      py: 1,
+      py: { xs: 0.875, sm: 1 },
       fontWeight: 600,
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
     },
   },
 
@@ -105,17 +112,21 @@ export const styles = {
     py: 1,
     borderRadius: '999px',
     fontSize: 14,
+    width: { xs: '100%', sm: 'auto' },
+    alignSelf: { xs: 'stretch', sm: 'auto' },
   },
 
   tabsRow: {
     display: 'flex',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 2,
-    flexWrap: 'wrap',
+    gap: { xs: 1, sm: 1.5, md: 2 },
+    flexWrap: 'nowrap',
+    minWidth: 0,
     mt: 0,
-    pt: 2,
-    pb: 2,
+    pt: { xs: 1.5, sm: 2 },
+    pb: { xs: 1.5, sm: 2 },
     flexShrink: 0,
   },
 
@@ -125,20 +136,58 @@ export const styles = {
     p: '4px',
     bgcolor: '#e8eaed',
     borderRadius: '10px',
+    flex: '1 1 0%',
+    minWidth: 0,
+    overflowX: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    flexShrink: 1,
+    scrollbarWidth: 'thin',
+    '&::-webkit-scrollbar': { height: 4 },
+  },
+
+  tabActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: { xs: 0.75, sm: 1.25 },
+    flexShrink: 0,
+    flexWrap: 'nowrap',
+  },
+
+  listIconBtn: {
+    width: 40,
+    height: 40,
+    border: `1px solid ${quizColors.border}`,
+    borderRadius: '8px',
+    bgcolor: '#fff',
+    color: quizColors.primaryBlue,
+  },
+
+  libraryBtn: {
+    textTransform: 'none',
+    fontWeight: 600,
+    fontSize: { xs: 13, sm: 14 },
+    px: { xs: 1.25, sm: 2 },
+    py: 1,
+    borderRadius: '8px',
+    borderColor: quizColors.primaryBlue,
+    color: quizColors.primaryBlue,
+    whiteSpace: 'nowrap',
   },
 
   tabBtn: {
     textTransform: 'none',
     fontWeight: 600,
-    fontSize: 14,
-    px: 2.25,
-    py: 1.125,
+    fontSize: { xs: 13, sm: 14 },
+    px: { xs: 1.5, sm: 2.25 },
+    py: { xs: 1, sm: 1.125 },
     borderRadius: '8px',
     color: quizColors.muted,
     border: 'none',
     bgcolor: 'transparent',
     cursor: 'pointer',
     fontFamily: 'inherit',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
   },
 
   tabBtnIdle: {
@@ -187,32 +236,6 @@ export const styles = {
   tabCountBadgeIdle: {
     bgcolor: '#d1d5db',
     color: '#374151',
-  },
-
-  tabActions: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 1.25,
-  },
-
-  listIconBtn: {
-    width: 40,
-    height: 40,
-    border: `1px solid ${quizColors.border}`,
-    borderRadius: '8px',
-    bgcolor: '#fff',
-    color: quizColors.primaryBlue,
-  },
-
-  libraryBtn: {
-    textTransform: 'none',
-    fontWeight: 600,
-    fontSize: 14,
-    px: 2,
-    py: 1,
-    borderRadius: '8px',
-    borderColor: quizColors.primaryBlue,
-    color: quizColors.primaryBlue,
   },
 
   mainColumn: {
@@ -306,14 +329,16 @@ export const styles = {
 
   editorTop: {
     display: 'flex',
-    gap: 2,
-    p: 2.5,
-    alignItems: 'flex-start',
+    flexDirection: { xs: 'column', sm: 'row' },
+    gap: { xs: 1.5, sm: 2 },
+    p: { xs: 1.75, sm: 2.5 },
+    alignItems: { xs: 'stretch', sm: 'flex-start' },
   },
 
   imageTile: {
-    width: 52,
-    height: 52,
+    width: { xs: '100%', sm: 52 },
+    height: { xs: 52, sm: 52 },
+    maxWidth: { xs: 76, sm: 'none' },
     flexShrink: 0,
     border: `1px solid ${quizColors.border}`,
     borderRadius: '8px',
@@ -323,6 +348,7 @@ export const styles = {
     bgcolor: '#f9fafb',
     color: quizColors.muted,
     cursor: 'pointer',
+    alignSelf: { xs: 'flex-start', sm: 'auto' },
   },
 
   editorMain: {
@@ -471,19 +497,25 @@ export const styles = {
 
   footer: {
     display: 'grid',
-    gridTemplateColumns: '1fr auto 1fr',
+    gridTemplateColumns: { xs: '1fr', sm: '1fr auto 1fr' },
     alignItems: 'center',
-    gap: 2,
-    pt: 3,
+    gap: { xs: 1.5, sm: 2 },
+    pt: { xs: 2, sm: 3 },
     mt: 'auto',
     flexShrink: 0,
   },
 
   footerCenter: {
     display: 'flex',
+    flexDirection: { xs: 'column', sm: 'row' },
     justifyContent: 'center',
     gap: 2,
     flexWrap: 'wrap',
+    gridColumn: { xs: '1 / -1', sm: 'auto' },
+    order: { xs: -1, sm: 0 },
+    '& .MuiButton-root': {
+      width: { xs: 1, sm: 'auto' },
+    },
   },
 
   footerBtn: {
@@ -496,19 +528,8 @@ export const styles = {
   },
 
   footerEnd: {
-    justifySelf: 'end',
-  },
-
-  placeholderPanel: {
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    p: 4,
-    bgcolor: '#fff',
-    border: `1px solid ${quizColors.border}`,
-    borderRadius: '10px',
-    minHeight: 280,
+    justifySelf: { xs: 'stretch', sm: 'end' },
+    width: { xs: '100%', sm: 'auto' },
   },
 
   /** Quiz → Settings tab (MasterStudy-style form) */

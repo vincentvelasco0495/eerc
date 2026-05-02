@@ -18,10 +18,10 @@ export function StudentAssignmentsToolbar({
 }) {
   return (
     <Stack
-      direction={{ xs: 'column', xl: 'row' }}
+      direction={{ xs: 'column', md: 'row' }}
       spacing={2}
       justifyContent="space-between"
-      alignItems={{ xs: 'flex-start', xl: 'center' }}
+      alignItems={{ xs: 'stretch', md: 'center' }}
     >
       <Typography variant="h4" sx={styles.title}>
         {title}

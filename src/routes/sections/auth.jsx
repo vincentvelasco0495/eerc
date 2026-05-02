@@ -1,5 +1,7 @@
-import { Outlet } from 'react-router';
 import { lazy, Suspense } from 'react';
+import { Outlet, Navigate, useLocation } from 'react-router';
+
+import { paths } from 'src/routes/paths';
 
 import { AuthSplitLayout } from 'src/layouts/auth-split';
 
@@ -8,6 +10,11 @@ import { SplashScreen } from 'src/components/loading-screen';
 import { GuestGuard } from 'src/auth/guard';
 
 // ----------------------------------------------------------------------
+
+function JwtSignInLegacyRedirect() {
+  const { search } = useLocation();
+  return <Navigate replace to={`${paths.auth.jwt.signIn}${search}`} />;
+}
 
 /** **************************************
  * Jwt
@@ -22,17 +29,7 @@ const authJwt = {
   children: [
     {
       path: 'sign-in',
-      element: (
-        <GuestGuard>
-          <AuthSplitLayout
-            slotProps={{
-              section: { title: 'Hi, Welcome back' },
-            }}
-          >
-            <Jwt.SignInPage />
-          </AuthSplitLayout>
-        </GuestGuard>
-      ),
+      element: <JwtSignInLegacyRedirect />,
     },
     {
       path: 'sign-up',
@@ -272,6 +269,22 @@ const authSupabase = {
 // ----------------------------------------------------------------------
 
 export const authRoutes = [
+  {
+    path: 'login',
+    element: (
+      <Suspense fallback={<SplashScreen />}>
+        <GuestGuard>
+          <AuthSplitLayout
+            slotProps={{
+              section: { title: 'Hi, Welcome back' },
+            }}
+          >
+            <Jwt.SignInPage />
+          </AuthSplitLayout>
+        </GuestGuard>
+      </Suspense>
+    ),
+  },
   {
     path: 'auth',
     element: (

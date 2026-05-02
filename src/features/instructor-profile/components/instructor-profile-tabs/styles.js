@@ -1,17 +1,22 @@
 export const styles = {
   tabs: {
     minHeight: 40,
-    '& .MuiTabs-flexContainer': { gap: 1 },
+    maxWidth: 1,
+    '& .MuiTabs-flexContainer': { gap: { xs: 0.75, sm: 1 } },
     '& .MuiTabs-indicator': { display: 'none' },
+    '& .MuiTabScrollButton-root': {
+      width: { xs: 32, sm: 40 },
+    },
   },
 };
 
 export function tabSx(isSelected) {
   return {
-    px: 1.6,
+    px: { xs: 1.25, sm: 1.6 },
     py: 0.9,
     minHeight: 40,
-    minWidth: 'auto',
+    minWidth: { xs: 'max-content', sm: 'auto' },
+    flexShrink: 0,
     borderRadius: 999,
     color: isSelected ? 'primary.main' : 'text.secondary',
     bgcolor: isSelected ? 'primary.lighter' : 'transparent',

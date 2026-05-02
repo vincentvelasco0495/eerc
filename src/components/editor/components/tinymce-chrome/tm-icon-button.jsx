@@ -11,9 +11,9 @@ export function TmIconButton({ icon, label, active, disabled, children, sx, ...o
       disableRipple
       sx={[
         {
-          width: TINYMCE.iconBtnSize,
-          height: TINYMCE.iconBtnSize,
-          minWidth: TINYMCE.iconBtnSize,
+          width: { xs: 38, sm: TINYMCE.iconBtnSize },
+          height: { xs: 38, sm: TINYMCE.iconBtnSize },
+          minWidth: { xs: 38, sm: TINYMCE.iconBtnSize },
           borderRadius: TINYMCE.buttonRadius,
           color: 'text.primary',
           fontSize: 13,
@@ -28,7 +28,7 @@ export function TmIconButton({ icon, label, active, disabled, children, sx, ...o
       ]}
       {...other}
     >
-      {icon ? <SvgIcon sx={{ fontSize: 16 }}>{icon}</SvgIcon> : children}
+      {icon ? <SvgIcon sx={{ fontSize: { xs: 18, sm: 16 } }}>{icon}</SvgIcon> : children}
     </ButtonBase>
   );
 

@@ -13,7 +13,7 @@ export function QuizHeader({ title, onTitleChange, onSave }) {
       <Box sx={styles.headerLeft}>
         <Box sx={styles.headerQuizBadge}>
           <Box sx={styles.headerQuizIconWrap} aria-hidden>
-            <Iconify icon="solar:question-circle-linear" width={16} />
+            <Iconify icon="solar:question-circle-linear" width={16} sx={{ width: { xs: 14, sm: 16 }, height: { xs: 14, sm: 16 } }} />
           </Box>
           <Typography component="span" sx={styles.headerQuizBadgeLabel}>
             Quiz

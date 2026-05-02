@@ -3,10 +3,32 @@ import { alpha } from '@mui/material/styles';
 const DRAFT_BORDER = '#F5A623';
 const DRAFT_BG = '#FFF9F2';
 
+/** Reveal action icons when row is hovered or contains focus (keyboard / screen readers). */
+const lessonActionsRevealSelectors = {
+  '& .lesson-actions': {
+    opacity: 0,
+    visibility: 'hidden',
+    transition: 'opacity 0.2s ease, visibility 0.2s ease',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flexShrink: 0,
+  },
+  '&:hover .lesson-actions, &:focus-within .lesson-actions': {
+    opacity: 1,
+    visibility: 'visible',
+  },
+};
+
 export const styles = {
-  row: (theme, { selected, draft }) => {
+  lessonItem: (theme, { selected, draft }) => {
     if (draft) {
       return {
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 1.25,
         py: 1,
         px: 1,
         borderRadius: 1,
@@ -21,10 +43,15 @@ export const styles = {
         '&:hover': {
           bgcolor: alpha(DRAFT_BORDER, 0.14),
         },
-        '&:hover .curriculum-row-actions': { opacity: 1 },
+        ...lessonActionsRevealSelectors,
       };
     }
     return {
+      position: 'relative',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 1.25,
       py: 1,
       px: 1,
       borderRadius: 1,
@@ -38,10 +65,21 @@ export const styles = {
       '&:hover': {
         bgcolor: selected
           ? alpha(theme.palette.primary.main, 0.1)
-          : alpha(theme.palette.grey[500], 0.08),
+          : alpha(
+              theme.palette.common.black,
+              theme.palette.mode === 'light' ? 0.035 : 0.1
+            ),
       },
-      '&:hover .curriculum-row-actions': { opacity: 1 },
+      ...lessonActionsRevealSelectors,
     };
+  },
+  leftCluster: {
+    flex: 1,
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1.25,
   },
   draftChip: {
     flexShrink: 0,
@@ -60,12 +98,5 @@ export const styles = {
     minWidth: 0,
     flex: 1,
   },
-  actions: (theme) => ({
-    opacity: 0,
-    flexShrink: 0,
-    transition: theme.transitions.create('opacity', {
-      duration: theme.transitions.duration.shorter,
-    }),
-  }),
   iconButton: { color: 'text.secondary' },
 };

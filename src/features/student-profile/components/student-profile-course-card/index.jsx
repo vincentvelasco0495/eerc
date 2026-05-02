@@ -67,9 +67,11 @@ export function StudentProfileCourseCard({ course }) {
           <Button
             component={RouterLink}
             href={
-              course.courseId
-                ? paths.dashboard.courses.details(course.courseId)
-                : paths.dashboard.courses.root
+              course.courseSlug
+                ? paths.dashboard.courseDetails(course.courseSlug)
+                : course.courseId
+                  ? paths.dashboard.courses.details(course.courseId)
+                  : paths.dashboard.courses.root
             }
             variant="contained"
             sx={styles.startCourseBtn}

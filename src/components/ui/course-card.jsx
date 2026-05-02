@@ -71,7 +71,11 @@ export function CourseCard({ course }) {
             </Stack>
             <Button
               component={RouterLink}
-              href={paths.dashboard.courses.details(course.id)}
+              href={
+                course.slug
+                  ? paths.dashboard.courseDetails(course.slug)
+                  : paths.dashboard.courses.details(course.id)
+              }
               variant="contained"
             >
               Open course

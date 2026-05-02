@@ -13,9 +13,9 @@ import { EnrolledQuizCourseGroup } from '../../components/enrolled-quiz-course-g
 
 export function QuizListView() {
   const [query, setQuery] = useState('');
-  const courses = useLmsCourses();
-  const quizzes = useLmsQuizzes();
-  const results = useLmsQuizResults();
+  const { courses } = useLmsCourses(1, 200);
+  const { quizzes } = useLmsQuizzes();
+  const { results } = useLmsQuizResults();
 
   const groups = useMemo(() => buildStudentQuizGroups(courses, quizzes, results), [courses, quizzes, results]);
 

@@ -1,18 +1,10 @@
 import { useParams } from 'react-router';
 
-import { CONFIG } from 'src/global-config';
-import { CourseDetailsView } from 'src/features/courses/views/course-details-view';
-
-const metadata = { title: `Course details | Dashboard - ${CONFIG.appName}` };
+import { LmsStyledCourseDetailView } from 'src/features/courses/views/lms-styled-course-detail-view';
 
 export default function CourseDetailsPage() {
-  const { courseId = '' } = useParams();
+  const { courseId = '', slug = '' } = useParams();
+  const courseLookup = slug || courseId;
 
-  return (
-    <>
-      <title>{metadata.title}</title>
-
-      <CourseDetailsView courseId={courseId} />
-    </>
-  );
+  return <LmsStyledCourseDetailView courseLookup={courseLookup} />;
 }

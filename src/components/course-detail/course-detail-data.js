@@ -2,7 +2,8 @@
 
 export const courseDetailMock = {
   category: 'Environmental Sciences',
-  title: 'How to Design Components Right',
+  badge: 'SPECIAL',
+  title: 'Basics of MasterStudy',
   instructor: {
     name: 'Demo Instructor',
     avatarUrl: 'https://i.pravatar.cc/120?img=12',
@@ -11,25 +12,26 @@ export const courseDetailMock = {
   rating: {
     value: 4,
     max: 5,
-    scoreLabel: '3',
-    reviewLine: '1 review',
-    summary: '3 (1 review)',
+    scoreLabel: '4.7',
+    reviewLine: '3 reviews',
+    summary: '4.7 (3 reviews)',
   },
-  shortDescription: `Effective component design aligns layout, typography, and affordances so learners can scan instructional content faster. Start with grids, constrain density, then stress-test breakpoints before handoff.`,
+  shortDescription: `MasterStudy is the best choice for everyone! A huge amount of possibilities with preset courses, quizzes and teachers. Powerful yet simple and insanely featured — this WordPress LMS theme solves all problems with online education.`,
   heroImageUrl:
-    'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=85&w=1680&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1400&q=80',
 
   completion: {
     label: 'Course complete',
-    scorePercent: 100,
+    quizScorePercent: 94,
     primaryCta: 'CONTINUE',
   },
 
   details: [
-    { key: 'duration', label: 'Duration', value: '9 hours', icon: 'clock' },
-    { key: 'lectures', label: 'Lectures', value: '4', icon: 'book' },
-    { key: 'video', label: 'Video', value: '5 hours', icon: 'play' },
-    { key: 'quizzes', label: 'Quizzes', value: '2', icon: 'check' },
+    { key: 'duration', label: 'Duration', value: '3 hours', icon: 'clock' },
+    { key: 'lectures', label: 'Lectures', value: '16', icon: 'book' },
+    { key: 'video', label: 'Video', value: '1 hour', icon: 'play' },
+    { key: 'assignments', label: 'Assignments', value: '1', icon: 'clipboard' },
+    { key: 'quizzes', label: 'Quizzes', value: '10', icon: 'check' },
     { key: 'level', label: 'Level', value: 'Advanced', icon: 'level' },
   ],
 
@@ -176,37 +178,34 @@ export const curriculumModulesMock = [
 export const popularCoursesMock = [
   {
     id: '1',
-    title: 'Responsive Layout Systems',
+    title: 'Web Coding and Apache Basics theory',
     badge: 'HOT',
     badgeTone: 'hot',
     imageUrl:
-      'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=85&w=400&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80',
     priceLabel: 'Free',
-    instructor: 'Alex Rivera',
-    rating: 4.5,
+    instructor: 'Demo Instructor',
+    rating: 5,
   },
   {
     id: '2',
-    title: 'Typography for Interfaces',
-    badge: 'SPECIAL',
-    badgeTone: 'special',
+    title: 'Concept Art Printing on 3d Printer',
     imageUrl:
-      'https://images.unsplash.com/photo-1573164713714-d95e436abf75?q=85&w=400&auto=format&fit=crop',
-    priceLabel: '$29.99',
-    priceStrike: '$49.99',
-    instructor: 'Mina Santos',
-    rating: 4.8,
+      'https://images.unsplash.com/photo-1631543918753-70913d8f897f?auto=format&fit=crop&w=400&q=80',
+    priceLabel: 'Free',
+    instructor: 'George Clinton',
+    rating: 3,
   },
   {
     id: '3',
-    title: 'Accessibility Foundations',
+    title: 'Interior design concepts Masterclass',
     badge: 'NEW',
     badgeTone: 'new',
     imageUrl:
-      'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=85&w=400&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1517842645767-c167b782060d?auto=format&fit=crop&w=400&q=80',
     priceLabel: 'Free',
-    instructor: 'Jamie Chen',
-    rating: 4.2,
+    instructor: 'Demo Instructor',
+    rating: 4,
   },
 ];
 

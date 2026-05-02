@@ -15,26 +15,31 @@ import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 import { useRouter, useSearchParams } from 'src/routes/hooks';
 
+import { CONFIG } from 'src/global-config';
+
 import { Iconify } from 'src/components/iconify';
 import { Form, Field, schemaUtils } from 'src/components/hook-form';
 
-import { signUp } from '../../context/jwt';
 import { useAuthContext } from '../../hooks';
 import { FormHead } from '../../components/form-head';
 import { SignUpTerms } from '../../components/sign-up-terms';
+import { signUp, isLaravelLmsApiEnabled } from '../../context/jwt';
 import { getErrorMessage, resolvePostLoginUrl } from '../../utils';
 
 // ----------------------------------------------------------------------
 
-export const SignUpSchema = z.object({
-  firstName: z.string().min(1, { error: 'First name is required!' }),
-  lastName: z.string().min(1, { error: 'Last name is required!' }),
-  email: schemaUtils.email(),
-  password: z
-    .string()
-    .min(1, { error: 'Password is required!' })
-    .min(6, { error: 'Password must be at least 6 characters!' }),
-});
+export const SignUpSchema = z
+  .object({
+    firstName: z.string().min(1, { error: 'First name is required!' }),
+    lastName: z.string().min(1, { error: 'Last name is required!' }),
+    email: schemaUtils.email(),
+    password: z.string().min(1, { error: 'Password is required!' }),
+    confirmPassword: z.string().min(1, { error: 'Confirm your password!' }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords must match',
+    path: ['confirmPassword'],
+  });
 
 // ----------------------------------------------------------------------
 
@@ -54,6 +59,7 @@ export function JwtSignUpView() {
     lastName: 'Friend',
     email: 'hello@gmail.com',
     password: '@2Minimal',
+    confirmPassword: '@2Minimal',
   };
 
   const methods = useForm({
@@ -73,6 +79,7 @@ export function JwtSignUpView() {
         password: data.password,
         firstName: data.firstName,
         lastName: data.lastName,
+        confirmPassword: data.confirmPassword,
       });
       const sessionUser = await checkUserSession?.();
       const role = sessionUser?.role ?? 'admin';
@@ -106,7 +113,26 @@ export function JwtSignUpView() {
       <Field.Text
         name="password"
         label="Password"
-        placeholder="6+ characters"
+        placeholder="Password"
+        type={showPassword.value ? 'text' : 'password'}
+        slotProps={{
+          inputLabel: { shrink: true },
+          input: {
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton onClick={showPassword.onToggle} edge="end">
+                  <Iconify icon={showPassword.value ? 'solar:eye-bold' : 'solar:eye-closed-bold'} />
+                </IconButton>
+              </InputAdornment>
+            ),
+          },
+        }}
+      />
+
+      <Field.Text
+        name="confirmPassword"
+        label="Confirm password"
+        placeholder="Password"
         type={showPassword.value ? 'text' : 'password'}
         slotProps={{
           inputLabel: { shrink: true },
@@ -150,6 +176,13 @@ export function JwtSignUpView() {
         }
         sx={{ textAlign: { xs: 'center', md: 'left' } }}
       />
+
+      {isLaravelLmsApiEnabled() && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Creates your account on the LMS API ({CONFIG.serverUrl}). Password must meet server rules (typically
+          8+ characters).
+        </Alert>
+      )}
 
       {!!errorMessage && (
         <Alert severity="error" sx={{ mb: 3 }}>

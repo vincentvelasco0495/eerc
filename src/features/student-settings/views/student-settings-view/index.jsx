@@ -23,7 +23,7 @@ function splitName(displayName = '') {
 }
 
 export function StudentSettingsView() {
-  const user = useLmsUser();
+  const { user } = useLmsUser();
   const nameParts = useMemo(() => splitName(user?.displayName), [user?.displayName]);
 
   const [values, setValues] = useState({
