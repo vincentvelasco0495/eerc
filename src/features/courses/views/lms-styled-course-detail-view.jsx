@@ -37,8 +37,7 @@ export function LmsStyledCourseDetailView({ courseLookup }) {
       return null;
     }
 
-    const siblings = courses.filter((c) => c.id !== course.id);
-    return mapLmsToStyledCourseDetail(course, modules, quizzesForCourse, siblings);
+    return mapLmsToStyledCourseDetail(course, modules, quizzesForCourse);
   }, [course, courses, modules, quizzesForCourse]);
 
   if (!courseLookup) {
@@ -83,12 +82,10 @@ export function LmsStyledCourseDetailView({ courseLookup }) {
         completion={shell.completion}
         detailRows={shell.detailRows}
         curriculumModules={shell.curriculumModules}
-        popularCoursesItems={shell.popularCoursesItems}
-        relatedCoursesItems={shell.relatedCoursesItems}
         noticeContent={shell.noticeContent}
-        noticeRelatedCoursesItems={shell.noticeRelatedCoursesItems}
         faqItems={shell.faqItems}
         continueHref={shell.continueHref}
+        courseLookup={shell.courseLookup}
         wrapMinHeightPage={false}
       />
     </>

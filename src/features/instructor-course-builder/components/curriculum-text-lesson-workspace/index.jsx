@@ -285,6 +285,11 @@ export function CurriculumTextLessonWorkspace({
             lessonMaterials={liveLessonAuthoring?.lessonMaterials ?? []}
             apiConfigured={Boolean(CONFIG.serverUrl?.trim())}
             modulePublicId={materialModulePublicId}
+            moduleResourcePublicId={
+              liveLessonAuthoring?.isCoreLesson
+                ? liveLessonAuthoring?.moduleLessonResourcePublicId ?? null
+                : null
+            }
             standaloneLessonPublicId={materialStandaloneLessonPublicId}
             onAfterMaterialsChange={() => {
               void onLessonMaterialsInvalidate?.();

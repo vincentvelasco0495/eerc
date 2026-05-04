@@ -135,6 +135,17 @@ export const paths = {
     },
     /** Public-facing course landing URL slug (matches course settings URL field). */
     courseDetails: (slug) => `/course-details/${slug}`,
+    /** Full-page text lesson (`kind: document`) — `courseKey` is slug or LMS course `public_id`. */
+    courseTextLesson: (courseKey, lessonId) =>
+      `/course-details/${encodeURIComponent(String(courseKey ?? ''))}/text-lesson/${encodeURIComponent(String(lessonId ?? ''))}`,
+    courseVideoLesson: (courseKey, lessonId) =>
+      `/course-details/${encodeURIComponent(String(courseKey ?? ''))}/video-lesson/${encodeURIComponent(String(lessonId ?? ''))}`,
+    /** Quiz intro (“Start quiz”); `courseKey` is slug or LMS course `public_id`. */
+    courseQuiz: (courseKey, quizId) =>
+      `/course-details/${encodeURIComponent(String(courseKey ?? ''))}/quiz/${encodeURIComponent(String(quizId ?? ''))}`,
+    /** Timed quiz attempt UI (pagination + timer); same `courseKey` as `courseQuiz`. */
+    courseQuizTake: (courseKey, quizId) =>
+      `/course-details/${encodeURIComponent(String(courseKey ?? ''))}/quiz/${encodeURIComponent(String(quizId ?? ''))}/take`,
     modules: {
       details: (moduleId) => `/modules/${moduleId}`,
     },
@@ -148,6 +159,8 @@ export const paths = {
     instructorGradebook: `/instructor-gradebook`,
     instructorAnnouncement: `/instructor-announcement`,
     instructorCourseCurriculum: `/instructor-course-curriculum`,
+    /** Opens the builder against the LMS API and creates a DB row on first save / first module. */
+    instructorNewCourseCurriculum: `/instructor-course-curriculum?new=1`,
     instructorCourseEdit: (slugOrPublicId) =>
       `/instructor-course/${encodeURIComponent(String(slugOrPublicId ?? ''))}/edit`,
     instructorAssignments: `/instructor-assignments`,

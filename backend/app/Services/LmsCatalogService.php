@@ -113,8 +113,8 @@ class LmsCatalogService
     public function modulesForCourse(User $user, string $coursePublicId): array
     {
         $course = Course::query()->where('public_id', $coursePublicId)->with([
-            'modules.resources.lessonMaterials',
-            'modules.lessonCoreMaterials',
+            'modules.resources.lessonMaterials.moduleResource',
+            'modules.moduleLessonMaterials.moduleResource',
             'modules.course',
         ])->firstOrFail();
 
@@ -137,7 +137,11 @@ class LmsCatalogService
 
         $modules = Module::query()
             ->whereIn('public_id', $publicIds)
-            ->with(['resources.lessonMaterials', 'lessonCoreMaterials', 'course'])
+            ->with([
+                'resources.lessonMaterials.moduleResource',
+                'moduleLessonMaterials.moduleResource',
+                'course',
+            ])
             ->get()
             ->sortBy(fn ($m) => array_search($m->public_id, $publicIds, true))
             ->values();
@@ -410,7 +414,7 @@ class LmsCatalogService
     /**
      * @param  \Illuminate\Support\Collection|array  $completedModuleIds
      */
-    protected function formatCourse(Course $c, User $user, $completedModuleIds): array
+    public function formatCourse(Course $c, User $user, $completedModuleIds): array
     {
         $modulesStat = $this->modulesForCourseStats($c);
         $moduleCount = $modulesStat->count();
@@ -427,6 +431,7 @@ class LmsCatalogService
             'slug' => $c->slug,
             'title' => $c->title,
             'programId' => $c->program->public_id,
+            'programTitle' => $c->program?->title ?? '',
             'mentor' => $c->mentor_display_name,
             'description' => $c->description,
             'level' => $c->level,
@@ -441,6 +446,9 @@ class LmsCatalogService
             'tags' => $c->tags->pluck('name')->all(),
             'subjects' => $c->subjects->pluck('name')->all(),
             'updatedAt' => $c->updated_at?->toIso8601String(),
+            'status' => $c->is_published ? 'published' : 'draft',
+            'isPublished' => (bool) $c->is_published,
+            'averageRating' => $c->average_rating !== null ? round((float) $c->average_rating, 1) : null,
             ...($c->video_hours_label ? ['videoHoursLabel' => $c->video_hours_label] : []),
             ...($c->preview_completed ? ['previewCompleted' => true] : []),
         ];
@@ -473,6 +481,14 @@ class LmsCatalogService
             'streamingOnly' => $m->streaming_only,
             'updatedAt' => $m->updated_at?->toIso8601String(),
             'resources' => $m->resources->pluck('format')->all(),
+            'resourceRows' => $m->resources
+                ->map(fn (ModuleResource $r) => [
+                    'id' => $r->public_id,
+                    'format' => $r->format,
+                    'isStandalone' => (bool) $r->is_standalone_lesson,
+                ])
+                ->values()
+                ->all(),
             'standaloneLessons' => $m->resources
                 ->filter(fn (ModuleResource $r) => (bool) $r->is_standalone_lesson)
                 ->sortBy(fn (ModuleResource $r) => sprintf('%05d-%09d', (int) $r->sort_order, $r->id))
@@ -497,7 +513,7 @@ class LmsCatalogService
             'excerptHtml' => $m->excerpt_html,
             'bodyHtml' => filled($m->body_html ?? null) ? $m->body_html : ($m->summary ?? ''),
             'lessonMeta' => $m->lesson_meta_json ?? null,
-            'lessonMaterials' => $m->lessonCoreMaterials
+            'lessonMaterials' => $m->moduleLessonMaterials
                 ->map(fn (LessonMaterial $f) => $this->formatLessonMaterial($f))
                 ->values()
                 ->all(),
@@ -511,6 +527,7 @@ class LmsCatalogService
             'name' => $f->original_name,
             'mime' => $f->mime,
             'sizeBytes' => (int) $f->size_bytes,
+            'moduleResourceId' => $f->moduleResource?->public_id,
         ];
     }
 
@@ -519,11 +536,67 @@ class LmsCatalogService
         return $this->formatQuiz($quiz->loadMissing(['course', 'module']), $user);
     }
 
+    /**
+     * Stored under `settings_json` (merged with defaults for API output).
+     *
+     * @return array<string, mixed>
+     */
+    protected function quizAuthoringDefaults(): array
+    {
+        return [
+            'timeUnit' => 'minutes',
+            'quizStyle' => 'global',
+            'randomizeQuestions' => false,
+            'randomizeAnswers' => false,
+            'showCorrectAnswer' => false,
+            'quizAttemptHistory' => false,
+            'retakeAfterPass' => false,
+            'limitedRetakeAttempts' => false,
+            'passingGrade' => 0,
+            'pointsCutAfterRetake' => null,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $stored
+     * @return array<string, mixed>
+     */
+    protected function normalizeQuizAuthoringFromRow(Quiz $q, ?array $stored): array
+    {
+        $merged = array_merge($this->quizAuthoringDefaults(), is_array($stored) ? $stored : []);
+
+        $timeUnit = (($merged['timeUnit'] ?? 'minutes') === 'hours') ? 'hours' : 'minutes';
+        $merged['timeUnit'] = $timeUnit;
+
+        $dm = max(0, (int) $q->duration_minutes);
+        $displayDuration = $timeUnit === 'hours'
+            ? (int) max(0, (int) round($dm / 60))
+            : $dm;
+        $merged['duration'] = $displayDuration;
+
+        $pg = $merged['passingGrade'] ?? 0;
+        $merged['passingGrade'] = max(0, min(100, (int) $pg));
+
+        $pc = $merged['pointsCutAfterRetake'] ?? null;
+        if ($pc === '' || $pc === false) {
+            $merged['pointsCutAfterRetake'] = null;
+        } elseif ($pc !== null) {
+            $merged['pointsCutAfterRetake'] = max(0, min(100, (float) $pc));
+        }
+
+        return $merged;
+    }
+
     protected function formatQuiz(Quiz $q, User $user): array
     {
         $attempts = QuizAttempt::query()
             ->where('user_id', $user->id)
             ->where('quiz_id', $q->id);
+
+        $authoring = $this->normalizeQuizAuthoringFromRow(
+            $q,
+            is_array($q->settings_json) ? $q->settings_json : null
+        );
 
         return [
             'id' => $q->public_id,
@@ -536,6 +609,19 @@ class LmsCatalogService
             'questionCount' => (int) $q->question_count,
             'questionPoolCount' => (int) $q->question_pool_count,
             'bestScore' => (int) ($attempts->max('score') ?? 0),
+            'shortDescription' => (string) ($q->description ?? ''),
+            'lessonContentHtml' => (string) ($q->lesson_content_html ?? ''),
+            'duration' => (int) ($authoring['duration'] ?? 0),
+            'timeUnit' => (string) ($authoring['timeUnit'] ?? 'minutes'),
+            'quizStyle' => (string) ($authoring['quizStyle'] ?? 'global'),
+            'passingGrade' => (int) ($authoring['passingGrade'] ?? 0),
+            'pointsCutAfterRetake' => $authoring['pointsCutAfterRetake'],
+            'randomizeQuestions' => (bool) ($authoring['randomizeQuestions'] ?? false),
+            'randomizeAnswers' => (bool) ($authoring['randomizeAnswers'] ?? false),
+            'showCorrectAnswer' => (bool) ($authoring['showCorrectAnswer'] ?? false),
+            'quizAttemptHistory' => (bool) ($authoring['quizAttemptHistory'] ?? false),
+            'retakeAfterPass' => (bool) ($authoring['retakeAfterPass'] ?? false),
+            'limitedRetakeAttempts' => (bool) ($authoring['limitedRetakeAttempts'] ?? false),
         ];
     }
 

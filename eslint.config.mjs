@@ -1,5 +1,7 @@
+import path from 'node:path';
 import globals from 'globals';
 import eslintJs from '@eslint/js';
+import { fileURLToPath } from 'node:url';
 import reactPlugin from 'eslint-plugin-react';
 import importPlugin from 'eslint-plugin-import';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
@@ -7,6 +9,9 @@ import perfectionistPlugin from 'eslint-plugin-perfectionist';
 import unusedImportsPlugin from 'eslint-plugin-unused-imports';
 
 // ----------------------------------------------------------------------
+
+const projectDir = path.dirname(fileURLToPath(import.meta.url));
+const srcDir = path.join(projectDir, 'src');
 
 /**
  * @rules common
@@ -178,7 +183,7 @@ export const customConfig = {
         extensions: ['.js', '.jsx', '.json'],
       },
       alias: {
-        map: [['src', './src']],
+        map: [['src', srcDir]],
         extensions: ['.js', '.jsx', '.json'],
       },
     },

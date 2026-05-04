@@ -1,4 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import {
+  useState,
+  useEffect,
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+} from 'react';
 
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
@@ -36,51 +42,155 @@ const TOGGLE_GROUPS = [
   ],
 ];
 
-export function QuizSettingsPanel({ lesson, onLessonSave }) {
+const DEFAULT_TOGGLES = {
+  randomizeQuestions: false,
+  showCorrectAnswer: false,
+  retakeAfterPass: false,
+  randomizeAnswers: false,
+  quizAttemptHistory: false,
+  limitedRetakeAttempts: false,
+};
+
+function hydrateFromAuthoring(authoring) {
+  if (!authoring || typeof authoring !== 'object') {
+    return {
+      shortDescription: '',
+      duration: 80,
+      timeUnit: 'minutes',
+      quizStyle: 'global',
+      passingGrade: 0,
+      pointsCutAfterRetake: '',
+      toggles: { ...DEFAULT_TOGGLES },
+      lessonContentHtml: '',
+    };
+  }
+
+  const tu =
+    authoring.timeUnit === 'hours' || authoring.timeUnit === 'minutes'
+      ? authoring.timeUnit
+      : 'minutes';
+  const dur =
+    typeof authoring.duration === 'number' && !Number.isNaN(authoring.duration)
+      ? authoring.duration
+      : typeof authoring.durationMinutes === 'number'
+        ? authoring.durationMinutes
+        : 80;
+
+  const pc = authoring.pointsCutAfterRetake;
+  const pointsStr =
+    pc === null || pc === undefined || Number.isNaN(Number(pc)) ? '' : String(pc);
+
+  return {
+    shortDescription: typeof authoring.shortDescription === 'string' ? authoring.shortDescription : '',
+    duration: Math.max(0, dur),
+    timeUnit: tu,
+    quizStyle: typeof authoring.quizStyle === 'string' && authoring.quizStyle ? authoring.quizStyle : 'global',
+    passingGrade:
+      typeof authoring.passingGrade === 'number' && !Number.isNaN(authoring.passingGrade)
+        ? authoring.passingGrade
+        : 0,
+    pointsCutAfterRetake: pointsStr,
+    toggles: {
+      randomizeQuestions: Boolean(authoring.randomizeQuestions),
+      showCorrectAnswer: Boolean(authoring.showCorrectAnswer),
+      retakeAfterPass: Boolean(authoring.retakeAfterPass),
+      randomizeAnswers: Boolean(authoring.randomizeAnswers),
+      quizAttemptHistory: Boolean(authoring.quizAttemptHistory),
+      limitedRetakeAttempts: Boolean(authoring.limitedRetakeAttempts),
+    },
+    lessonContentHtml:
+      typeof authoring.lessonContentHtml === 'string' ? authoring.lessonContentHtml : '',
+  };
+}
+
+export const QuizSettingsPanel = forwardRef(function QuizSettingsPanel(
+  { lesson, liveAuthoring, saveLiveQuizSettings, onLessonSave, onSavingChange },
+  ref
+) {
   const [shortDescription, setShortDescription] = useState('');
   const [duration, setDuration] = useState(80);
-  const [timeUnit, setTimeUnit] = useState('');
+  const [timeUnit, setTimeUnit] = useState('minutes');
   const [quizStyle, setQuizStyle] = useState('global');
   const [passingGrade, setPassingGrade] = useState(0);
   const [pointsCutAfterRetake, setPointsCutAfterRetake] = useState('');
 
-  const [toggles, setToggles] = useState({
-    randomizeQuestions: false,
-    showCorrectAnswer: false,
-    retakeAfterPass: false,
-    randomizeAnswers: false,
-    quizAttemptHistory: false,
-    limitedRetakeAttempts: false,
-  });
+  const [toggles, setToggles] = useState({ ...DEFAULT_TOGGLES });
 
   const [lessonContentHtml, setLessonContentHtml] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const live = typeof saveLiveQuizSettings === 'function';
 
   useEffect(() => {
-    setShortDescription('');
-    setDuration(80);
-    setTimeUnit('');
-    setQuizStyle('global');
-    setPassingGrade(0);
-    setPointsCutAfterRetake('');
-    setToggles({
-      randomizeQuestions: false,
-      showCorrectAnswer: false,
-      retakeAfterPass: false,
-      randomizeAnswers: false,
-      quizAttemptHistory: false,
-      limitedRetakeAttempts: false,
-    });
-    setLessonContentHtml('');
-  }, [lesson.id]);
+    const h = hydrateFromAuthoring(live ? liveAuthoring : null);
+    setShortDescription(h.shortDescription);
+    setDuration(h.duration);
+    setTimeUnit(h.timeUnit);
+    setQuizStyle(h.quizStyle);
+    setPassingGrade(h.passingGrade);
+    setPointsCutAfterRetake(h.pointsCutAfterRetake);
+    setToggles(h.toggles);
+    setLessonContentHtml(h.lessonContentHtml);
+  }, [lesson.id, live, liveAuthoring]);
+
+  useEffect(() => {
+    onSavingChange?.(saving);
+    return () => onSavingChange?.(false);
+  }, [saving, onSavingChange]);
 
   const handleToggle = useCallback((key) => {
     setToggles((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  const handleSave = useCallback(() => {
+  const buildPayload = useCallback(() => {
+    const tu = timeUnit === 'hours' || timeUnit === 'minutes' ? timeUnit : 'minutes';
+    const pointsTrim = String(pointsCutAfterRetake).trim();
+    return {
+      shortDescription,
+      lessonContentHtml,
+      duration: Math.max(0, Number(duration) || 0),
+      timeUnit: tu,
+      quizStyle: quizStyle || 'global',
+      passingGrade: Math.min(100, Math.max(0, Number(passingGrade) || 0)),
+      pointsCutAfterRetake: pointsTrim === '' ? null : Number(pointsTrim),
+      randomizeQuestions: toggles.randomizeQuestions,
+      randomizeAnswers: toggles.randomizeAnswers,
+      showCorrectAnswer: toggles.showCorrectAnswer,
+      quizAttemptHistory: toggles.quizAttemptHistory,
+      retakeAfterPass: toggles.retakeAfterPass,
+      limitedRetakeAttempts: toggles.limitedRetakeAttempts,
+    };
+  }, [
+    shortDescription,
+    lessonContentHtml,
+    duration,
+    timeUnit,
+    quizStyle,
+    passingGrade,
+    pointsCutAfterRetake,
+    toggles,
+  ]);
+
+  const handleSave = useCallback(async () => {
+    if (live) {
+      setSaving(true);
+      try {
+        await saveLiveQuizSettings(buildPayload());
+        onLessonSave?.(lesson.id);
+        toast.success(`Quiz “${lesson.title}” settings saved.`);
+      } catch {
+        toast.error('Could not save quiz settings.');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     onLessonSave?.(lesson.id);
     toast.success(`Quiz “${lesson.title}” settings saved (demo).`);
-  }, [lesson.id, lesson.title, onLessonSave]);
+  }, [buildPayload, lesson.id, lesson.title, live, onLessonSave, saveLiveQuizSettings]);
+
+  useImperativeHandle(ref, () => ({ save: () => handleSave() }), [handleSave]);
 
   return (
     <Box sx={styles.quizSettingsRoot}>
@@ -129,9 +239,6 @@ export function QuizSettingsPanel({ lesson, onLessonSave }) {
                 onChange={(e) => setTimeUnit(e.target.value)}
                 sx={styles.quizSettingsSelect}
               >
-                <MenuItem value="">
-                  <em>Select</em>
-                </MenuItem>
                 {TIME_UNIT_OPTIONS.map((o) => (
                   <MenuItem key={o.value} value={o.value}>
                     {o.label}
@@ -237,11 +344,18 @@ export function QuizSettingsPanel({ lesson, onLessonSave }) {
         />
 
         <Box sx={styles.quizSettingsSaveRow}>
-          <Button variant="contained" sx={styles.quizSettingsFooterSaveBtn} onClick={handleSave}>
+          <Button
+            variant="contained"
+            sx={styles.quizSettingsFooterSaveBtn}
+            onClick={() => {
+              void handleSave();
+            }}
+            disabled={saving}
+          >
             Save
           </Button>
         </Box>
       </Box>
     </Box>
   );
-}
+});

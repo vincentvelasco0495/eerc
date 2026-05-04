@@ -5,7 +5,7 @@ import { Iconify } from 'src/components/iconify';
 
 import { styles, quizColors } from './styles';
 
-export function FooterActions({ onAddQuestion, onQuestionBank, onSave }) {
+export function FooterActions({ onAddQuestion, onQuestionBank, onSave, saveDisabled = false }) {
   return (
     <Box sx={styles.footer}>
       <span />
@@ -37,6 +37,7 @@ export function FooterActions({ onAddQuestion, onQuestionBank, onSave }) {
           color="primary"
           sx={{ ...styles.footerBtn, width: { xs: 1, sm: 'auto' } }}
           onClick={onSave}
+          disabled={saveDisabled}
         >
           Save
         </Button>

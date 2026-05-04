@@ -1,6 +1,9 @@
 import { useState, useCallback } from 'react';
 import styled, { css } from 'styled-components';
 
+import { paths } from 'src/routes/paths';
+import { RouterLink } from 'src/routes/components';
+
 import { radii, space, colors } from './course-detail-tokens';
 
 const MODULE_ICON = {
@@ -8,6 +11,7 @@ const MODULE_ICON = {
   video: { bg: '#fff3e0', fg: '#ef6c00' },
   quiz: { bg: '#fff3e0', fg: '#ef6c00' },
   stream: { bg: '#f3e8ff', fg: '#7e22ce' },
+  zoom: { bg: '#dbeafe', fg: '#2563eb' },
 };
 
 const SrOnly = styled.span`
@@ -108,6 +112,50 @@ const LessonRow = styled.div`
   padding: 14px ${space(2.75)};
   background: #f3f4f6;
   border-bottom: 2px solid ${colors.white};
+`;
+
+const LessonRowOuter = styled.div`
+  display: flex;
+  align-items: stretch;
+  min-height: 52px;
+  background: #f3f4f6;
+  border-bottom: 2px solid ${colors.white};
+`;
+
+const LessonRowLink = styled(RouterLink)`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: ${space(2)};
+  padding: 14px ${space(2.75)};
+  padding-right: 10px;
+  margin: 0;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  font: inherit;
+  text-align: left;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.035);
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${colors.primary};
+    outline-offset: -2px;
+  }
+`;
+
+const LessonChevronCell = styled.div`
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  padding-right: 10px;
 `;
 
 const OrderNum = styled.span`
@@ -240,6 +288,12 @@ function lessonGlyphForType(type) {
           />
         </svg>
       );
+    case 'zoom':
+      return (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -248,7 +302,7 @@ function lessonGlyphForType(type) {
 function LessonTypeIcon({ type }) {
   const cfg = MODULE_ICON[type] ?? MODULE_ICON.document;
 
-  const circle = ['video', 'quiz', 'stream'].includes(type);
+  const circle = ['video', 'quiz', 'stream', 'zoom'].includes(type);
 
   return (
     <IconShell $circle={circle} $bg={cfg.bg} $fg={cfg.fg} aria-hidden>
@@ -258,7 +312,7 @@ function LessonTypeIcon({ type }) {
 }
 
 /** Collapsible modules + typed lesson rows (Curriculum tab). */
-export function CourseCurriculum({ modules }) {
+export function CourseCurriculum({ modules, courseLookup }) {
   const [moduleOpen, setModuleOpen] = useState(() => {
     const init = {};
     modules.forEach((m) => {
@@ -296,33 +350,78 @@ export function CourseCurriculum({ modules }) {
                 {module.lessons.map((lesson, idx) => {
                   const expandable = !!lesson.expandable;
                   const isOpen = !!lessonOpen[lesson.id];
+                  const lessonHref =
+                    courseLookup && lesson.type === 'document'
+                      ? paths.dashboard.courseTextLesson(courseLookup, lesson.id)
+                      : courseLookup &&
+                          (lesson.type === 'video' ||
+                            lesson.type === 'stream' ||
+                            lesson.type === 'zoom')
+                        ? paths.dashboard.courseVideoLesson(courseLookup, lesson.id)
+                        : courseLookup && lesson.type === 'quiz'
+                          ? paths.dashboard.courseQuiz(courseLookup, lesson.id)
+                          : null;
 
                   return (
                     <LessonItem key={lesson.id}>
-                      <LessonRow>
-                        <OrderNum>{lesson.order ?? idx + 1}</OrderNum>
-                        <LessonTypeIcon type={lesson.type} />
-                        <LessonMid>
-                          <LessonTitleText>{lesson.title}</LessonTitleText>
-                        </LessonMid>
-                        <MetaText>{lesson.meta}</MetaText>
+                      {lessonHref ? (
+                        <LessonRowOuter>
+                          <LessonRowLink href={lessonHref} aria-label={`Open lesson: ${lesson.title}`}>
+                            <OrderNum>{lesson.order ?? idx + 1}</OrderNum>
+                            <LessonTypeIcon type={lesson.type} />
+                            <LessonMid>
+                              <LessonTitleText>{lesson.title}</LessonTitleText>
+                            </LessonMid>
+                            <MetaText>{lesson.meta}</MetaText>
+                          </LessonRowLink>
+                          <LessonChevronCell>
+                            {expandable ? (
+                              <RowChevronBtn
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  toggleLesson(lesson.id);
+                                }}
+                                aria-expanded={isOpen}
+                                aria-controls={`lesson-peek-${lesson.id}`}
+                                id={`lesson-toggle-${lesson.id}`}
+                              >
+                                <SrOnly>Expand lesson preview</SrOnly>
+                                <RowChevronIcon $open={isOpen} aria-hidden>
+                                  ▼
+                                </RowChevronIcon>
+                              </RowChevronBtn>
+                            ) : (
+                              <span style={{ width: 28 }} aria-hidden />
+                            )}
+                          </LessonChevronCell>
+                        </LessonRowOuter>
+                      ) : (
+                        <LessonRow>
+                          <OrderNum>{lesson.order ?? idx + 1}</OrderNum>
+                          <LessonTypeIcon type={lesson.type} />
+                          <LessonMid>
+                            <LessonTitleText>{lesson.title}</LessonTitleText>
+                          </LessonMid>
+                          <MetaText>{lesson.meta}</MetaText>
 
-                        {expandable ? (
-                          <RowChevronBtn
-                            onClick={() => toggleLesson(lesson.id)}
-                            aria-expanded={isOpen}
-                            aria-controls={`lesson-peek-${lesson.id}`}
-                            id={`lesson-toggle-${lesson.id}`}
-                          >
-                            <SrOnly>Expand lesson preview</SrOnly>
-                            <RowChevronIcon $open={isOpen} aria-hidden>
-                              ▼
-                            </RowChevronIcon>
-                          </RowChevronBtn>
-                        ) : (
-                          <span style={{ flexShrink: 0, width: 28 }} aria-hidden />
-                        )}
-                      </LessonRow>
+                          {expandable ? (
+                            <RowChevronBtn
+                              onClick={() => toggleLesson(lesson.id)}
+                              aria-expanded={isOpen}
+                              aria-controls={`lesson-peek-${lesson.id}`}
+                              id={`lesson-toggle-${lesson.id}`}
+                            >
+                              <SrOnly>Expand lesson preview</SrOnly>
+                              <RowChevronIcon $open={isOpen} aria-hidden>
+                                ▼
+                              </RowChevronIcon>
+                            </RowChevronBtn>
+                          ) : (
+                            <span style={{ flexShrink: 0, width: 28 }} aria-hidden />
+                          )}
+                        </LessonRow>
+                      )}
 
                       {expandable && isOpen ? (
                         <SubPeek id={`lesson-peek-${lesson.id}`} role="region" aria-labelledby={`lesson-toggle-${lesson.id}`}>

@@ -18,7 +18,7 @@ export const styles = {
   }),
   tabsBar: {
     mt: 2,
-    mb: 2,
+    mb: 0,
     width: 1,
   },
   /** Reference: light gray rounded shell; active tab = white “pill”; inactive = same gray as shell. */
@@ -76,10 +76,12 @@ export const styles = {
     };
   },
   lessonPanel: {
+    mt: 3,
     gap: 3,
     pb: 2,
   },
   qaPanel: {
+    mt: 3,
     py: 4,
     px: 1,
   },

@@ -38,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/meta', [LmsMetaController::class, 'show']);
     Route::get('/programs', [LmsProgramController::class, 'index']);
     Route::get('/courses', [LmsCourseController::class, 'index']);
+    Route::post('/courses', [LmsCourseController::class, 'store']);
     Route::post('/courses/{coursePublicId}/modules', [LmsModuleController::class, 'store']);
     Route::post('/modules/{modulePublicId}/standalone-lessons', [LmsModuleController::class, 'storeStandaloneLesson']);
     Route::patch('/standalone-lessons/{publicId}', [LmsModuleController::class, 'updateStandaloneLesson']);
@@ -46,6 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/enrollments', [LmsEnrollmentController::class, 'index']);
     Route::get('/modules', [LmsModuleController::class, 'index']);
     Route::post('/modules/{modulePublicId}/quizzes', [LmsQuizController::class, 'storeForModule']);
+    Route::patch('/quizzes/{publicId}', [LmsQuizController::class, 'update']);
     Route::get('/quizzes', [LmsQuizController::class, 'index']);
     Route::get('/quiz-results', [LmsQuizResultController::class, 'index']);
     Route::get('/leaderboard', [LmsLeaderboardController::class, 'show']);

@@ -1,3 +1,6 @@
+import { alpha } from '@mui/material/styles';
+
+/** Softer drag dots — uniform light gray so headers and lesson rows match (no heavy contrast). */
 export const styles = {
   root: {
     display: 'grid',
@@ -6,10 +9,13 @@ export const styles = {
     flexShrink: 0,
     py: 0.25,
   },
-  dot: {
+  dot: (theme) => ({
     width: 4,
     height: 4,
     borderRadius: '50%',
-    bgcolor: 'text.disabled',
-  },
+    bgcolor:
+      theme.palette.mode === 'light'
+        ? alpha(theme.palette.grey[500], 0.28)
+        : alpha(theme.palette.grey[400], 0.45),
+  }),
 };

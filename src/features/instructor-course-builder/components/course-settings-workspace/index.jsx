@@ -35,9 +35,16 @@ function parseHoursLabel(label) {
 
 /**
  * Navbar “Course” tab — offline demo sandbox, or live LMS authoring when `tiedCourse` is set.
+ * When `onEnsureCourse` is passed without `tiedCourse.id`, Save creates the catalog row then PATCHes it.
  */
-export function CourseSettingsWorkspace({ tiedCourse = null, onSaved } = {}) {
-  const isLive = tiedCourse?.id != null;
+export function CourseSettingsWorkspace({
+  tiedCourse = null,
+  onSaved,
+  /** When set and there is no course id yet, Save calls this first (must return LMS `public_id`). */
+  onEnsureCourse,
+} = {}) {
+  const hasCourseRow = tiedCourse?.id != null;
+  const canPersistToLms = hasCourseRow || typeof onEnsureCourse === 'function';
 
   const [courseName, setCourseName] = useState(curriculumBuilderCourse.title);
   const [slug, setSlug] = useState('how-to-design-components-right');
@@ -65,7 +72,7 @@ export function CourseSettingsWorkspace({ tiedCourse = null, onSaved } = {}) {
   const baseUrlPrefix = curriculumBuilderCourse.baseUrlSlugPrefix ?? '';
 
   useEffect(() => {
-    if (isLive) {
+    if (hasCourseRow) {
       return;
     }
     setCourseName(curriculumBuilderCourse.title);
@@ -86,7 +93,7 @@ export function CourseSettingsWorkspace({ tiedCourse = null, onSaved } = {}) {
     setAccessDuration('');
     setAccessDeviceTypes('');
     setCertificateInfo('');
-  }, [isLive]);
+  }, [hasCourseRow]);
 
   useEffect(() => {
     if (!tiedCourse) {
@@ -124,12 +131,23 @@ export function CourseSettingsWorkspace({ tiedCourse = null, onSaved } = {}) {
   }, [tiedCourse?.id]);
 
   const handlePersistLmsSettings = useCallback(async () => {
-    if (!tiedCourse?.id) {
+    let courseId = tiedCourse?.id;
+    if (!courseId && typeof onEnsureCourse === 'function') {
+      try {
+        courseId = await onEnsureCourse({
+          title: courseName.trim(),
+          programId: programId.trim(),
+        });
+      } catch {
+        return;
+      }
+    }
+    if (!courseId) {
       return;
     }
     try {
       setSaveBusy(true);
-      await patchLmsCourse(tiedCourse.id, {
+      await patchLmsCourse(courseId, {
         title: courseName.trim(),
         description: previewDescription.trim(),
         mentor: mentorDisplayName.trim(),
@@ -152,6 +170,7 @@ export function CourseSettingsWorkspace({ tiedCourse = null, onSaved } = {}) {
     }
   }, [
     tiedCourse?.id,
+    onEnsureCourse,
     audienceHtml,
     bannerUrl,
     courseDuration,
@@ -172,20 +191,22 @@ export function CourseSettingsWorkspace({ tiedCourse = null, onSaved } = {}) {
           courseName={courseName}
           onCourseNameChange={setCourseName}
           slug={slug}
-          slugReadOnly={isLive}
+          slugReadOnly={hasCourseRow}
           onSlugChange={setSlug}
           fullCourseUrlPrefix={baseUrlPrefix}
           programId={programId}
-          programDisabled={isLive}
+          programDisabled={hasCourseRow}
           onProgramIdChange={setProgramId}
-          ownerName={isLive ? mentorDisplayName || 'Instructor' : 'Demo Instructor'}
+          ownerName={canPersistToLms ? mentorDisplayName || 'Instructor' : 'Demo Instructor'}
           mentorDisplayName={mentorDisplayName}
-          onMentorDisplayNameChange={isLive ? setMentorDisplayName : undefined}
+          onMentorDisplayNameChange={canPersistToLms ? setMentorDisplayName : undefined}
           bannerImageUrl={bannerUrl}
-          onBannerImageUrlChange={isLive ? setBannerUrl : undefined}
+          onBannerImageUrlChange={canPersistToLms ? setBannerUrl : undefined}
           coInstructor={coInstructor}
           onCoInstructorChange={setCoInstructor}
-          courseCoverSrc={isLive ? (bannerUrl?.trim() || curriculumCourseCoverImageUrl) : curriculumCourseCoverImageUrl}
+          courseCoverSrc={
+            canPersistToLms ? bannerUrl?.trim() || curriculumCourseCoverImageUrl : curriculumCourseCoverImageUrl
+          }
           courseDuration={courseDuration}
           onCourseDurationChange={setCourseDuration}
           videoDuration={videoDuration}
@@ -211,10 +232,10 @@ export function CourseSettingsWorkspace({ tiedCourse = null, onSaved } = {}) {
           onAccessDeviceTypesChange={setAccessDeviceTypes}
           certificateInfo={certificateInfo}
           onCertificateInfoChange={setCertificateInfo}
-          hideEmbeddedSaveFooter={isLive}
+          hideEmbeddedSaveFooter={canPersistToLms}
         />
 
-        {isLive ? (
+        {canPersistToLms ? (
           <>
             <Divider sx={[css.dividerSection, { my: 3 }]} component="hr" />
             <Stack spacing={2}>
@@ -227,7 +248,9 @@ export function CourseSettingsWorkspace({ tiedCourse = null, onSaved } = {}) {
                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
               />
               <Typography variant="caption" color="text.secondary">
-                Slug and program assignments are locked while editing a live LMS course catalog row.
+                {hasCourseRow
+                  ? 'Slug and program assignments are locked while editing a live LMS course catalog row.'
+                  : 'Save creates the course in the catalog, then applies these settings.'}
               </Typography>
               <Stack direction="row" justifyContent="flex-end">
                 <Button variant="contained" onClick={handlePersistLmsSettings} disabled={saveBusy}>

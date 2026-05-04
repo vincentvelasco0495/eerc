@@ -14,7 +14,7 @@ export function CurriculumLessonTypeIcon({ type }) {
       <Iconify
         icon={spec.icon}
         width={spec.iconW}
-        sx={type === 'video' ? styles.glyphVideo : styles.glyph}
+        sx={styles.glyph(spec, type === 'video')}
       />
     </Box>
   );

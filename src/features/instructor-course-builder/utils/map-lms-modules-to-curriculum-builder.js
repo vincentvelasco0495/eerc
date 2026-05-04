@@ -1,4 +1,24 @@
-function deriveLessonType(m) {
+/**
+ * Sidebar / mapper title for the primary (-core) lesson row.
+ * Persisted as `lessonMeta.coreLessonTitle`; falls back to module title for legacy rows.
+ */
+export function coreLessonListTitle(m) {
+  if (!m || typeof m !== 'object') {
+    return 'Lesson';
+  }
+  const meta = m.lessonMeta && typeof m.lessonMeta === 'object' ? m.lessonMeta : {};
+  const explicit =
+    typeof meta.coreLessonTitle === 'string' && meta.coreLessonTitle.trim() !== ''
+      ? meta.coreLessonTitle.trim()
+      : null;
+  if (explicit) {
+    return explicit;
+  }
+  return m.title ?? 'Lesson';
+}
+
+/** Exported for learner course Curriculum tab — keep in sync with sidebar lesson typing. */
+export function deriveLessonType(m) {
   if (m.streamingOnly) {
     return 'video';
   }
@@ -52,7 +72,7 @@ export function mapLmsModulesToCurriculumBuilder(modules, quizzesForCourse = [])
         id: `${m.id}-core`,
         draft: false,
         type: mainType,
-        title: m.title ?? 'Lesson',
+        title: coreLessonListTitle(m),
         meta: m.duration ?? '—',
       },
       ...standaloneRows,

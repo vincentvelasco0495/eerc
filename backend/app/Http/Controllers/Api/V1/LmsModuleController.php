@@ -77,7 +77,11 @@ class LmsModuleController extends Controller
 
         return response()->json([
             'data' => $catalog->modulePayloadForUser(
-                $module->fresh(['resources.lessonMaterials', 'lessonCoreMaterials', 'course']),
+                $module->fresh([
+                    'resources.lessonMaterials.moduleResource',
+                    'moduleLessonMaterials.moduleResource',
+                    'course',
+                ]),
                 $actor
             ),
         ], 201);
@@ -193,7 +197,11 @@ class LmsModuleController extends Controller
         LmsCatalogService::bustUserAnalyticsCache($actor->id);
 
         $parentModule = Module::query()
-            ->with(['resources.lessonMaterials', 'lessonCoreMaterials', 'course'])
+            ->with([
+                'resources.lessonMaterials.moduleResource',
+                'moduleLessonMaterials.moduleResource',
+                'course',
+            ])
             ->whereKey($row->module_id)
             ->firstOrFail();
 
@@ -319,7 +327,11 @@ class LmsModuleController extends Controller
 
         return response()->json([
             'data' => $catalog->modulePayloadForUser(
-                $module->fresh(['resources.lessonMaterials', 'lessonCoreMaterials', 'course']),
+                $module->fresh([
+                    'resources.lessonMaterials.moduleResource',
+                    'moduleLessonMaterials.moduleResource',
+                    'course',
+                ]),
                 $actor
             ),
         ]);

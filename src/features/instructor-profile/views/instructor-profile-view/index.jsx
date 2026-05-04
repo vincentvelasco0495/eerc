@@ -27,7 +27,10 @@ const ITEMS_PER_PAGE = 6;
 const COURSES_PAGE_SIZE = 100;
 
 export function InstructorProfileView() {
-  const { courses: apiCourses, isLoading, error } = useLmsCourses(1, COURSES_PAGE_SIZE);
+  const { courses: apiCourses, isLoading, error, mutate: mutateCourses } = useLmsCourses(
+    1,
+    COURSES_PAGE_SIZE
+  );
 
   const mappedFromApi = useMemo(
     () => apiCourses.map((c) => mapLmsCatalogCourseToInstructorCard(c)),
@@ -97,7 +100,11 @@ export function InstructorProfileView() {
 
         <Grid container spacing={{ xs: 2, sm: 2, md: 2.5 }}>
           {instructorAnalyticsStats.map((item) => (
-            <Grid key={item.id} size={{ xs: 12, sm: 6, md: 4, xl: 3 }} sx={styles.statGrid}>
+            <Grid
+              key={item.id}
+              size={{ xs: 12, sm: 6, md: 4, lg: 4, xl: 4 }}
+              sx={styles.statGrid}
+            >
               <InstructorProfileStatCard item={item} />
             </Grid>
           ))}
@@ -131,7 +138,11 @@ export function InstructorProfileView() {
               <Grid container spacing={{ xs: 2, sm: 2, md: 2.5 }}>
                 {visibleCourses.map((course) => (
                   <Grid key={course.id} size={{ xs: 12, sm: 6, lg: 4 }} sx={styles.courseGrid}>
-                    <InstructorCourseCard course={course} onCourseUpdate={handleCourseUpdate} />
+                    <InstructorCourseCard
+                      course={course}
+                      onCourseUpdate={handleCourseUpdate}
+                      onRemoteCoursesInvalidate={mutateCourses}
+                    />
                   </Grid>
                 ))}
               </Grid>

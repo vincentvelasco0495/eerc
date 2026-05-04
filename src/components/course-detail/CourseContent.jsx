@@ -5,7 +5,6 @@ import { CourseFaq } from './CourseFaq';
 import { CourseTabs } from './CourseTabs';
 import { CourseNotice } from './CourseNotice';
 import { tabKeys } from './course-detail-data';
-import { RelatedCourses } from './RelatedCourses';
 import { CourseCurriculum } from './CourseCurriculum';
 import { radii, space, colors } from './course-detail-tokens';
 
@@ -67,13 +66,6 @@ const PlaceholderPane = styled.div`
   line-height: 1.6;
 `;
 
-/** Separates accordion / curriculum blocks from Related courses */
-const PanelDivider = styled.hr`
-  margin: ${space(4)} 0 ${space(2)};
-  border: none;
-  border-top: 1px solid ${colors.border};
-`;
-
 const TAB_LABEL_READABLE = {
   reviews: 'Reviews',
 };
@@ -84,11 +76,10 @@ const ContentRoot = styled.div``;
 export function CourseContent({
   data,
   heroImageUrl,
-  relatedCourses,
   noticeContent,
-  relatedCoursesNotice,
   curriculumModules,
   faqItems,
+  courseLookup,
 }) {
   const [tabKey, setTabKey] = useState('description');
 
@@ -129,33 +120,17 @@ export function CourseContent({
               ))}
             </List>
           </BulletSection>
-
-          <RelatedCourses items={relatedCourses} />
         </>
       ) : null}
 
       {tabKey === 'curriculum' ? (
-        <>
-          <CourseCurriculum modules={curriculumModules} />
-          <PanelDivider aria-hidden />
-          <RelatedCourses items={relatedCourses} omitOuterTopMargin />
-        </>
+        <CourseCurriculum modules={curriculumModules} courseLookup={courseLookup} />
       ) : null}
 
-      {tabKey === 'faq' ? (
-        <>
-          <CourseFaq items={faqItems} />
-          <PanelDivider aria-hidden />
-          <RelatedCourses items={relatedCourses} omitOuterTopMargin />
-        </>
-      ) : null}
+      {tabKey === 'faq' ? <CourseFaq items={faqItems} /> : null}
 
       {tabKey === 'notice' && noticeContent ? (
-        <>
-          <CourseNotice heading={noticeContent.heading} items={noticeContent.items} />
-          <PanelDivider aria-hidden />
-          <RelatedCourses items={relatedCoursesNotice ?? relatedCourses} omitOuterTopMargin />
-        </>
+        <CourseNotice heading={noticeContent.heading} items={noticeContent.items} />
       ) : null}
 
       {tabKey === 'reviews' ? (

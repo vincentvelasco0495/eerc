@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Api\Concerns\ResolvesLmsActor;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
+use App\Models\Program;
 use App\Models\UserModuleProgress;
 use App\Services\LmsCatalogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class LmsCourseController extends Controller
 {
@@ -23,6 +25,71 @@ class LmsCourseController extends Controller
         $payload = $catalog->coursesPaginated($user, $page, $limit);
 
         return response()->json($payload);
+    }
+
+    /**
+     * Create a new catalog course (instructor authoring). Program defaults to the first program
+     * when `programId` is omitted. Slug is generated from the title and made unique.
+     */
+    public function store(Request $request, LmsCatalogService $catalog): JsonResponse
+    {
+        $user = $this->lmsActor();
+
+        $validated = $request->validate([
+            'title' => ['sometimes', 'nullable', 'string', 'max:512'],
+            'programId' => ['sometimes', 'nullable', 'string', 'max:64'],
+        ]);
+
+        $title = isset($validated['title']) ? trim((string) $validated['title']) : '';
+        if ($title === '') {
+            $title = 'Untitled course';
+        }
+
+        $programHint = isset($validated['programId']) ? trim((string) $validated['programId']) : '';
+        $program = Program::query()
+            ->when($programHint !== '', fn ($q) => $q->where('public_id', $programHint))
+            ->orderBy('id')
+            ->first();
+
+        if ($program === null) {
+            $program = Program::query()->orderBy('id')->firstOrFail();
+        }
+
+        $baseSlug = Str::slug($title);
+        if ($baseSlug === '') {
+            $baseSlug = 'course';
+        }
+
+        $slug = $baseSlug;
+        $n = 2;
+        while (Course::query()->where('slug', $slug)->exists()) {
+            $slug = $baseSlug.'-'.$n;
+            $n++;
+        }
+
+        $course = Course::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'program_id' => $program->id,
+            'slug' => $slug,
+            'title' => $title,
+            'mentor_display_name' => $user->name,
+            'description' => null,
+            'marketing_json' => [],
+            'is_published' => false,
+        ]);
+
+        LmsCatalogService::bustUserAnalyticsCache($user->id);
+
+        $completedMods = UserModuleProgress::query()
+            ->where('user_id', $user->id)
+            ->where('progress_percent', '>=', 100)
+            ->pluck('module_id');
+
+        $fresh = $course->fresh(['program', 'tags', 'subjects', 'nextModule', 'modules']);
+
+        return response()->json([
+            'data' => $catalog->formatCourse($fresh, $user, $completedMods),
+        ], 201);
     }
 
     /** Partial update (`courses.description`, scalar fields, and merge into `courses.marketing_json`). */
@@ -41,6 +108,7 @@ class LmsCourseController extends Controller
             'hours' => ['sometimes', 'integer', 'min:0', 'max:65535'],
             'videoHoursLabel' => ['sometimes', 'nullable', 'string', 'max:191'],
             'marketing' => ['sometimes', 'array'],
+            'isPublished' => ['sometimes', 'boolean'],
         ]);
 
         if (isset($validated['title'])) {
@@ -67,6 +135,10 @@ class LmsCourseController extends Controller
             $course->video_hours_label = $validated['videoHoursLabel'] !== null
                 ? trim((string) $validated['videoHoursLabel'])
                 : null;
+        }
+
+        if (array_key_exists('isPublished', $validated)) {
+            $course->is_published = (bool) $validated['isPublished'];
         }
 
         if (isset($validated['marketing']) && is_array($validated['marketing'])) {

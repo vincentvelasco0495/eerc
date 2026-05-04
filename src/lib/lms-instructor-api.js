@@ -29,6 +29,14 @@ export async function patchLmsCourse(publicId, payload) {
   return data;
 }
 
+/**
+ * @param {{ title?: string, programId?: string|null }} [payload]
+ */
+export async function postLmsCourse(payload = {}) {
+  const { data } = await axios.post(`/api/courses`, payload ?? {});
+  return data;
+}
+
 export async function patchLmsModule(publicId, payload) {
   const { data } = await axios.patch(
     `/api/modules/${encodeURIComponent(publicId)}`,
@@ -84,10 +92,34 @@ export async function postLmsQuizForModule(modulePublicId, payload) {
   return data;
 }
 
-/** @param {File} file */
-export async function postLessonMaterialForModule(modulePublicId, file) {
+/** Fetch editable questions/options for one quiz (`GET /api/quizzes/{id}/questions`). */
+export async function getLmsQuizQuestions(publicId) {
+  const { data } = await axios.get(
+    `/api/quizzes/${encodeURIComponent(publicId)}/questions`
+  );
+  return data;
+}
+
+/** Persist quiz title + full question list (`PATCH /api/quizzes/{id}`). */
+export async function patchLmsQuiz(publicId, payload) {
+  const { data } = await axios.patch(
+    `/api/quizzes/${encodeURIComponent(publicId)}`,
+    payload ?? {}
+  );
+  return data;
+}
+
+/**
+ * @param {File} file
+ * @param {{ moduleResourcePublicId?: string|null }} [options]
+ */
+export async function postLessonMaterialForModule(modulePublicId, file, options = {}) {
   const fd = new FormData();
   fd.append('file', file);
+  const rid = options.moduleResourcePublicId;
+  if (rid != null && String(rid).trim() !== '') {
+    fd.append('moduleResourcePublicId', String(rid).trim());
+  }
   const { data } = await axios.post(
     `/api/modules/${encodeURIComponent(modulePublicId)}/lesson-materials`,
     fd

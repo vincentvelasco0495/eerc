@@ -42,6 +42,8 @@ export function TextLessonWorkspaceMaterials({
   /** When false, uploads show a toast (dropzone stays usable). */
   apiConfigured = false,
   modulePublicId = null,
+  /** When uploading into the core module lesson, tag against this `module_resources` row. */
+  moduleResourcePublicId = null,
   standaloneLessonPublicId = null,
   onAfterMaterialsChange,
 }) {
@@ -71,7 +73,9 @@ export function TextLessonWorkspaceMaterials({
           acceptedFiles.map((file) =>
             standaloneLessonPublicId
               ? postLessonMaterialForStandaloneLesson(standaloneLessonPublicId, file)
-              : postLessonMaterialForModule(modulePublicId, file)
+              : postLessonMaterialForModule(modulePublicId, file, {
+                  moduleResourcePublicId,
+                })
           )
         );
         toast.success(`Uploaded ${acceptedFiles.length === 1 ? 'file' : `${acceptedFiles.length} files`}.`);
@@ -82,7 +86,7 @@ export function TextLessonWorkspaceMaterials({
         setBusy(false);
       }
     },
-    [hasTarget, modulePublicId, onAfterMaterialsChange, standaloneLessonPublicId]
+    [hasTarget, modulePublicId, moduleResourcePublicId, onAfterMaterialsChange, standaloneLessonPublicId]
   );
 
   const onDrop = useCallback(

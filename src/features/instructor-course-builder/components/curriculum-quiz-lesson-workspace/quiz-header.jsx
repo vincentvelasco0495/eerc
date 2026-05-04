@@ -7,7 +7,7 @@ import { Iconify } from 'src/components/iconify';
 
 import { styles } from './styles';
 
-export function QuizHeader({ title, onTitleChange, onSave }) {
+export function QuizHeader({ title, onTitleChange, onSave, saveDisabled = false }) {
   return (
     <Box sx={styles.header}>
       <Box sx={styles.headerLeft}>
@@ -29,7 +29,13 @@ export function QuizHeader({ title, onTitleChange, onSave }) {
           sx={styles.headerTitleField}
         />
       </Box>
-      <Button variant="contained" color="primary" sx={styles.saveBtn} onClick={onSave}>
+      <Button
+        variant="contained"
+        color="primary"
+        sx={styles.saveBtn}
+        onClick={onSave}
+        disabled={saveDisabled}
+      >
         Save
       </Button>
     </Box>

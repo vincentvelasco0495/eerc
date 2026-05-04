@@ -1,26 +1,26 @@
 import styled, { css } from 'styled-components';
 
-import { radii, colors, shadow } from './course-detail-tokens';
+import { radii, colors } from './course-detail-tokens';
 
 const variants = {
   default: css`
     background: ${colors.white};
-    border: 1px solid ${colors.border};
+    border: none;
   `,
   completion: css`
-    background: #eff6ff;
-    border: 1px solid #dbeafe;
+    background: ${colors.white};
+    border: none;
   `,
   muted: css`
     background: #f9fafb;
-    border: 1px solid ${colors.border};
+    border: none;
   `,
 };
 
 /** Shared sidebar surface: rounded card, subtle shadow (~12px radius). */
 export const SidebarCard = styled.section`
   border-radius: ${radii.card};
-  box-shadow: ${shadow.card};
+  box-shadow: none;
   padding: 18px;
   ${(props) => variants[props.$variant] ?? variants.default};
 `;

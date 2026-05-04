@@ -13,7 +13,7 @@ const sidebarGroups = [
       {
         label: 'Add Courses',
         icon: 'solar:add-circle-bold-duotone',
-        path: paths.dashboard.instructorCourseCurriculum,
+        path: paths.dashboard.instructorNewCourseCurriculum,
       },
     ],
   },
@@ -90,10 +90,8 @@ export function buildInstructorProfileIdentity(user) {
   };
 }
 
-// Summary metrics
+// Summary metrics (instructor analytics strip)
 export const instructorAnalyticsStats = [
-  { id: 'revenue', label: 'Revenue', value: '$3,937.56', icon: 'solar:wallet-money-bold-duotone' },
-  { id: 'orders', label: 'Orders', value: '30', icon: 'solar:cart-large-4-bold-duotone' },
   { id: 'courses', label: 'Courses', value: '14', icon: 'solar:book-bookmark-bold-duotone' },
   {
     id: 'enrollments',
@@ -102,14 +100,6 @@ export const instructorAnalyticsStats = [
     icon: 'solar:users-group-rounded-bold-duotone',
   },
   { id: 'students', label: 'Students', value: '19,258', icon: 'solar:user-circle-bold-duotone' },
-  { id: 'reviews', label: 'Reviews', value: '34', icon: 'solar:star-bold-duotone' },
-  {
-    id: 'certificates',
-    label: 'Certificates created',
-    value: '3',
-    icon: 'solar:diploma-verified-bold-duotone',
-  },
-  { id: 'bundles', label: 'Bundles', value: '5', icon: 'solar:layers-bold-duotone' },
 ];
 
 export const instructorReportingPeriods = ['All time', 'This month', 'This quarter', 'This year'];

@@ -8,7 +8,7 @@ export function CurriculumDragHandle() {
   return (
     <Box sx={styles.root}>
       {DRAG_DOT_KEYS.map((k) => (
-        <Box key={k} sx={styles.dot} />
+        <Box key={k} sx={(theme) => styles.dot(theme)} />
       ))}
     </Box>
   );

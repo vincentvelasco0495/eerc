@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LmsLessonMaterialController extends Controller
@@ -25,7 +26,31 @@ class LmsLessonMaterialController extends Controller
         /** @var Module $module */
         $module = Module::query()->where('public_id', $modulePublicId)->firstOrFail();
 
-        return $this->persistUpload($request, $module->id, null);
+        $request->validate([
+            'moduleResourcePublicId' => ['sometimes', 'nullable', 'string', 'max:64'],
+        ]);
+
+        $resourcePublicId = $request->input('moduleResourcePublicId');
+        if (! is_string($resourcePublicId) || trim($resourcePublicId) === '') {
+            return $this->persistUpload($request, $module->id, null);
+        }
+
+        $resource = ModuleResource::query()
+            ->where('public_id', trim($resourcePublicId))
+            ->where('module_id', $module->id)
+            ->first();
+
+        // Stale client id (e.g. another course) or core lesson with no `module_resources` row yet:
+        // attach to the module only (same as omitting the field).
+        if ($resource === null) {
+            return $this->persistUpload($request, $module->id, null);
+        }
+
+        if ($resource->is_standalone_lesson) {
+            return $this->persistUpload($request, null, $resource->id);
+        }
+
+        return $this->persistUpload($request, $module->id, $resource->id);
     }
 
     public function storeForStandaloneLesson(Request $request, string $publicId): JsonResponse
@@ -45,8 +70,12 @@ class LmsLessonMaterialController extends Controller
     {
         $actor = $this->lmsActor();
 
-        /** @var LessonMaterial $row */
-        $row = LessonMaterial::query()->where('public_id', $publicId)->firstOrFail();
+        $row = LessonMaterial::query()->where('public_id', $publicId)->first();
+
+        if ($row === null) {
+            /** Idempotent: stale client meta / prior cleanup — do not 404. */
+            return response()->json(['ok' => true]);
+        }
 
         if (Storage::disk('local')->exists($row->storage_path)) {
             Storage::disk('local')->delete($row->storage_path);
@@ -59,16 +88,35 @@ class LmsLessonMaterialController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    /** Stream the binary for instructor authoring (authenticated). */
-    public function download(string $publicId): StreamedResponse|\Illuminate\Http\Response
+    /**
+     * Stream lesson material bytes (authenticated).
+     * Use `?inline=1` for inline playback (e.g. HTML5 video); default is attachment download.
+     */
+    public function download(Request $request, string $publicId): BinaryFileResponse|StreamedResponse|\Illuminate\Http\Response
     {
         $this->lmsActor();
 
-        /** @var LessonMaterial $row */
-        $row = LessonMaterial::query()->where('public_id', $publicId)->firstOrFail();
+        $row = LessonMaterial::query()->where('public_id', $publicId)->first();
+
+        if ($row === null) {
+            return response()->json(['message' => 'Lesson material not found.'], 404);
+        }
 
         if (! Storage::disk('local')->exists($row->storage_path)) {
             return response()->json(['message' => 'File missing on storage.'], 404);
+        }
+
+        $absolutePath = Storage::disk('local')->path($row->storage_path);
+
+        if ($request->boolean('inline')) {
+            $mime = is_string($row->mime) && trim($row->mime) !== ''
+                ? trim((string) $row->mime)
+                : 'application/octet-stream';
+
+            return response()->file($absolutePath, [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'inline',
+            ]);
         }
 
         return Storage::disk('local')->download($row->storage_path, $row->original_name);
@@ -78,7 +126,7 @@ class LmsLessonMaterialController extends Controller
     {
         $actor = $this->lmsActor();
 
-        if (($moduleId === null) === ($moduleResourceId === null)) {
+        if ($moduleId === null && $moduleResourceId === null) {
             return response()->json(['message' => 'Invalid attachment target.'], 422);
         }
 

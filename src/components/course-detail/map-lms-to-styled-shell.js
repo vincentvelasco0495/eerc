@@ -1,50 +1,33 @@
 import { paths } from 'src/routes/paths';
 
+import { resolveCourseHeroImageUrl } from 'src/utils/course-hero-image';
+
 import { getCourseCopy } from 'src/features/courses/data/course-page-copy';
 import { mergeTabsContentFromCourseApi } from 'src/features/courses/utils/merge-course-tabs-from-api';
+import {
+  deriveLessonType,
+  coreLessonListTitle,
+} from 'src/features/instructor-course-builder/utils/map-lms-modules-to-curriculum-builder';
 
 // ----------------------------------------------------------------------
 
-const THUMB_POOL = [
-  'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1631543918753-70913d8f897f?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1517842645767-c167b782060d?auto=format&fit=crop&w=400&q=80',
-];
-
-const HERO_POOL = [
-  'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1497633762265-9d1799289902?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=1400&q=80',
-];
-
-const BADGE_TONES = ['hot', 'special', 'default'];
-
-function stableHash(str) {
-  let h = 0;
-  for (let i = 0; i < String(str).length; i += 1) {
-    h = Math.imul(31, h) + String(str).charCodeAt(i);
+function plainTextFromRichLessonFields(row) {
+  if (!row || typeof row !== 'object') {
+    return '';
   }
-  return Math.abs(h);
-}
-
-function pickImage(seed, pool) {
-  const i = stableHash(seed) % pool.length;
-  return pool[i];
-}
-
-function deriveLessonType(m) {
-  if (m.streamingOnly) {
-    return 'stream';
+  const ex = row.excerptHtml;
+  if (typeof ex === 'string' && ex.trim()) {
+    return ex.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   }
-  const hasVideo = Array.isArray(m.resources) && m.resources.includes('Video');
-  if (hasVideo) {
-    return 'video';
+  const body = row.bodyHtml;
+  if (typeof body === 'string' && body.trim()) {
+    return body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   }
-  const step = typeof m.type === 'string' ? m.type.toLowerCase() : '';
-  if (step.includes('practice') || step.includes('coach') || step.includes('final')) {
-    return 'quiz';
+  const sum = row.summary;
+  if (typeof sum === 'string' && sum.trim()) {
+    return sum.trim();
   }
-  return 'document';
+  return '';
 }
 
 function reviewsToRating(copy) {
@@ -75,21 +58,14 @@ function reviewsToRating(copy) {
   };
 }
 
-function courseHref(courseRow) {
-  const slug =
-    typeof courseRow.slug === 'string' && courseRow.slug.trim() ? courseRow.slug.trim() : courseRow.id;
-  return slug ? paths.dashboard.courseDetails(slug) : '#';
-}
-
 /**
  * LMS API records → payloads for `{@link CourseDetailLayout}` (styled-components /course-detail UI).
  *
  * @param {object} course
  * @param {object[]} modules
  * @param {object[]} quizzesForCourse  quizzes where `quiz.courseId === course.id`
- * @param {object[]} allCourses         catalog excluding current for related lists
  */
-export function mapLmsToStyledCourseDetail(course, modules, quizzesForCourse, allCourses = []) {
+export function mapLmsToStyledCourseDetail(course, modules, quizzesForCourse) {
   const copy = getCourseCopy(course);
   const tabs = mergeTabsContentFromCourseApi(course, copy);
 
@@ -115,25 +91,51 @@ export function mapLmsToStyledCourseDetail(course, modules, quizzesForCourse, al
       ? sortedModules.map((m, mi) => {
           const quizzes = quizzesByModule.get(m.id) ?? [];
           const mainType = deriveLessonType(m);
-          const expandable = !!(m.summary && String(m.summary).trim());
-          const peekBody =
-            expandable && String(m.summary).trim()
-              ? String(m.summary).trim()
-              : 'More detail for this module will appear here.';
+          const corePeek = plainTextFromRichLessonFields({
+            excerptHtml: m.excerptHtml,
+            bodyHtml: m.bodyHtml,
+            summary: m.summary,
+          });
+          const expandable = !!corePeek;
+          const peekBody = expandable ? corePeek : undefined;
+
+          const standaloneSource = Array.isArray(m.standaloneLessons) ? m.standaloneLessons : [];
+          const standaloneRows = standaloneSource.filter(
+            (row) => row && typeof row.id === 'string' && row.kind && row.kind !== 'quiz'
+          );
+
+          const standaloneLessons = standaloneRows.map((sl, si) => {
+            const peekText = plainTextFromRichLessonFields(sl);
+            const slExpandable = !!peekText;
+            const meta =
+              sl.kind === 'document'
+                ? 'Text'
+                : `${String(sl.kind).replace(/^\w/, (c) => c.toUpperCase())}`;
+            return {
+              id: sl.id,
+              order: 2 + si,
+              type: sl.kind,
+              title: sl.title ?? 'Lesson',
+              meta,
+              expandable: slExpandable,
+              peekBody: slExpandable ? peekText.slice(0, 620) : undefined,
+            };
+          });
 
           const lessons = [
             {
               id: `${m.id}-core`,
               order: 1,
               type: mainType,
-              title: m.title,
+              title: coreLessonListTitle(m),
               meta: m.duration ?? '—',
               expandable,
               peekBody,
             },
+            ...standaloneLessons,
             ...quizzes.map((q, qi) => ({
               id: q.id,
-              order: qi + 2,
+              order: 2 + standaloneRows.length + qi,
               type: 'quiz',
               title: q.title,
               meta: `${q.questionCount ?? 0} questions`,
@@ -250,7 +252,7 @@ export function mapLmsToStyledCourseDetail(course, modules, quizzesForCourse, al
 
   const data = {
     category: copy.category ?? 'Course',
-    badge: typeof copy.badge === 'string' && copy.badge.trim() ? copy.badge : '',
+    badge: '',
     title: course.title ?? 'Course',
     instructor: {
       name: mentorName,
@@ -266,51 +268,7 @@ export function mapLmsToStyledCourseDetail(course, modules, quizzesForCourse, al
     audience: tabs.audience,
   };
 
-  const bannerFromMarketing =
-    course?.marketing &&
-    typeof course.marketing.bannerImageUrl === 'string' &&
-    course.marketing.bannerImageUrl.trim()
-      ? course.marketing.bannerImageUrl.trim()
-      : '';
-
-  const heroImageUrl =
-    bannerFromMarketing || pickImage(course.id ?? course.slug ?? 'hero', HERO_POOL);
-
-  const siblingCourses = Array.isArray(allCourses) ? allCourses.filter((row) => row.id !== course.id) : [];
-
-  const toMiniCard = (row, idx) => {
-    const seed = `${row.id ?? idx}`;
-    const h = stableHash(seed);
-    const badgeTone = BADGE_TONES[h % BADGE_TONES.length];
-    const badge = row.tags?.[0] ?? ([0, 2].includes(idx % 5) ? 'NEW' : '');
-
-    return {
-      id: row.id ?? `c-${idx}`,
-      title: row.title ?? 'Course',
-      badge: badge || null,
-      badgeTone,
-      href: courseHref(row),
-      imageUrl: pickImage(seed, THUMB_POOL),
-      priceLabel: 'Free',
-      instructor: typeof row.mentor === 'string' && row.mentor.trim() ? row.mentor.trim() : 'Instructor',
-      rating: Number.isFinite(4 + (h % 10) / 10) ? 4 + (h % 10) / 10 : 4.5,
-    };
-  };
-
-  const popularCoursesItems = siblingCourses.slice(0, 4).map(toMiniCard);
-
-  const relatedCoursesItems = siblingCourses.slice(0, 3).map((row, idx) => {
-    const base = toMiniCard(row, idx + 99);
-    return {
-      ...base,
-      badge: idx === 1 ? 'HOT' : idx === 0 ? 'SPECIAL' : base.badge ?? 'NEW',
-      badgeTone: BADGE_TONES[idx % BADGE_TONES.length],
-      ...(idx === 0 ? { priceStrike: '$49.99' } : {}),
-    };
-  });
-
-  /** Notice tab Related strip uses the same LMS sibling courses as Description/Curriculum. */
-  const noticeRelatedCoursesItems = relatedCoursesItems;
+  const heroImageUrl = resolveCourseHeroImageUrl(course);
 
   const fallbackNoticeBodies =
     tabs.noticeStrings.length > 0
@@ -348,17 +306,18 @@ export function mapLmsToStyledCourseDetail(course, modules, quizzesForCourse, al
     answer: row.answer,
   }));
 
+  const courseLookup =
+    typeof course.slug === 'string' && course.slug.trim() ? course.slug.trim() : (course.id ?? '');
+
   return {
     data,
     heroImageUrl,
     completion,
     detailRows,
     curriculumModules,
-    popularCoursesItems,
-    relatedCoursesItems,
     noticeContent,
-    noticeRelatedCoursesItems,
     faqItems,
     continueHref,
+    courseLookup,
   };
 }

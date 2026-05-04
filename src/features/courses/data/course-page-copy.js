@@ -4,7 +4,6 @@
 export const COURSE_PAGE_COPY = {
   'course-ce-review': {
     category: 'Civil Engineering',
-    badge: 'NEW',
     description:
       'A comprehensive Civil Engineering review course focused on hydraulics, structures, and environmental systems. It helps learners organize technical concepts, practice board-style problems, and build confidence for licensure preparation.',
     body: [
@@ -242,7 +241,6 @@ export function getCourseCopy(course) {
   return (
     COURSE_PAGE_COPY[course.id] ?? {
       category: 'Engineering Program',
-      badge: 'FEATURED',
       description: fallbackDesc || 'Course overview',
       body: fallbackDesc ? [fallbackDesc] : ['Overview will appear here soon.'],
       learn:

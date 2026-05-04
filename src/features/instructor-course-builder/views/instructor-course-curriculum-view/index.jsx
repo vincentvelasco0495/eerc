@@ -1,3 +1,4 @@
+import { useNavigate, useSearchParams } from 'react-router';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
@@ -19,9 +20,12 @@ import {
 import { CONFIG } from 'src/global-config';
 import { DashboardContent } from 'src/layouts/dashboard';
 import {
+  patchLmsQuiz,
+  postLmsCourse,
   patchLmsCourse,
   patchLmsModule,
   deleteLmsModule,
+  getLmsQuizQuestions,
   postLmsQuizForModule,
   postLmsModuleForCourse,
   getLmsAxiosErrorMessage,
@@ -43,16 +47,9 @@ import { paragraphsToHtml, htmlToParagraphTexts } from '../../utils/course-marke
 import { mapLmsModulesToCurriculumBuilder } from '../../utils/map-lms-modules-to-curriculum-builder';
 import {
   curriculumBuilderCourse,
-  curriculumBuilderModules,
   curriculumNewLessonTitleByType,
 } from '../../instructor-course-curriculum-data';
-
-function cloneModules(mods) {
-  return mods.map((mod) => ({
-    ...mod,
-    lessons: mod.lessons.map((lesson) => ({ ...lesson })),
-  }));
-}
+import { resolveCoreLessonMaterialResourcePublicId } from '../../utils/resolve-core-lesson-material-resource-public-id';
 
 function addLessonToModuleState(prevModules, moduleId, lessonType) {
   const mod = prevModules.find((m) => m.id === moduleId);
@@ -96,27 +93,85 @@ function lessonExistsInModules(lessonId, mods) {
   return mods.some((m) => m.lessons.some((l) => l.id === lessonId));
 }
 
-/** `courseLookup=null` demo builder; slug or LMS `public_id` for live authoring (requires Laravel API). */
-export function InstructorCourseCurriculumView({ courseLookup = null }) {
+/**
+ * `courseLookup=null` → offline demo.
+ * With API + `?new=1` → live authoring that creates `POST /api/courses` on first save/module.
+ * With `?course=slug-or-id` → edit that catalog row.
+ */
+export function InstructorCourseCurriculumView({ courseLookup = null, isNewCourseIntent = false }) {
   const theme = useTheme();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [bootstrapCourseId, setBootstrapCourseId] = useState(null);
+  const [creatingCourse, setCreatingCourse] = useState(false);
+
   const attemptedLiveCourse =
     typeof courseLookup === 'string' && courseLookup.trim() !== '';
   const apiEnabled = Boolean(CONFIG.serverUrl?.trim());
-  const isLive = attemptedLiveCourse && apiEnabled;
+  const isLive =
+    apiEnabled &&
+    (attemptedLiveCourse || isNewCourseIntent || Boolean(bootstrapCourseId));
   const trimmedLookup = attemptedLiveCourse ? courseLookup.trim() : '';
 
   const resolvedId = useResolvedCourseIdFromLookup(isLive ? trimmedLookup : '');
+  const effectiveCourseId = useMemo(
+    () => (resolvedId || bootstrapCourseId || '').trim(),
+    [resolvedId, bootstrapCourseId]
+  );
+
   const { isLoading: coursesLoading, mutate: mutateCourses } = useLmsCourses(1, 500);
-  const course = useLmsCourse(isLive ? resolvedId : '');
+  const course = useLmsCourse(isLive && effectiveCourseId ? effectiveCourseId : '');
   const { modules: lmsModules, mutate: mutateLmsModules } = useLmsModulesByCourse(
-    isLive && resolvedId ? resolvedId : null,
+    isLive && effectiveCourseId ? effectiveCourseId : null,
     { revalidateOnFocus: false }
   );
   const { quizzes: allQuizzes, mutate: mutateQuizzes } = useLmsQuizzes();
 
   const quizzesForCourse = useMemo(
-    () => (isLive && resolvedId ? allQuizzes.filter((q) => q.courseId === resolvedId) : []),
-    [allQuizzes, isLive, resolvedId]
+    () =>
+      isLive && effectiveCourseId
+        ? allQuizzes.filter((q) => q.courseId === effectiveCourseId)
+        : [],
+    [allQuizzes, isLive, effectiveCourseId]
+  );
+
+  const ensureCourseCreated = useCallback(
+    async (opts) => {
+      const fromUrl = (resolvedId || '').trim();
+      if (fromUrl) {
+        return fromUrl;
+      }
+      const fromState = (bootstrapCourseId || '').trim();
+      if (fromState) {
+        return fromState;
+      }
+      setCreatingCourse(true);
+      try {
+        const titleRaw = opts && typeof opts.title === 'string' ? opts.title.trim() : '';
+        const programRaw = opts && typeof opts.programId === 'string' ? opts.programId.trim() : '';
+        const json = await postLmsCourse({
+          ...(titleRaw !== '' ? { title: titleRaw } : {}),
+          ...(programRaw !== '' ? { programId: programRaw } : {}),
+        });
+        const newId = json?.data?.id;
+        if (!newId || typeof newId !== 'string') {
+          throw new Error('Invalid create response');
+        }
+        setBootstrapCourseId(newId);
+        await mutateCourses();
+        const next = new URLSearchParams(searchParams);
+        next.delete('new');
+        next.set('course', newId);
+        navigate({ search: next.toString() }, { replace: true });
+        return newId;
+      } catch (e) {
+        toast.error(getLmsAxiosErrorMessage(e, 'Could not create course.'));
+        throw e;
+      } finally {
+        setCreatingCourse(false);
+      }
+    },
+    [resolvedId, bootstrapCourseId, mutateCourses, navigate, searchParams]
   );
 
   const liveBuilderModules = useMemo(
@@ -133,12 +188,10 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
 
   /** Live LMS sidebar lesson title overlays (tracks header typing before save). */
   const [liveLessonTitles, setLiveLessonTitles] = useState({});
-  /** Demo-local curriculum ------------------------------------------------------------------ */
-  const [demoModules, setDemoModules] = useState(() => cloneModules(curriculumBuilderModules));
-  const [expandedDemo, setExpandedDemo] = useState(() =>
-    Object.fromEntries(curriculumBuilderModules.map((m) => [m.id, true]))
-  );
-  const [selectedDemoLessonId, setSelectedDemoLessonId] = useState('lesson-mid-quiz');
+  /** Demo-local curriculum — start empty until the author adds modules (matches a fresh LMS course). */
+  const [demoModules, setDemoModules] = useState(() => []);
+  const [expandedDemo, setExpandedDemo] = useState(() => ({}));
+  const [selectedDemoLessonId, setSelectedDemoLessonId] = useState(null);
 
   /** Live LMS curriculum ------------------------------------------------------------------- */
   const [expandedLive, setExpandedLive] = useState({});
@@ -146,7 +199,12 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
   const [addingLiveModule, setAddingLiveModule] = useState(false);
 
   useEffect(() => {
-    if (!isLive || !liveBuilderModules.length) {
+    if (!isLive) {
+      return;
+    }
+
+    if (!liveBuilderModules.length) {
+      setSelectedLiveLessonId(null);
       return;
     }
 
@@ -227,9 +285,9 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
   const onSelectLesson = useCallback((id) => {
     if (isLive) {
       setSelectedLiveLessonId(id);
-    } else {
-      setSelectedDemoLessonId(id);
+      return;
     }
+    setSelectedDemoLessonId(id);
   }, [isLive]);
 
   const selectedLesson = useMemo(() => {
@@ -278,8 +336,9 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
 
   const handleLiveAddLesson = useCallback(
     async (modulePublicId, lessonType) => {
-      if (!resolvedId) {
-        toast.error('Course catalog is still loading.');
+      try {
+        await ensureCourseCreated();
+      } catch {
         return;
       }
 
@@ -326,7 +385,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
         toast.error(getLmsAxiosErrorMessage(e, 'Could not add lesson.'));
       }
     },
-    [mutateQuizzes, mutateLmsModules, resolvedId]
+    [ensureCourseCreated, mutateQuizzes, mutateLmsModules]
   );
 
   const handleAddLesson = useCallback(
@@ -364,12 +423,17 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
   }, []);
 
   const handleAddLiveModule = useCallback(async () => {
-    if (!resolvedId) {
-      return;
+    let courseId = effectiveCourseId;
+    if (!courseId) {
+      try {
+        courseId = await ensureCourseCreated();
+      } catch {
+        return;
+      }
     }
     setAddingLiveModule(true);
     try {
-      const json = await postLmsModuleForCourse(resolvedId, {});
+      const json = await postLmsModuleForCourse(courseId, {});
       const newModId = json?.data?.id;
       await mutateLmsModules();
       toast.success('Module added.');
@@ -382,7 +446,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
     } finally {
       setAddingLiveModule(false);
     }
-  }, [resolvedId, mutateLmsModules]);
+  }, [effectiveCourseId, ensureCourseCreated, mutateLmsModules]);
 
   const handleAddModule = useCallback(() => {
     if (isLive) {
@@ -402,24 +466,48 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
   const handleRenameLiveModule = useCallback(
     async (modulePublicId, nextTitle) => {
       const title = String(nextTitle ?? '').trim() || 'Untitled module';
+      const coreKey = `${modulePublicId}-core`;
+      const modBefore = liveBuilderModules.find((m) => m.id === modulePublicId);
+      const coreBefore = modBefore?.lessons?.find((l) => l.id === coreKey);
+      const overlayBefore = liveLessonTitles[coreKey];
+      const coreTitleToPreserve =
+        overlayBefore !== undefined && overlayBefore !== null
+          ? String(overlayBefore)
+          : String(coreBefore?.title ?? '');
+
+      const modApi = lmsModules.find((m) => m.id === modulePublicId);
+      const prevMeta =
+        modApi?.lessonMeta && typeof modApi.lessonMeta === 'object'
+          ? { ...modApi.lessonMeta }
+          : {};
+
+      const mergedCoreLabel =
+        coreTitleToPreserve.trim() ||
+        (typeof prevMeta.coreLessonTitle === 'string' ? prevMeta.coreLessonTitle.trim() : '') ||
+        String(coreBefore?.title ?? '').trim();
+
       try {
         await patchLmsModule(modulePublicId, {
           title,
           subject: null,
           topic: null,
-        });
-        setLiveLessonTitles((prev) => {
-          const copy = { ...prev };
-          delete copy[`${modulePublicId}-core`];
-          return copy;
+          lesson_meta: {
+            ...prevMeta,
+            ...(mergedCoreLabel !== '' ? { coreLessonTitle: mergedCoreLabel } : {}),
+          },
         });
         await mutateLmsModules();
+        setLiveLessonTitles((prev) => {
+          const next = { ...prev };
+          delete next[coreKey];
+          return next;
+        });
         toast.success('Module renamed.');
       } catch (e) {
         toast.error(getLmsAxiosErrorMessage(e, 'Could not rename module.'));
       }
     },
-    [mutateLmsModules]
+    [liveBuilderModules, liveLessonTitles, lmsModules, mutateLmsModules]
   );
 
   const handleRenameModule = useCallback(
@@ -632,6 +720,29 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
       return null;
     }
 
+    const resourceRowIds = new Set(
+      (Array.isArray(liveModuleRow.resourceRows) ? liveModuleRow.resourceRows : [])
+        .map((r) => r?.id)
+        .filter(Boolean)
+        .map((id) => String(id).trim())
+    );
+    const rawResolved = resolveCoreLessonMaterialResourcePublicId(liveModuleRow, t);
+    const trimmedResolved =
+      rawResolved != null && String(rawResolved).trim() !== '' ? String(rawResolved).trim() : '';
+    const moduleLessonResourcePublicId =
+      trimmedResolved !== '' && resourceRowIds.has(trimmedResolved) ? trimmedResolved : null;
+    const rawModuleMaterials = Array.isArray(liveModuleRow.lessonMaterials)
+      ? liveModuleRow.lessonMaterials
+      : [];
+    const lessonMaterials =
+      moduleLessonResourcePublicId != null && String(moduleLessonResourcePublicId).trim() !== ''
+        ? rawModuleMaterials.filter(
+            (m) =>
+              !m?.moduleResourceId ||
+              String(m.moduleResourceId) === String(moduleLessonResourcePublicId)
+          )
+        : rawModuleMaterials;
+
     return {
       authoringKind: t,
       updatedAt: liveModuleRow.updatedAt ?? '',
@@ -642,10 +753,9 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
         liveModuleRow.lessonMeta && typeof liveModuleRow.lessonMeta === 'object'
           ? liveModuleRow.lessonMeta
           : {},
-      lessonMaterials: Array.isArray(liveModuleRow.lessonMaterials)
-        ? liveModuleRow.lessonMaterials
-        : [],
+      lessonMaterials,
       modulePublicId: liveModulePublicId,
+      moduleLessonResourcePublicId,
       standaloneLessonPublicId: null,
       isCoreLesson: true,
       streamingOnly: Boolean(liveModuleRow.streamingOnly),
@@ -697,13 +807,20 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
           lesson_meta: lessonMeta ?? null,
         });
       } else if (liveModulePublicId) {
+        const modRow = lmsModules?.find((m) => m.id === liveModulePublicId);
+        const baseMeta =
+          modRow?.lessonMeta && typeof modRow.lessonMeta === 'object' ? { ...modRow.lessonMeta } : {};
+        const mergedMeta = {
+          ...baseMeta,
+          ...(lessonMeta && typeof lessonMeta === 'object' ? lessonMeta : {}),
+          coreLessonTitle: title.trim(),
+        };
         const dl = typeof durationLabel === 'string' ? durationLabel.trim() : '';
         patchEnvelope = await patchLmsModule(liveModulePublicId, {
-          title: title.trim(),
           duration_label: dl === '' ? null : dl,
           excerpt_html: shortDescriptionHtml ?? '',
           body_html: lessonContentHtml ?? '',
-          lesson_meta: lessonMeta ?? null,
+          lesson_meta: mergedMeta,
           ...(isVideoCore ? { streaming_only: true } : {}),
         });
       } else {
@@ -728,6 +845,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
     [
       liveModulePublicId,
       liveStandaloneLesson,
+      lmsModules,
       mergeReturnedModuleIntoLmsModulesCache,
       selectedLesson?.type,
     ]
@@ -740,11 +858,44 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
       ? handleSaveLiveRichLesson
       : undefined;
 
-  const persistFaq = useCallback(async () => {
-    if (!course?.id) {
-      return;
+  const liveQuizLoader =
+    isLive && selectedLesson?.type === 'quiz'
+      ? async (quizPublicId) => getLmsQuizQuestions(quizPublicId)
+      : undefined;
+
+  const saveLiveQuizLesson =
+    isLive && selectedLesson?.type === 'quiz'
+      ? async ({ quizId, title, questions }) => {
+          await patchLmsQuiz(quizId, { title, questions });
+          await mutateQuizzes();
+        }
+      : undefined;
+
+  const liveQuizAuthoring = useMemo(() => {
+    if (!isLive || selectedLesson?.type !== 'quiz') {
+      return null;
     }
-    await patchLmsCourse(course.id, {
+    return quizzesForCourse.find((q) => q.id === selectedLesson.id) ?? null;
+  }, [isLive, selectedLesson?.type, selectedLesson?.id, quizzesForCourse]);
+
+  const saveLiveQuizSettings =
+    isLive && selectedLesson?.type === 'quiz'
+      ? async ({ quizId, title, ...settings }) => {
+          await patchLmsQuiz(quizId, { title, ...settings });
+          await mutateQuizzes();
+        }
+      : undefined;
+
+  const persistFaq = useCallback(async () => {
+    let courseId = course?.id;
+    if (!courseId) {
+      try {
+        courseId = await ensureCourseCreated();
+      } catch {
+        return;
+      }
+    }
+    await patchLmsCourse(courseId, {
       marketing: {
         faq: faqItems.map((row) => ({
           question: String(row.question ?? '').trim(),
@@ -754,13 +905,18 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
     });
     toast.success('FAQ saved.');
     await mutateCourses();
-  }, [course?.id, faqItems, mutateCourses]);
+  }, [course?.id, ensureCourseCreated, faqItems, mutateCourses]);
 
   const persistNotice = useCallback(async () => {
-    if (!course?.id) {
-      return;
+    let courseId = course?.id;
+    if (!courseId) {
+      try {
+        courseId = await ensureCourseCreated();
+      } catch {
+        return;
+      }
     }
-    await patchLmsCourse(course.id, {
+    await patchLmsCourse(courseId, {
       marketing: {
         notices: htmlToParagraphTexts(noticeHtml),
         noticeHeading: noticeHeading.trim(),
@@ -768,7 +924,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
     });
     toast.success('Notice saved.');
     await mutateCourses();
-  }, [course?.id, noticeHeading, noticeHtml, mutateCourses]);
+  }, [course?.id, ensureCourseCreated, noticeHeading, noticeHtml, mutateCourses]);
 
   const previewHref =
     isLive && course?.slug ? paths.dashboard.courseDetails(course.slug) : paths.courseDetailDemo;
@@ -784,7 +940,14 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
     );
   }
 
-  if (isLive && trimmedLookup && !coursesLoading && !resolvedId) {
+  if (
+    isLive &&
+    trimmedLookup &&
+    !coursesLoading &&
+    !resolvedId &&
+    !isNewCourseIntent &&
+    !bootstrapCourseId
+  ) {
     return (
       <DashboardContent maxWidth={false} sx={styles.content}>
         <Typography variant="body2">Course “{trimmedLookup}” was not found in the catalog.</Typography>
@@ -792,7 +955,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
     );
   }
 
-  if (isLive && resolvedId && !course && coursesLoading) {
+  if (isLive && effectiveCourseId && !course && coursesLoading) {
     return (
       <DashboardContent maxWidth={false} sx={styles.content}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
@@ -802,7 +965,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
     );
   }
 
-  if (isLive && resolvedId && !course && !coursesLoading) {
+  if (isLive && effectiveCourseId && !course && !coursesLoading) {
     return (
       <DashboardContent maxWidth={false} sx={styles.content}>
         <Typography variant="body2">Unable to load this course.</Typography>
@@ -834,7 +997,9 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
               onSelectLesson={onSelectLesson}
               onAddLesson={handleAddLesson}
               onAddModule={handleAddModule}
-              disableAddModule={Boolean(isLive && (!resolvedId || addingLiveModule))}
+              disableAddModule={Boolean(
+                isLive && (addingLiveModule || creatingCourse)
+              )}
               onDeleteModule={isLive ? handleDeleteLiveModule : handleDeleteDemoModule}
               onRenameModule={handleRenameModule}
               onDeleteLesson={handleDeleteLessonOrModuleLesson}
@@ -847,6 +1012,10 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
               onLessonSave={handleLessonSave}
               saveLiveRichLesson={saveLiveRichLesson}
               liveLessonAuthoring={liveLessonAuthoring}
+              liveQuizLoader={liveQuizLoader}
+              saveLiveQuizLesson={saveLiveQuizLesson}
+              liveQuizAuthoring={liveQuizAuthoring}
+              saveLiveQuizSettings={saveLiveQuizSettings}
               onLessonMaterialsInvalidate={() => mutateLmsModules()}
             />
           </Stack>
@@ -861,13 +1030,17 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
             }}
           >
             {courseTab === 'settings' ? (
-              isLive && course ? (
-                <CourseSettingsWorkspace tiedCourse={course} onSaved={() => mutateCourses()} />
+              isLive ? (
+                <CourseSettingsWorkspace
+                  tiedCourse={course ?? null}
+                  onEnsureCourse={!course?.id ? ensureCourseCreated : undefined}
+                  onSaved={() => mutateCourses()}
+                />
               ) : (
                 <CourseSettingsWorkspace />
               )
             ) : courseTab === 'faq' ? (
-              isLive && course ? (
+              isLive ? (
                 <CourseFaqWorkspace
                   items={faqItems}
                   onItemsChange={setFaqItems}
@@ -877,7 +1050,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null }) {
                 <CourseFaqWorkspace />
               )
             ) : courseTab === 'notice' ? (
-              isLive && course ? (
+              isLive ? (
                 <CourseNoticeWorkspace
                   persisted
                   noticeHeading={noticeHeading}

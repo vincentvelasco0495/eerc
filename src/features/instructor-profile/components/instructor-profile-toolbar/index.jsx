@@ -55,7 +55,7 @@ export function InstructorProfileToolbar({ period, periods, onPeriodChange }) {
 
         <Button
           component={RouterLink}
-          href={paths.dashboard.instructorCourseCurriculum}
+          href={paths.dashboard.instructorNewCourseCurriculum}
           variant="contained"
           startIcon={<Iconify icon="solar:add-circle-bold-duotone" />}
           sx={styles.toolbarButton}

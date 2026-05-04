@@ -32,6 +32,10 @@ export function CurriculumBuilderWorkspace({
   saveLiveRichLesson,
   /** Server snapshot backing the workspace (camelCase from LMS modules payload). */
   liveLessonAuthoring = null,
+  liveQuizLoader,
+  saveLiveQuizLesson,
+  liveQuizAuthoring,
+  saveLiveQuizSettings,
   onLessonMaterialsInvalidate,
 }) {
   if (!lesson) {
@@ -70,6 +74,10 @@ export function CurriculumBuilderWorkspace({
         lesson={lesson}
         onLessonTitleChange={onLessonTitleChange}
         onLessonSave={onLessonSave}
+        liveQuizLoader={liveQuizLoader}
+        saveLiveQuizLesson={saveLiveQuizLesson}
+        liveQuizAuthoring={liveQuizAuthoring}
+        saveLiveQuizSettings={saveLiveQuizSettings}
       />
     );
   }

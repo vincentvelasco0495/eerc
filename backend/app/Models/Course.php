@@ -23,12 +23,16 @@ class Course extends Model
         'next_module_id',
         'video_hours_label',
         'preview_completed',
+        'is_published',
+        'average_rating',
     ];
 
     protected function casts(): array
     {
         return [
             'preview_completed' => 'boolean',
+            'is_published' => 'boolean',
+            'average_rating' => 'decimal:2',
             'marketing_json' => 'array',
         ];
     }

@@ -13,11 +13,21 @@ class Quiz extends Model
         'course_id',
         'module_id',
         'title',
+        'description',
+        'lesson_content_html',
+        'settings_json',
         'duration_minutes',
         'attempts_allowed',
         'question_count',
         'question_pool_count',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'settings_json' => 'array',
+        ];
+    }
 
     public function course(): BelongsTo
     {

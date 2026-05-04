@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useNavigate } from 'react-router';
 
 import { space, colors } from './course-detail-tokens';
+import { CourseDetailBackArrowSvg } from './course-detail-back-arrow';
 
 function BookmarkSvg() {
   return (
@@ -61,20 +62,6 @@ const BackButton = styled.button`
   }
 `;
 
-function BackArrowSvg() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-      <path
-        d="M15 18l-6-6 6-6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 const BadgeChip = styled.span`
   display: inline-flex;
   align-items: center;
@@ -96,7 +83,7 @@ const MetaBar = styled.div`
 `;
 
 /**
- * Single row: Category | Instructor | Reviews — equal-width columns, vertical rules between.
+ * Single row: Program | Instructor — equal-width columns, vertical rule between.
  * Padding: 16px 24px shell; 0 20px per column (reference).
  */
 const CourseMetaContainer = styled.div`
@@ -189,52 +176,6 @@ const Avatar = styled.img`
   border: 1px solid ${colors.border};
 `;
 
-/** Stars + numeric score one row; review count stacked below — right-aligned in column. */
-const RatingColumn = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  line-height: 1.35;
-  margin: 0;
-
-  @media (max-width: 900px) {
-    align-items: flex-start;
-  }
-`;
-
-const StarsRow = styled.div`
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-`;
-
-const StarsWrap = styled.div`
-  display: inline-flex;
-  gap: 2px;
-  font-size: 16px;
-  line-height: 1;
-`;
-
-const StarSym = styled.span`
-  color: ${(props) => (props.$filled ? colors.star : colors.starEmpty)};
-`;
-
-const ScoreNum = styled.span`
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1;
-  color: ${colors.headingNavy};
-`;
-
-const ReviewLineMeta = styled.span`
-  font-size: 12px;
-  color: ${colors.muted};
-  line-height: 1.35;
-`;
-
 const DescRow = styled.p`
   margin: 0;
   font-size: 14px;
@@ -265,30 +206,16 @@ const DescToggle = styled.button`
   }
 `;
 
-function Stars({ ratingValue, max = 5 }) {
-  return (
-    <StarsWrap aria-hidden>
-      {Array.from({ length: max }, (_, i) => (
-        <StarSym key={String(i)} $filled={i < Math.min(ratingValue, max)}>
-          ★
-        </StarSym>
-      ))}
-    </StarsWrap>
-  );
-}
-
 const DESCRIPTION_PREVIEW = 148;
 
 /**
- * Course marketing header — bordered meta strip with equal flex columns,
- * vertical dividers between sections only, left / center / right alignment.
+ * Course marketing header — bordered meta strip (category + instructor),
+ * vertical dividers between sections only.
  */
 export function CourseHeader({ data }) {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
-  const { category, badge, title, instructor, rating, shortDescription } = data;
-
-  const scoreLabel = rating.scoreLabel ?? '';
+  const { category, badge, title, instructor, shortDescription } = data;
 
   const needsToggle = shortDescription.length > DESCRIPTION_PREVIEW;
   const collapsedText = needsToggle
@@ -300,7 +227,7 @@ export function CourseHeader({ data }) {
       <MetaSection>
         <HeaderTopNav>
           <BackButton type="button" aria-label="Go back" onClick={() => navigate(-1)}>
-            <BackArrowSvg />
+            <CourseDetailBackArrowSvg />
           </BackButton>
           {badge ? <BadgeChip>{badge}</BadgeChip> : null}
         </HeaderTopNav>
@@ -310,27 +237,17 @@ export function CourseHeader({ data }) {
             <MetaItem $align="start" className="meta-item meta-item-category">
               <BookmarkSvg />
               <LabelStack>
-                <MetaLabel>Category</MetaLabel>
+                <MetaLabel>Program</MetaLabel>
                 <MetaValue>{category}</MetaValue>
               </LabelStack>
             </MetaItem>
 
-            <MetaItem $align="center" className="meta-item meta-item-instructor">
+            <MetaItem $align="end" className="meta-item meta-item-instructor">
               <Avatar src={instructor.avatarUrl} alt={instructor.name} width={48} height={48} />
               <LabelStack>
                 <MetaLabel>Instructor</MetaLabel>
                 <MetaValue>{instructor.name}</MetaValue>
               </LabelStack>
-            </MetaItem>
-
-            <MetaItem $align="end" className="meta-item meta-item-reviews">
-              <RatingColumn>
-                <StarsRow>
-                  <Stars ratingValue={rating.value} max={rating.max ?? 5} />
-                  {scoreLabel ? <ScoreNum>{scoreLabel}</ScoreNum> : null}
-                </StarsRow>
-                {rating.reviewLine ? <ReviewLineMeta>{rating.reviewLine}</ReviewLineMeta> : null}
-              </RatingColumn>
             </MetaItem>
           </CourseMetaContainer>
         </MetaBar>

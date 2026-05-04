@@ -43,7 +43,9 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
     paths.dashboard.studentSettings,
   ].includes(pathname);
 
-  const hideDashboardHeader = pathname === paths.dashboard.instructorCourseCurriculum;
+  const hideDashboardHeader =
+    pathname === paths.dashboard.instructorCourseCurriculum ||
+    /^\/instructor-course\/[^/]+\/edit\/?$/.test(pathname ?? '');
 
   const isNavMini = settings.state.navLayout === 'mini';
   const isNavHorizontal = settings.state.navLayout === 'horizontal';

@@ -50,7 +50,16 @@ class Module extends Model
         return $this->hasMany(Quiz::class, 'module_id');
     }
 
-    /** Files attached to the module’s primary (-core) text lesson row. */
+    /**
+     * Files stored with a `module_id` (core + in-module resource–tagged); excludes standalone
+     * rows that use `module_resource_id` only.
+     */
+    public function moduleLessonMaterials(): HasMany
+    {
+        return $this->hasMany(LessonMaterial::class, 'module_id');
+    }
+
+    /** Files attached to the module’s primary (-core) text lesson row only (no resource link). */
     public function lessonCoreMaterials(): HasMany
     {
         return $this->hasMany(LessonMaterial::class, 'module_id')->whereNull('module_resource_id');

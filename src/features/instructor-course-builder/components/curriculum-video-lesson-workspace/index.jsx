@@ -136,6 +136,14 @@ export function CurriculumVideoLessonWorkspace({
     return null;
   }, [lesson?.id, liveLessonAuthoring?.modulePublicId]);
 
+  const materialModuleResourcePublicId = useMemo(
+    () =>
+      liveLessonAuthoring?.isCoreLesson
+        ? liveLessonAuthoring?.moduleLessonResourcePublicId ?? null
+        : null,
+    [liveLessonAuthoring?.isCoreLesson, liveLessonAuthoring?.moduleLessonResourcePublicId]
+  );
+
   const materialStandaloneLessonPublicId = useMemo(() => {
     if (
       liveLessonAuthoring?.standaloneLessonPublicId != null &&
@@ -151,20 +159,38 @@ export function CurriculumVideoLessonWorkspace({
     return id;
   }, [lesson?.id, lesson?.type, liveLessonAuthoring?.standaloneLessonPublicId]);
 
-  const lessonMaterials = useMemo(
+  /** Full catalog list (poster/video lookups still resolve names from here). */
+  const allLessonMaterials = useMemo(
     () => (Array.isArray(liveLessonAuthoring?.lessonMaterials) ? liveLessonAuthoring.lessonMaterials : []),
     [liveLessonAuthoring?.lessonMaterials]
   );
 
+  /** Listed attachments only — hide poster & primary video files tagged in `lessonMeta`. */
+  const listedLessonMaterials = useMemo(() => {
+    const exclude = new Set(
+      [videoPosterLessonMaterialPublicId, videoLessonMaterialPublicId]
+        .filter((id) => id != null && String(id).trim() !== '')
+        .map((id) => String(id).trim())
+    );
+    if (exclude.size === 0) {
+      return allLessonMaterials;
+    }
+    return allLessonMaterials.filter((m) => m?.id && !exclude.has(String(m.id)));
+  }, [
+    allLessonMaterials,
+    videoPosterLessonMaterialPublicId,
+    videoLessonMaterialPublicId,
+  ]);
+
   const posterLinkedName = useMemo(() => {
     if (!videoPosterLessonMaterialPublicId) return null;
-    return lessonMaterials.find((m) => m.id === videoPosterLessonMaterialPublicId)?.name ?? null;
-  }, [lessonMaterials, videoPosterLessonMaterialPublicId]);
+    return allLessonMaterials.find((m) => m.id === videoPosterLessonMaterialPublicId)?.name ?? null;
+  }, [allLessonMaterials, videoPosterLessonMaterialPublicId]);
 
   const videoLinkedName = useMemo(() => {
     if (!videoLessonMaterialPublicId) return null;
-    return lessonMaterials.find((m) => m.id === videoLessonMaterialPublicId)?.name ?? null;
-  }, [lessonMaterials, videoLessonMaterialPublicId]);
+    return allLessonMaterials.find((m) => m.id === videoLessonMaterialPublicId)?.name ?? null;
+  }, [allLessonMaterials, videoLessonMaterialPublicId]);
 
   useEffect(() => {
     setWorkspaceTab(0);
@@ -402,11 +428,26 @@ export function CurriculumVideoLessonWorkspace({
 
       setBusy(true);
       assignPreview(URL.createObjectURL(file));
+      const previousPosterId =
+        linkField === 'poster' &&
+        typeof videoPosterLessonMaterialPublicId === 'string' &&
+        videoPosterLessonMaterialPublicId.trim() !== ''
+          ? videoPosterLessonMaterialPublicId.trim()
+          : null;
+      const previousVideoId =
+        linkField === 'video' &&
+        typeof videoLessonMaterialPublicId === 'string' &&
+        videoLessonMaterialPublicId.trim() !== ''
+          ? videoLessonMaterialPublicId.trim()
+          : null;
+
       try {
         const raw =
           materialUploadTarget.kind === 'standalone'
             ? await postLessonMaterialForStandaloneLesson(materialUploadTarget.id, file)
-            : await postLessonMaterialForModule(materialUploadTarget.id, file);
+            : await postLessonMaterialForModule(materialUploadTarget.id, file, {
+                moduleResourcePublicId: materialModuleResourcePublicId,
+              });
         const uploadedId =
           raw?.data?.id != null
             ? String(raw.data.id)
@@ -439,6 +480,22 @@ export function CurriculumVideoLessonWorkspace({
           }),
         });
 
+        const replacedId = linkField === 'poster' ? previousPosterId : previousVideoId;
+        if (replacedId && replacedId !== uploadedId) {
+          try {
+            await deleteLessonMaterial(replacedId);
+          } catch (delErr) {
+            toast.error(
+              getLmsAxiosErrorMessage(
+                delErr,
+                'New file is linked, but the previous file could not be removed from storage.'
+              )
+            );
+          }
+        }
+
+        void onLessonMaterialsInvalidate?.();
+
         toast.success(linkField === 'poster' ? 'Poster uploaded and linked.' : 'Video uploaded and linked.');
       } catch (e) {
         toast.error(getLmsAxiosErrorMessage(e, 'Upload failed.'));
@@ -453,7 +510,9 @@ export function CurriculumVideoLessonWorkspace({
       duration,
       lesson.title,
       lessonContentHtml,
+      materialModuleResourcePublicId,
       materialUploadTarget,
+      onLessonMaterialsInvalidate,
       saveLiveRichLesson,
       shortDescriptionHtml,
       videoLessonMaterialPublicId,
@@ -701,9 +760,10 @@ export function CurriculumVideoLessonWorkspace({
 
           <TextLessonWorkspaceMaterials
             key={`${lesson.id}-files`}
-            lessonMaterials={lessonMaterials}
+            lessonMaterials={listedLessonMaterials}
             apiConfigured={Boolean(CONFIG.serverUrl?.trim())}
             modulePublicId={materialModulePublicId}
+            moduleResourcePublicId={materialModuleResourcePublicId}
             standaloneLessonPublicId={materialStandaloneLessonPublicId}
             onAfterMaterialsChange={() => {
               void onLessonMaterialsInvalidate?.();

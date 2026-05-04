@@ -1,45 +1,3 @@
-const COURSE_ART = {
-  cobalt: ['#0f172a', '#1d4ed8', '#60a5fa'],
-  stone: ['#332f2f', '#6b7280', '#d6d3d1'],
-  sky: ['#0f172a', '#0284c7', '#7dd3fc'],
-  amber: ['#451a03', '#d97706', '#fcd34d'],
-  violet: ['#2e1065', '#7c3aed', '#c4b5fd'],
-  forest: ['#052e16', '#15803d', '#86efac'],
-};
-
-export function getCourseArtSx(tone) {
-  const [base, mid, accent] = COURSE_ART[tone] ?? COURSE_ART.cobalt;
-
-  return {
-    position: 'relative',
-    minHeight: 146,
-    overflow: 'hidden',
-    borderRadius: 2,
-    color: 'common.white',
-    backgroundImage: `linear-gradient(135deg, ${base} 0%, ${mid} 55%, ${accent} 100%)`,
-    '&::before': {
-      content: '""',
-      position: 'absolute',
-      inset: 'auto -14% -36% auto',
-      width: 148,
-      height: 148,
-      borderRadius: '50%',
-      bgcolor: 'rgba(255,255,255,0.16)',
-    },
-    '&::after': {
-      content: '""',
-      position: 'absolute',
-      left: '-14%',
-      top: '-18%',
-      width: 190,
-      height: 118,
-      borderRadius: '45%',
-      bgcolor: 'rgba(255,255,255,0.11)',
-      transform: 'rotate(-12deg)',
-    },
-  };
-}
-
 export const styles = {
   card: {
     width: 1,
@@ -69,6 +27,41 @@ export const styles = {
   cardContent: { p: 1.5 },
   categoryCaptionOuter: { opacity: 0.84 },
   badgeChip: { height: 24, '& .MuiChip-label': { px: 1, fontWeight: 700 } },
+  /** Banner overlays — dark glass so label / chip / icon stay readable on any photo. */
+  bannerCategoryLabel: {
+    display: 'inline-block',
+    alignSelf: 'flex-start',
+    maxWidth: 'min(72%, 220px)',
+    px: 1,
+    py: 0.45,
+    borderRadius: 1,
+    fontWeight: 700,
+    lineHeight: 1.35,
+    letterSpacing: '0.02em',
+    color: 'common.white',
+    bgcolor: 'rgba(15, 23, 42, 0.9)',
+    border: '1px solid rgba(255,255,255,0.18)',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.45)',
+    opacity: 1,
+  },
+  bannerBadgeChip: {
+    height: 26,
+    maxWidth: 'min(52%, 200px)',
+    flexShrink: 0,
+    color: '#ffffff',
+    bgcolor: 'rgba(15, 23, 42, 0.9) !important',
+    border: '1px solid rgba(255,255,255,0.18)',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+    '& .MuiChip-label, & .MuiTypography-root': {
+      px: 1,
+      fontWeight: 700,
+      color: '#ffffff !important',
+      WebkitTextFillColor: '#ffffff',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
+  },
   artIconStack: {
     mt: 3.5,
     width: 56,
@@ -78,6 +71,20 @@ export const styles = {
     placeItems: 'center',
     bgcolor: 'rgba(255,255,255,0.14)',
     backdropFilter: 'blur(8px)',
+  },
+  bannerIconBox: {
+    mt: 3.5,
+    width: 56,
+    height: 56,
+    borderRadius: 2,
+    display: 'grid',
+    placeItems: 'center',
+    flexShrink: 0,
+    color: 'common.white',
+    bgcolor: 'rgba(15, 23, 42, 0.88)',
+    border: '1px solid rgba(255,255,255,0.28)',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
+    backdropFilter: 'blur(10px)',
   },
   categoryCaption: { color: 'text.secondary' },
   title: { minHeight: 58, lineHeight: 1.3 },

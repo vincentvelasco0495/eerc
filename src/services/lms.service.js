@@ -445,6 +445,21 @@ const admin = {
   ],
 };
 
+function courseWithProgramTitle(course) {
+  const p = programs.find((x) => x.id === course.programId);
+  return {
+    ...course,
+    programTitle: p?.title ?? '',
+    status: course.status ?? (course.isPublished === false ? 'draft' : 'published'),
+    isPublished: course.isPublished ?? true,
+    averageRating:
+      typeof course.averageRating === 'number' && Number.isFinite(course.averageRating)
+        ? course.averageRating
+        : null,
+    updatedAt: course.updatedAt ?? new Date().toISOString(),
+  };
+}
+
 function buildProgressSummary() {
   const completedModules = courses.reduce((sum, course) => sum + course.completedModules, 0);
   const totalModules = courses.reduce((sum, course) => sum + course.totalModules, 0);
@@ -491,7 +506,7 @@ export async function mockResponseForKey(key) {
     const page = Math.max(1, parseInt(params.get('page') || '1', 10));
     const limit = Math.min(100, Math.max(1, parseInt(params.get('limit') || '100', 10)));
     const start = (page - 1) * limit;
-    const slice = courses.slice(start, start + limit);
+    const slice = courses.slice(start, start + limit).map(courseWithProgramTitle);
     const lastPage = Math.max(1, Math.ceil(courses.length / limit));
 
     return { data: slice, meta: { page, limit, total: courses.length, lastPage } };

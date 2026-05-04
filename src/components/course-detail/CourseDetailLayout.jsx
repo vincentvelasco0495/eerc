@@ -3,9 +3,8 @@ import styled from 'styled-components';
 import { SidebarCard } from './SidebarCard';
 import { CourseHeader } from './CourseHeader';
 import { CourseContent } from './CourseContent';
-import { PopularCourses } from './PopularCourses';
-import { space, colors } from './course-detail-tokens';
 import { CourseDetailsCard } from './CourseDetailsCard';
+import { space, radii, colors } from './course-detail-tokens';
 
 const PageBg = styled.div`
   min-height: ${(props) => (props.$fillViewport ? '100vh' : 'auto')};
@@ -66,16 +65,25 @@ const MainColumn = styled.section`
   }
 `;
 
-const ProgressHead = styled.div`
+/** Pale pill strip — progress row + Details (reference: light panel + filled Details CTA). */
+const StatusPill = styled.div`
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: ${space(2)};
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: ${space(2)};
+  box-sizing: border-box;
+  border-radius: ${radii.pill};
+  background: #e8f4fc;
+  border: 1px solid #dbeafe;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
 `;
 
 const CompletionLeft = styled.div`
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   min-width: 0;
 `;
@@ -87,9 +95,13 @@ const CheckBadge = styled.div`
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  color: ${colors.white};
-  background: ${colors.primary};
+  color: ${colors.primary};
+  background: ${colors.white};
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
 `;
 
 const CompletionTitles = styled.div`
@@ -107,17 +119,19 @@ const CompletionTitles = styled.div`
 
 const DetailsBtn = styled.button`
   flex-shrink: 0;
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: 1px solid ${colors.primary};
-  background: ${colors.white};
-  color: ${colors.primary};
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: none;
+  background: ${colors.primary};
+  color: ${colors.white};
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  transition: filter 0.15s ease;
 
   &:hover {
-    background: rgba(59, 130, 246, 0.08);
+    filter: brightness(0.96);
   }
 
   &:focus-visible {
@@ -130,7 +144,7 @@ const ContinueBtn = styled.a`
   display: block;
   width: 100%;
   padding: 15px ${space(2)};
-  margin-top: ${space(2)};
+  margin-top: 0;
   margin-bottom: ${space(1.5)};
   border-radius: 10px;
   border: none;
@@ -153,41 +167,6 @@ const ContinueBtn = styled.a`
   &:focus-visible {
     outline: 2px solid #1d4ed8;
     outline-offset: 2px;
-  }
-`;
-
-const ActionsRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: ${space(2)};
-  row-gap: ${space(1)};
-`;
-
-const QuietBtn = styled.button`
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0;
-  border: none;
-  background: none;
-  color: ${colors.muted};
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-
-  svg {
-    flex-shrink: 0;
-    opacity: 0.9;
-  }
-
-  &:hover {
-    color: ${colors.primary};
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${colors.primary};
-    outline-offset: 4px;
   }
 `;
 
@@ -221,11 +200,10 @@ export function CourseDetailLayout({
   completion,
   detailRows,
   curriculumModules,
-  popularCoursesItems,
-  relatedCoursesItems,
   noticeContent,
-  noticeRelatedCoursesItems,
   faqItems,
+  /** LMS course slug or `public_id` — links curriculum text rows to the text-lesson page */
+  courseLookup,
   /** Primary CTA (first/next module player) */
   continueHref,
   wrapMinHeightPage = false,
@@ -238,7 +216,7 @@ export function CourseDetailLayout({
           <TwoColGrid>
             <AsideColumn aria-label="Course summary sidebar">
               <SidebarCard $variant="completion">
-                <ProgressHead>
+                <StatusPill>
                   <CompletionLeft>
                     <CheckBadge aria-hidden>✓</CheckBadge>
                     <CompletionTitles>
@@ -252,54 +230,12 @@ export function CourseDetailLayout({
                     </CompletionTitles>
                   </CompletionLeft>
                   <DetailsBtn type="button">Details</DetailsBtn>
-                </ProgressHead>
+                </StatusPill>
                 <ContinueBtn href={continueHref ?? '#'}>CONTINUE</ContinueBtn>
-                <ActionsRow role="toolbar" aria-label="Secondary actions">
-                  <QuietBtn type="button">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      aria-hidden
-                      stroke="currentColor"
-                      strokeWidth="1.75"
-                    >
-                      <path
-                        d="M12 21C12 21 5 14.36 5 9.5A4.5 4.5 0 0112 8a4.5 4.5 0 017 1.5C19 14.36 12 21 12 21z"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    Add to wishlist
-                  </QuietBtn>
-                  <QuietBtn type="button">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      aria-hidden
-                      stroke="currentColor"
-                      strokeWidth="1.75"
-                    >
-                      <path
-                        d="M12 3v12m0 0l4-4m-4 4L8 11M6 21h12a3 3 0 003-3v-2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    Share
-                  </QuietBtn>
-                </ActionsRow>
               </SidebarCard>
 
               <SidebarCard $variant="muted">
                 <CourseDetailsCard rows={detailRows} heading="Course details" />
-              </SidebarCard>
-
-              <SidebarCard>
-                <PopularCourses items={popularCoursesItems} />
               </SidebarCard>
 
               <SidebarCard>
@@ -321,11 +257,10 @@ export function CourseDetailLayout({
               <CourseContent
                 data={data}
                 heroImageUrl={heroImageUrl}
-                relatedCourses={relatedCoursesItems}
                 noticeContent={noticeContent}
-                relatedCoursesNotice={noticeRelatedCoursesItems}
                 curriculumModules={curriculumModules}
                 faqItems={faqItems}
+                courseLookup={courseLookup}
               />
             </MainColumn>
           </TwoColGrid>

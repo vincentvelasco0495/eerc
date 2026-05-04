@@ -13,6 +13,10 @@ import { AuthGuard } from 'src/auth/guard';
 
 const CourseListPage = lazy(() => import('src/pages/course/list'));
 const CourseDetailsPage = lazy(() => import('src/pages/course/details'));
+const CourseTextLessonPage = lazy(() => import('src/pages/course/text-lesson'));
+const CourseVideoLessonPage = lazy(() => import('src/pages/course/video-lesson'));
+const CourseQuizStartPage = lazy(() => import('src/pages/course/quiz-start.jsx'));
+const CourseQuizTakePage = lazy(() => import('src/pages/course/quiz'));
 const ModuleDetailsPage = lazy(() => import('src/pages/module/details'));
 const QuizListPage = lazy(() => import('src/pages/quiz/list'));
 const QuizDetailsPage = lazy(() => import('src/pages/quiz/details'));
@@ -73,6 +77,14 @@ export const dashboardRoutes = [
     element: dashboardLayoutElement,
     children: [
       { path: 'courses', element: <CourseListPage /> },
+      { path: 'course-details/:slug/text-lesson/:lessonId', element: <CourseTextLessonPage /> },
+      { path: 'courses/:courseId/text-lesson/:lessonId', element: <CourseTextLessonPage /> },
+      { path: 'course-details/:slug/video-lesson/:lessonId', element: <CourseVideoLessonPage /> },
+      { path: 'courses/:courseId/video-lesson/:lessonId', element: <CourseVideoLessonPage /> },
+      { path: 'course-details/:slug/quiz/:quizId/take', element: <CourseQuizTakePage /> },
+      { path: 'courses/:courseId/quiz/:quizId/take', element: <CourseQuizTakePage /> },
+      { path: 'course-details/:slug/quiz/:quizId', element: <CourseQuizStartPage /> },
+      { path: 'courses/:courseId/quiz/:quizId', element: <CourseQuizStartPage /> },
       { path: 'course-details/:slug', element: <CourseDetailsPage /> },
       { path: 'courses/:courseId', element: <CourseDetailsPage /> },
       { path: 'modules/:moduleId', element: <ModuleDetailsPage /> },

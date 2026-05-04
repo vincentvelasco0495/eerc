@@ -3,17 +3,13 @@ import styled from 'styled-components';
 import { SidebarCard } from '../../components/course-detail/SidebarCard';
 import { CourseHeader } from '../../components/course-detail/CourseHeader';
 import { CourseContent } from '../../components/course-detail/CourseContent';
-import { PopularCourses } from '../../components/course-detail/PopularCourses';
 import { space, colors } from '../../components/course-detail/course-detail-tokens';
 import { CourseDetailsCard } from '../../components/course-detail/CourseDetailsCard';
 import {
   faqItemsMock,
   courseDetailMock,
   noticeContentMock,
-  popularCoursesMock,
-  relatedCoursesMock,
   curriculumModulesMock,
-  noticeRelatedCoursesMock,
 } from '../../components/course-detail/course-detail-data';
 
 const PageBg = styled.div`
@@ -275,10 +271,6 @@ export default function ProgramCourseDetail() {
             </SidebarCard>
 
             <SidebarCard>
-              <PopularCourses items={popularCoursesMock} />
-            </SidebarCard>
-
-            <SidebarCard>
               <ArchiveLabel id="program-archive-label">Archive</ArchiveLabel>
               <StyledSelect name="month" aria-labelledby="program-archive-label" defaultValue="">
                 <option value="" disabled>
@@ -297,9 +289,7 @@ export default function ProgramCourseDetail() {
             <CourseContent
               data={courseDetailMock}
               heroImageUrl={heroImageUrl}
-              relatedCourses={relatedCoursesMock}
               noticeContent={noticeContentMock}
-              relatedCoursesNotice={noticeRelatedCoursesMock}
               curriculumModules={curriculumModulesMock}
               faqItems={faqItemsMock}
             />

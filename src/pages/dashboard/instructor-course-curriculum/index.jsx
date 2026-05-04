@@ -6,25 +6,37 @@ import { InstructorCourseCurriculumView } from 'src/features/instructor-course-b
 
 const metadata = { title: `Course curriculum | Dashboard - ${CONFIG.appName}` };
 
-/** Resolves LMS course slug / public id: query `course` beats env default. Omit both for offline demo curriculum. */
+/**
+ * Which course to author in the curriculum builder. Only the `?course=` query is used so a bare
+ * `/instructor-course-curriculum` URL does not silently load a dev env default (e.g. the seeded
+ * demo course with modules). Use `?course=slug-or-public-id` or the route
+ * `/instructor-course/:courseLookup/edit` to open a specific course.
+ */
 function useEffectiveCourseLookup() {
   const [searchParams] = useSearchParams();
   return useMemo(() => {
     const qp = searchParams.get('course')?.trim();
-    const envFallback = CONFIG.instructorCurriculumCourseLookup?.trim();
-    const merged = qp || envFallback || '';
-    return merged || null;
+    return qp || null;
+  }, [searchParams]);
+}
+
+function useIsNewCourseIntent() {
+  const [searchParams] = useSearchParams();
+  return useMemo(() => {
+    const raw = searchParams.get('new');
+    return raw === '1' || raw === 'true' || raw === 'yes';
   }, [searchParams]);
 }
 
 export default function InstructorCourseCurriculumPage() {
   const courseLookup = useEffectiveCourseLookup();
+  const isNewCourseIntent = useIsNewCourseIntent();
 
   return (
     <>
       <title>{metadata.title}</title>
 
-      <InstructorCourseCurriculumView courseLookup={courseLookup} />
+      <InstructorCourseCurriculumView courseLookup={courseLookup} isNewCourseIntent={isNewCourseIntent} />
     </>
   );
 }
