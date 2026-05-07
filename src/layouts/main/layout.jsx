@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { merge } from 'es-toolkit';
 import { useBoolean } from 'minimal-shared/hooks';
 
@@ -9,6 +10,8 @@ import { iconButtonClasses } from '@mui/material/IconButton';
 import { paths } from 'src/routes/paths';
 import { usePathname } from 'src/routes/hooks';
 
+import { useLmsPrograms } from 'src/hooks/use-lms';
+
 import { _notifications } from 'src/_mock';
 
 import { Logo } from 'src/components/logo';
@@ -19,11 +22,11 @@ import { Footer, HomeFooter } from './footer';
 import { _account } from '../nav-config-account';
 import { MenuButton } from '../components/menu-button';
 import { useDashboardEntry } from './use-dashboard-entry';
-import { navData as mainNavData } from '../nav-config-main';
 import { AccountDrawer } from '../components/account-drawer';
 import { SettingsButton } from '../components/settings-button';
 import { MainSection, LayoutSection, HeaderSection } from '../core';
 import { NotificationsDrawer } from '../components/notifications-drawer';
+import { buildMainNavData, navData as mainNavData } from '../nav-config-main';
 
 /** Bell badge count for `/course-detail` header (four unread). */
 const COURSE_DETAIL_NOTIFICATION_DATA = _notifications.map((notification, index) => ({
@@ -33,7 +36,7 @@ const COURSE_DETAIL_NOTIFICATION_DATA = _notifications.map((notification, index)
 
 // ----------------------------------------------------------------------
 
-export function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md' }) {
+function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md' }) {
   const pathname = usePathname();
 
   const { goToDashboardOrSignIn, loading: authLoadingForDashboard } = useDashboardEntry();
@@ -41,10 +44,18 @@ export function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md
   const { value: open, onFalse: onClose, onTrue: onOpen } = useBoolean();
 
   const isHomePage = pathname === '/';
+  const isProgramCourseDetailPage = pathname === paths.programCourseDetail;
   const isMinimalCourseChrome =
-    pathname === paths.courseDetailDemo || pathname === paths.programCourseDetail;
+    pathname === paths.courseDetailDemo || isProgramCourseDetailPage;
 
-  const navData = slotProps?.nav?.data ?? mainNavData;
+  const { programs } = useLmsPrograms();
+
+  const navData = useMemo(() => {
+    if (slotProps?.nav?.data) {
+      return slotProps.nav.data;
+    }
+    return programs?.length ? buildMainNavData(programs) : mainNavData;
+  }, [programs, slotProps?.nav?.data]);
 
   const renderHeader = () => {
     if (isMinimalCourseChrome) {
@@ -226,7 +237,7 @@ export function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md
       /** **************************************
        * @Header
        *************************************** */
-      headerSection={renderHeader()}
+      headerSection={isProgramCourseDetailPage ? null : renderHeader()}
       /** **************************************
        * @Footer
        *************************************** */
@@ -241,3 +252,6 @@ export function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md
     </LayoutSection>
   );
 }
+
+export { MainLayout };
+export default MainLayout;

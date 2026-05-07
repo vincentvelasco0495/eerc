@@ -28,13 +28,19 @@ export function getStudentWorkspaceNavGroups(pathname) {
       ],
     },
     {
-      title: 'Account and Settings',
+      title: 'System Setting',
       items: [
         {
-          label: 'Settings',
+          label: 'Profile',
           icon: 'solar:settings-bold-duotone',
           path: paths.dashboard.studentSettings,
           active: pathname === paths.dashboard.studentSettings,
+        },
+        {
+          label: 'Programs',
+          icon: 'solar:layers-bold-duotone',
+          path: paths.dashboard.programs,
+          active: pathname === paths.dashboard.programs,
         },
         { label: 'Log out', icon: 'solar:logout-3-bold-duotone', action: 'logout' },
       ],

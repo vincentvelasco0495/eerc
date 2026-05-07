@@ -56,7 +56,10 @@ axiosInstance.interceptors.response.use(
     }
 
     console.error('Axios error:', message);
-    return Promise.reject(new Error(message));
+    const wrapped = new Error(message);
+    wrapped.response = error?.response;
+    wrapped.status = error?.response?.status;
+    return Promise.reject(wrapped);
   }
 );
 

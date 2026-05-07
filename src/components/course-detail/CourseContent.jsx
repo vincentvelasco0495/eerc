@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 import { CourseFaq } from './CourseFaq';
 import { CourseTabs } from './CourseTabs';
@@ -72,6 +72,48 @@ const TAB_LABEL_READABLE = {
 
 const ContentRoot = styled.div``;
 
+const ProgramCoursesWrap = styled.section`
+  margin: ${space(2)} 0 ${space(2.5)};
+  padding: ${space(2)};
+  border: 1px solid ${colors.border};
+  border-radius: ${radii.card};
+  background: #f9fbff;
+`;
+
+const ProgramCoursesTitle = styled.h3`
+  margin: 0 0 ${space(1.25)};
+  font-size: 16px;
+  font-weight: 700;
+  color: ${colors.text};
+`;
+
+const ProgramCoursesList = styled.ul`
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+`;
+
+const ProgramCourseItem = styled.li``;
+
+const ProgramCourseLink = styled.a`
+  display: block;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid ${colors.border};
+  background: ${colors.white};
+  color: ${colors.text};
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+
+  &:hover {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+  }
+`;
+
 /** Hero + tabs + panels (sits in right column beneath full-width course header). */
 export function CourseContent({
   data,
@@ -80,10 +122,31 @@ export function CourseContent({
   curriculumModules,
   faqItems,
   courseLookup,
+  programCourses,
+  programCoursesHeading,
 }) {
   const [tabKey, setTabKey] = useState('description');
 
   const tabOptions = useMemo(() => [...tabKeys], []);
+  useEffect(() => {
+    const applyHashTab = () => {
+      const raw = String(window.location.hash || '').replace(/^#/, '').trim().toLowerCase();
+      if (raw === 'curriculum') {
+        setTabKey('curriculum');
+      } else if (raw === 'description') {
+        setTabKey('description');
+      } else if (raw === 'faq') {
+        setTabKey('faq');
+      } else if (raw === 'notice') {
+        setTabKey('notice');
+      } else if (raw === 'reviews') {
+        setTabKey('reviews');
+      }
+    };
+    applyHashTab();
+    window.addEventListener('hashchange', applyHashTab);
+    return () => window.removeEventListener('hashchange', applyHashTab);
+  }, []);
 
   const { paragraphs, learningOutcomes, audience } = data;
 
@@ -92,6 +155,19 @@ export function CourseContent({
       <HeroFigure role="presentation">
         <HeroImg src={heroImageUrl} alt="Course visualization with wireframes and collaboration" />
       </HeroFigure>
+
+      {Array.isArray(programCourses) && programCourses.length > 0 ? (
+        <ProgramCoursesWrap>
+          <ProgramCoursesTitle>{programCoursesHeading || 'Courses in this program'}</ProgramCoursesTitle>
+          <ProgramCoursesList>
+            {programCourses.map((row) => (
+              <ProgramCourseItem key={row.id}>
+                <ProgramCourseLink href={row.href}>{row.title}</ProgramCourseLink>
+              </ProgramCourseItem>
+            ))}
+          </ProgramCoursesList>
+        </ProgramCoursesWrap>
+      ) : null}
 
       <CourseTabs activeKey={tabKey} onChange={setTabKey} options={tabOptions} />
 

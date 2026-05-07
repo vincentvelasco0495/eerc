@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\LmsEnrollmentController;
 use App\Http\Controllers\Api\V1\LmsModuleController;
 use App\Http\Controllers\Api\V1\LmsLessonMaterialController;
 use App\Http\Controllers\Api\V1\LmsQuizController;
+use App\Http\Controllers\Api\V1\LmsLessonProgressController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -31,13 +32,21 @@ Route::middleware('throttle:12,1')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });
 
+// Public catalog reads (DB-backed) — no login required.
+Route::get('/meta', [LmsMetaController::class, 'show']);
+Route::get('/programs', [LmsProgramController::class, 'index']);
+Route::get('/programs/{programPublicId}/stats', [LmsProgramController::class, 'stats']);
+Route::get('/courses', [LmsCourseController::class, 'index']);
+Route::get('/modules', [LmsModuleController::class, 'index']);
+Route::get('/quizzes', [LmsQuizController::class, 'index']);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('/user', [LmsUserController::class, 'show']);
-    Route::get('/meta', [LmsMetaController::class, 'show']);
-    Route::get('/programs', [LmsProgramController::class, 'index']);
-    Route::get('/courses', [LmsCourseController::class, 'index']);
+    Route::post('/programs', [LmsProgramController::class, 'store']);
+    Route::patch('/programs/{programPublicId}', [LmsProgramController::class, 'update']);
+    Route::delete('/programs/{programPublicId}', [LmsProgramController::class, 'destroy']);
     Route::post('/courses', [LmsCourseController::class, 'store']);
     Route::post('/courses/{coursePublicId}/modules', [LmsModuleController::class, 'store']);
     Route::post('/modules/{modulePublicId}/standalone-lessons', [LmsModuleController::class, 'storeStandaloneLesson']);
@@ -45,10 +54,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/standalone-lessons/{publicId}', [LmsModuleController::class, 'destroyStandaloneLesson']);
     Route::patch('/courses/{publicId}', [LmsCourseController::class, 'update']);
     Route::get('/enrollments', [LmsEnrollmentController::class, 'index']);
-    Route::get('/modules', [LmsModuleController::class, 'index']);
     Route::post('/modules/{modulePublicId}/quizzes', [LmsQuizController::class, 'storeForModule']);
     Route::patch('/quizzes/{publicId}', [LmsQuizController::class, 'update']);
-    Route::get('/quizzes', [LmsQuizController::class, 'index']);
+    Route::get('/courses/{coursePublicId}/lesson-progress', [LmsLessonProgressController::class, 'index']);
+    Route::post('/courses/{coursePublicId}/lesson-progress', [LmsLessonProgressController::class, 'complete']);
     Route::get('/quiz-results', [LmsQuizResultController::class, 'index']);
     Route::get('/leaderboard', [LmsLeaderboardController::class, 'show']);
     Route::get('/analytics', [LmsAnalyticsController::class, 'show']);

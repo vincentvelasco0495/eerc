@@ -241,23 +241,47 @@ class LmsQuizController extends Controller
         }
     }
 
-    public function storeAttempt(string $publicId): JsonResponse
+    public function storeAttempt(Request $request, string $publicId): JsonResponse
     {
         $user = $this->lmsActor();
         $quiz = Quiz::query()->where('public_id', $publicId)->withCount('questions')->firstOrFail();
+        $validated = $request->validate([
+            'selections' => ['required', 'array'],
+            'selections.*' => ['nullable', 'string', 'max:64'],
+            'durationUsedSeconds' => ['sometimes', 'integer', 'min:0', 'max:31536000'],
+        ]);
 
+        $settings = is_array($quiz->settings_json) ? $quiz->settings_json : [];
+        $limitedRetakeAttempts = (bool) ($settings['limitedRetakeAttempts'] ?? false);
         $used = QuizAttempt::query()->where('user_id', $user->id)->where('quiz_id', $quiz->id)->count();
-        if ($used >= $quiz->attempts_allowed) {
+        if ($limitedRetakeAttempts && $used >= $quiz->attempts_allowed) {
             return response()->json(['message' => 'No attempts remaining for this quiz.'], 422);
         }
 
-        $total = (int) ($quiz->question_count ?: max(1, $quiz->questions_count));
-        $correct = random_int(
-            max(0, (int) floor($total * 0.55)),
-            $total
-        );
+        $selections = is_array($validated['selections'] ?? null) ? $validated['selections'] : [];
+        $questions = Question::query()
+            ->where('quiz_id', $quiz->id)
+            ->with(['options:id,question_id,is_correct'])
+            ->get(['id']);
+
+        $total = (int) max(1, $questions->count());
+        $correct = 0;
+        foreach ($questions as $question) {
+            $selected = $selections[(string) $question->id] ?? null;
+            if ($selected === null || $selected === '') {
+                continue;
+            }
+            $picked = $question->options->first(fn (QuestionOption $opt) => (string) $opt->id === (string) $selected);
+            if ($picked?->is_correct) {
+                $correct++;
+            }
+        }
         $score = (int) round(($correct / $total) * 100);
-        $duration = random_int(max(1, $quiz->duration_minutes - 4), max(1, $quiz->duration_minutes));
+        $durationUsedSeconds = (int) ($validated['durationUsedSeconds'] ?? 0);
+        $maxDurationSeconds = max(0, (int) $quiz->duration_minutes * 60);
+        if ($maxDurationSeconds > 0) {
+            $durationUsedSeconds = min($durationUsedSeconds, $maxDurationSeconds);
+        }
 
         $attempt = QuizAttempt::query()->create([
             'public_id' => 'attempt-'.Str::lower(Str::ulid()),
@@ -265,7 +289,7 @@ class LmsQuizController extends Controller
             'quiz_id' => $quiz->id,
             'attempted_on' => now()->toDateString(),
             'score' => $score,
-            'duration_used_label' => sprintf('%dm %02ds', $duration, random_int(0, 59)),
+            'duration_used_label' => $this->formatDurationLabel($durationUsedSeconds),
             'correct_answers' => $correct,
             'total_questions' => $total,
         ]);
@@ -282,5 +306,14 @@ class LmsQuizController extends Controller
             'correctAnswers' => (int) $attempt->correct_answers,
             'totalQuestions' => (int) $attempt->total_questions,
         ], 201);
+    }
+
+    private function formatDurationLabel(int $seconds): string
+    {
+        $safe = max(0, $seconds);
+        $m = intdiv($safe, 60);
+        $s = $safe % 60;
+
+        return sprintf('%dm %02ds', $m, $s);
     }
 }

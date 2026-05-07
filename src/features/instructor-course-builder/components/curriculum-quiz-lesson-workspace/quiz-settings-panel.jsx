@@ -58,6 +58,7 @@ function hydrateFromAuthoring(authoring) {
       duration: 80,
       timeUnit: 'minutes',
       quizStyle: 'global',
+      attemptsAllowed: 3,
       passingGrade: 0,
       pointsCutAfterRetake: '',
       toggles: { ...DEFAULT_TOGGLES },
@@ -85,6 +86,10 @@ function hydrateFromAuthoring(authoring) {
     duration: Math.max(0, dur),
     timeUnit: tu,
     quizStyle: typeof authoring.quizStyle === 'string' && authoring.quizStyle ? authoring.quizStyle : 'global',
+    attemptsAllowed:
+      typeof authoring.attemptsAllowed === 'number' && !Number.isNaN(authoring.attemptsAllowed)
+        ? Math.max(1, Math.min(255, Math.round(authoring.attemptsAllowed)))
+        : 3,
     passingGrade:
       typeof authoring.passingGrade === 'number' && !Number.isNaN(authoring.passingGrade)
         ? authoring.passingGrade
@@ -111,6 +116,7 @@ export const QuizSettingsPanel = forwardRef(function QuizSettingsPanel(
   const [duration, setDuration] = useState(80);
   const [timeUnit, setTimeUnit] = useState('minutes');
   const [quizStyle, setQuizStyle] = useState('global');
+  const [attemptsAllowed, setAttemptsAllowed] = useState(3);
   const [passingGrade, setPassingGrade] = useState(0);
   const [pointsCutAfterRetake, setPointsCutAfterRetake] = useState('');
 
@@ -127,6 +133,7 @@ export const QuizSettingsPanel = forwardRef(function QuizSettingsPanel(
     setDuration(h.duration);
     setTimeUnit(h.timeUnit);
     setQuizStyle(h.quizStyle);
+    setAttemptsAllowed(h.attemptsAllowed);
     setPassingGrade(h.passingGrade);
     setPointsCutAfterRetake(h.pointsCutAfterRetake);
     setToggles(h.toggles);
@@ -151,6 +158,7 @@ export const QuizSettingsPanel = forwardRef(function QuizSettingsPanel(
       duration: Math.max(0, Number(duration) || 0),
       timeUnit: tu,
       quizStyle: quizStyle || 'global',
+      attemptsAllowed: Math.max(1, Math.min(255, Math.round(Number(attemptsAllowed) || 1))),
       passingGrade: Math.min(100, Math.max(0, Number(passingGrade) || 0)),
       pointsCutAfterRetake: pointsTrim === '' ? null : Number(pointsTrim),
       randomizeQuestions: toggles.randomizeQuestions,
@@ -166,6 +174,7 @@ export const QuizSettingsPanel = forwardRef(function QuizSettingsPanel(
     duration,
     timeUnit,
     quizStyle,
+    attemptsAllowed,
     passingGrade,
     pointsCutAfterRetake,
     toggles,
@@ -287,6 +296,29 @@ export const QuizSettingsPanel = forwardRef(function QuizSettingsPanel(
         </Box>
 
         <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Typography component="label" sx={styles.quizSettingsFieldLabel} htmlFor="attempts-allowed">
+              Attempt number
+            </Typography>
+            <TextField
+              id="attempts-allowed"
+              type="number"
+              fullWidth
+              size="small"
+              value={attemptsAllowed}
+              onChange={(e) => setAttemptsAllowed(Number(e.target.value) || 1)}
+              InputProps={{
+                sx: styles.quizSettingsNumberInput,
+              }}
+              inputProps={{ min: 1, max: 255 }}
+              disabled={!toggles.limitedRetakeAttempts}
+              helperText={
+                toggles.limitedRetakeAttempts
+                  ? 'Maximum retake attempts when the limit toggle is ON.'
+                  : 'Enable "Limited attempts to retake quizzes" to enforce this number.'
+              }
+            />
+          </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
             <Typography component="label" sx={styles.quizSettingsFieldLabel} htmlFor="passing-grade">
               Passing grade (%)

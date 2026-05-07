@@ -38,7 +38,12 @@ function CourseMetaItem({ icon, children }) {
   );
 }
 
-export function InstructorCourseCard({ course, onCourseUpdate, onRemoteCoursesInvalidate }) {
+export function InstructorCourseCard({
+  course,
+  onCourseUpdate,
+  onRemoteCoursesInvalidate,
+  showActions = true,
+}) {
   const navigate = useNavigate();
 
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
@@ -311,74 +316,76 @@ export function InstructorCourseCard({ course, onCourseUpdate, onRemoteCoursesIn
             </Stack>
           </Box>
 
-          <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="center">
-            <Button variant="soft" color="inherit" onClick={handleManageCourse}>
-              Manage course
-            </Button>
+          {showActions ? (
+            <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="center">
+              <Button variant="soft" color="inherit" onClick={handleManageCourse}>
+                Manage course
+              </Button>
 
-            <>
-              <IconButton
-                color="inherit"
-                aria-label={`Course actions: ${course.title}`}
-                aria-controls={menuOpen ? `course-menu-${course.id}` : undefined}
-                aria-haspopup="true"
-                aria-expanded={menuOpen ? 'true' : undefined}
-                onClick={handleOpenMenu}
-                sx={styles.menuTrigger}
-              >
-                <Iconify icon="mdi:dots-vertical" width={20} />
-              </IconButton>
+              <>
+                <IconButton
+                  color="inherit"
+                  aria-label={`Course actions: ${course.title}`}
+                  aria-controls={menuOpen ? `course-menu-${course.id}` : undefined}
+                  aria-haspopup="true"
+                  aria-expanded={menuOpen ? 'true' : undefined}
+                  onClick={handleOpenMenu}
+                  sx={styles.menuTrigger}
+                >
+                  <Iconify icon="mdi:dots-vertical" width={20} />
+                </IconButton>
 
-              <Menu
-                id={`course-menu-${course.id}`}
-                anchorEl={menuAnchorEl}
-                open={menuOpen}
-                onClose={handleCloseMenu}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                slotProps={{ paper: { sx: styles.menuPaper } }}
-              >
-                {course.status === 'draft' ? (
-                  <MenuItem dense onClick={handlePublish} sx={styles.menuItem}>
+                <Menu
+                  id={`course-menu-${course.id}`}
+                  anchorEl={menuAnchorEl}
+                  open={menuOpen}
+                  onClose={handleCloseMenu}
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                  slotProps={{ paper: { sx: styles.menuPaper } }}
+                >
+                  {course.status === 'draft' ? (
+                    <MenuItem dense onClick={handlePublish} sx={styles.menuItem}>
+                      <ListItemIcon sx={{ minWidth: 36 }}>
+                        <Iconify icon="solar:check-circle-bold-duotone" width={20} />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Publish"
+                        slotProps={{ primary: { typography: 'body2' } }}
+                      />
+                    </MenuItem>
+                  ) : (
+                    <MenuItem dense onClick={handleMoveToDrafts} sx={styles.menuItem}>
+                      <ListItemIcon sx={{ minWidth: 36 }}>
+                        <Iconify icon="solar:document-text-bold-duotone" width={20} />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Move to drafts"
+                        slotProps={{ primary: { typography: 'body2' } }}
+                      />
+                    </MenuItem>
+                  )}
+
+                  <MenuItem dense onClick={handleEdit} sx={styles.menuItem}>
                     <ListItemIcon sx={{ minWidth: 36 }}>
-                      <Iconify icon="solar:check-circle-bold-duotone" width={20} />
+                      <Iconify icon="solar:pen-bold-duotone" width={20} />
+                    </ListItemIcon>
+                    <ListItemText primary="Edit" slotProps={{ primary: { typography: 'body2' } }} />
+                  </MenuItem>
+
+                  <MenuItem dense onClick={handleMakeFeatured} sx={styles.menuItem}>
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <Iconify icon="eva:star-outline" width={20} />
                     </ListItemIcon>
                     <ListItemText
-                      primary="Publish"
+                      primary="Make Featured"
                       slotProps={{ primary: { typography: 'body2' } }}
                     />
                   </MenuItem>
-                ) : (
-                  <MenuItem dense onClick={handleMoveToDrafts} sx={styles.menuItem}>
-                    <ListItemIcon sx={{ minWidth: 36 }}>
-                      <Iconify icon="solar:document-text-bold-duotone" width={20} />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary="Move to drafts"
-                      slotProps={{ primary: { typography: 'body2' } }}
-                    />
-                  </MenuItem>
-                )}
-
-                <MenuItem dense onClick={handleEdit} sx={styles.menuItem}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <Iconify icon="solar:pen-bold-duotone" width={20} />
-                  </ListItemIcon>
-                  <ListItemText primary="Edit" slotProps={{ primary: { typography: 'body2' } }} />
-                </MenuItem>
-
-                <MenuItem dense onClick={handleMakeFeatured} sx={styles.menuItem}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <Iconify icon="eva:star-outline" width={20} />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Make Featured"
-                    slotProps={{ primary: { typography: 'body2' } }}
-                  />
-                </MenuItem>
-              </Menu>
-            </>
-          </Stack>
+                </Menu>
+              </>
+            </Stack>
+          ) : null}
         </Stack>
       </CardContent>
     </Card>

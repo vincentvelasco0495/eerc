@@ -35,8 +35,9 @@ export function useIsAnyLmsMutationPending() {
   return useSelector(selectIsAnyLmsMutationPending);
 }
 
-export function useLmsUser() {
-  const { data, isLoading, error } = useSWR('/api/user', lmsSwrFetcher, { dedupingInterval: 5000 });
+export function useLmsUser(enabled = true) {
+  const key = enabled ? '/api/user' : null;
+  const { data, isLoading, error } = useSWR(key, lmsSwrFetcher, { dedupingInterval: 5000 });
   return { user: data ?? null, isLoading: Boolean(isLoading && !data), error };
 }
 
@@ -52,12 +53,28 @@ export function useLmsMeta() {
 }
 
 export function useLmsPrograms() {
-  const { data, isLoading } = useSWR('/api/programs', lmsSwrFetcher, { dedupingInterval: 10_000 });
-  return { programs: data?.data ?? [], isLoading: Boolean(isLoading && !data) };
+  const { data, isLoading, error, mutate } = useSWR('/api/programs', lmsSwrFetcher, {
+    dedupingInterval: 10_000,
+  });
+  return { programs: data?.data ?? [], isLoading: Boolean(isLoading && !data), error, mutate };
 }
 
-export function useLmsCourses(page = 1, limit = 100) {
-  const key = `/api/courses?page=${page}&limit=${limit}`;
+export function useLmsProgramStats(programPublicId) {
+  const key = programPublicId ? `/api/programs/${encodeURIComponent(programPublicId)}/stats` : null;
+  const { data, isLoading, error } = useSWR(key, lmsSwrFetcher, { dedupingInterval: 10_000 });
+  return {
+    stats: data?.data ?? null,
+    isLoading: Boolean(isLoading && programPublicId && !data),
+    error,
+  };
+}
+
+export function useLmsCourses(page = 1, limit = 100, program = '') {
+  const programQuery =
+    typeof program === 'string' && program.trim()
+      ? `&program=${encodeURIComponent(program.trim())}`
+      : '';
+  const key = `/api/courses?page=${page}&limit=${limit}${programQuery}`;
   const { data, isLoading, error, mutate } = useSWR(key, lmsSwrFetcher, { dedupingInterval: 10_000 });
   return {
     courses: data?.data ?? [],
@@ -134,9 +151,22 @@ export function useLmsQuizHistory(quizId) {
   }, [data?.data, quizId]);
 }
 
-export function useLmsQuizResults() {
-  const { data, isLoading } = useSWR('/api/quiz-results', lmsSwrFetcher, { dedupingInterval: 10_000 });
+export function useLmsQuizResults(enabled = true) {
+  const key = enabled ? '/api/quiz-results' : null;
+  const { data, isLoading } = useSWR(key, lmsSwrFetcher, { dedupingInterval: 10_000 });
   return { results: data?.data ?? [], isLoading: Boolean(isLoading && !data) };
+}
+
+export function useLmsLessonProgress(courseId, enabled = true) {
+  const key = enabled && courseId
+    ? `/api/courses/${encodeURIComponent(courseId)}/lesson-progress`
+    : null;
+  const { data, isLoading, mutate } = useSWR(key, lmsSwrFetcher, { dedupingInterval: 10_000 });
+  return {
+    lessonProgressKeys: Array.isArray(data?.data) ? data.data : [],
+    isLoading: Boolean(isLoading && courseId && !data),
+    mutate,
+  };
 }
 
 export function useLmsQuestionSets() {

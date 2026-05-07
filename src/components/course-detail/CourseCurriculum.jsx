@@ -195,12 +195,37 @@ const LessonTitleText = styled.span`
 `;
 
 const MetaText = styled.span`
-  flex-shrink: 0;
   font-size: 13px;
   font-weight: 500;
   color: ${colors.muted};
   text-align: right;
-  max-width: 44%;
+  white-space: nowrap;
+`;
+
+const DoneBadge = styled.span`
+  font-size: 12px;
+  font-weight: 700;
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 999px;
+  padding: 4px 8px;
+  line-height: 1;
+`;
+
+const RightMetaRail = styled.div`
+  flex-shrink: 0;
+  width: 168px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+`;
+
+const DoneSlot = styled.div`
+  min-width: 52px;
+  display: flex;
+  justify-content: flex-end;
 `;
 
 const RowChevronBtn = styled.button.attrs({ type: 'button' })`
@@ -372,7 +397,12 @@ export function CourseCurriculum({ modules, courseLookup }) {
                             <LessonMid>
                               <LessonTitleText>{lesson.title}</LessonTitleText>
                             </LessonMid>
-                            <MetaText>{lesson.meta}</MetaText>
+                            <RightMetaRail>
+                              <DoneSlot>
+                                {lesson.completed ? <DoneBadge>Done</DoneBadge> : null}
+                              </DoneSlot>
+                              <MetaText>{lesson.meta}</MetaText>
+                            </RightMetaRail>
                           </LessonRowLink>
                           <LessonChevronCell>
                             {expandable ? (
@@ -403,7 +433,12 @@ export function CourseCurriculum({ modules, courseLookup }) {
                           <LessonMid>
                             <LessonTitleText>{lesson.title}</LessonTitleText>
                           </LessonMid>
-                          <MetaText>{lesson.meta}</MetaText>
+                          <RightMetaRail>
+                            <DoneSlot>
+                              {lesson.completed ? <DoneBadge>Done</DoneBadge> : null}
+                            </DoneSlot>
+                            <MetaText>{lesson.meta}</MetaText>
+                          </RightMetaRail>
 
                           {expandable ? (
                             <RowChevronBtn

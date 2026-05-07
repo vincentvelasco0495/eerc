@@ -1,5 +1,6 @@
+import { useSWRConfig } from 'swr';
 import { useParams, useNavigate } from 'react-router';
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useRef, useMemo, useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -27,6 +28,7 @@ import {
 import axios from 'src/lib/axios';
 import { CONFIG } from 'src/global-config';
 import { DashboardContent } from 'src/layouts/dashboard';
+import { postLmsLessonProgress } from 'src/lib/lms-instructor-api';
 
 import { Iconify } from 'src/components/iconify';
 import { CourseDetailBackArrowSvg } from 'src/components/course-detail/course-detail-back-arrow';
@@ -39,6 +41,47 @@ import { resolveVideoLessonFromModules } from '../utils/resolve-video-lesson-fro
 
 const VIDEO_CURRICULUM_TYPES = new Set(['video', 'stream', 'zoom']);
 
+function formatBytes(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v < 0) {
+    return '—';
+  }
+  if (v < 1024) {
+    return `${Math.round(v)} B`;
+  }
+  if (v < 1024 * 1024) {
+    const kb = v / 1024;
+    return `${kb < 10 ? kb.toFixed(1) : Math.round(kb)} kb`;
+  }
+  return `${(v / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function mimeKind(mime) {
+  const m = typeof mime === 'string' ? mime.toLowerCase() : '';
+  if (m.includes('pdf')) {
+    return 'pdf';
+  }
+  if (m.startsWith('image/')) {
+    return 'image';
+  }
+  return 'file';
+}
+
+function fileRowIcon(kind) {
+  if (kind === 'pdf') {
+    return 'solar:file-text-bold-duotone';
+  }
+  if (kind === 'image') {
+    return 'solar:gallery-bold-duotone';
+  }
+  return 'solar:document-bold-duotone';
+}
+
+function isDownloadDocMaterial(mime) {
+  const m = typeof mime === 'string' ? mime.toLowerCase() : '';
+  return !(m.startsWith('image/') || m.startsWith('video/'));
+}
+
 /**
  * Learner-facing full-page video lesson: uploaded file from `lesson_materials` (DB `storage_path`
  * streamed via `/api/lesson-materials/:id/file?inline=1`) when present; otherwise YouTube from body HTML.
@@ -48,6 +91,8 @@ export function CourseVideoLessonView() {
   const { slug = '', courseId = '', lessonId = '' } = useParams();
   const courseLookup = slug || courseId;
   const navigate = useNavigate();
+  const { mutate } = useSWRConfig();
+  const sentLessonRef = useRef('');
 
   const { isLoading: coursesLoading } = useLmsCourses(1, 500);
   const resolvedCourseId = useResolvedCourseIdFromLookup(courseLookup);
@@ -64,6 +109,27 @@ export function CourseVideoLessonView() {
     () => resolveVideoLessonFromModules(lessonId, modules),
     [lessonId, modules]
   );
+
+  useEffect(() => {
+    if (!resolvedCourseId || !lessonId || !lessonPayload) {
+      return;
+    }
+    const k = `${resolvedCourseId}:${lessonId}`;
+    if (sentLessonRef.current === k) {
+      return;
+    }
+    sentLessonRef.current = k;
+    void postLmsLessonProgress(resolvedCourseId, lessonId)
+      .then(() =>
+        Promise.all([
+          mutate(`/api/courses/${encodeURIComponent(resolvedCourseId)}/lesson-progress`),
+          mutate(`/api/modules?courseId=${encodeURIComponent(resolvedCourseId)}`),
+        ])
+      )
+      .catch(() => {
+        // Keep lesson UX uninterrupted if progress post fails.
+      });
+  }, [resolvedCourseId, lessonId, lessonPayload, mutate]);
 
   const youtubeId = useMemo(
     () => extractYouTubeVideoIdFromHtml(lessonPayload?.bodyHtml ?? ''),
@@ -152,6 +218,41 @@ export function CourseVideoLessonView() {
     (id) => (id ? paths.dashboard.courseVideoLesson(courseLookup, id) : null),
     [courseLookup]
   );
+  const handleBackToCourse = useCallback(() => {
+    const idx = Number(window.history?.state?.idx ?? 0);
+    if (idx > 0) {
+      navigate(-1);
+      return;
+    }
+    navigate(courseLinkHref, { replace: true });
+  }, [navigate, courseLinkHref]);
+
+  const downloadMaterial = useCallback(async (materialPublicId, filename) => {
+    const url = `/api/lesson-materials/${encodeURIComponent(materialPublicId)}/file`;
+    const res = await axios.get(url, { responseType: 'blob' });
+    const blob = res.data;
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = filename || 'download';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+  }, []);
+
+  const downloadAll = useCallback(() => {
+    const mats = lessonPayload?.lessonMaterials ?? [];
+    void (async () => {
+      for (let i = 0; i < mats.length; i += 1) {
+        const m = mats[i];
+        if (m?.id) {
+          await downloadMaterial(m.id, m.name ?? `file-${i + 1}`);
+        }
+      }
+    })();
+  }, [lessonPayload?.lessonMaterials, downloadMaterial]);
 
   const loading = Boolean(
     courseLookup && (coursesLoading || (resolvedCourseId && modulesLoading))
@@ -211,6 +312,9 @@ export function CourseVideoLessonView() {
     );
   }
 
+  const materials = (lessonPayload.lessonMaterials ?? []).filter((m) =>
+    isDownloadDocMaterial(m?.mime)
+  );
   const courseTitle =
     typeof course?.title === 'string' && course.title.trim() ? course.title.trim() : 'Course';
 
@@ -243,8 +347,9 @@ export function CourseVideoLessonView() {
             <Stack direction="row" alignItems="flex-start" justifyContent="space-between" flexWrap="wrap" gap={2}>
               <Stack spacing={1.25} sx={{ minWidth: 0 }}>
                 <Box
-                  component={RouterLink}
-                  href={courseLinkHref}
+                  component="button"
+                  type="button"
+                  onClick={handleBackToCourse}
                   aria-label="Back to course"
                   sx={(t) => ({
                     alignSelf: 'flex-start',
@@ -259,7 +364,6 @@ export function CourseVideoLessonView() {
                     borderRadius: '8px',
                     color: t.palette.mode === 'dark' ? 'text.primary' : 'primary.dark',
                     bgcolor: 'transparent',
-                    textDecoration: 'none',
                     cursor: 'pointer',
                     '&:hover': {
                       bgcolor:
@@ -490,6 +594,128 @@ export function CourseVideoLessonView() {
                 ) : null}
               </CardContent>
             </Card>
+
+            {materials.length > 0 ? (
+              <Card
+                elevation={0}
+                sx={{
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  boxShadow: (t) =>
+                    t.palette.mode === 'dark'
+                      ? `0 0 0 1px ${alpha(t.palette.common.white, 0.06)}`
+                      : `0 8px 32px ${alpha(theme.palette.grey[500], 0.08)}`,
+                }}
+              >
+                <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+                  <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 2.5 }}>
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 1.5,
+                        display: 'grid',
+                        placeItems: 'center',
+                        bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+                        color: 'primary.main',
+                      }}
+                    >
+                      <Iconify icon="solar:folder-with-files-bold-duotone" width={24} />
+                    </Box>
+                    <Box>
+                      <Typography variant="h6" component="h2" sx={{ fontWeight: 800, lineHeight: 1.3 }}>
+                        Lesson materials
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Files provided with this lesson — download individually or all at once.
+                      </Typography>
+                    </Box>
+                  </Stack>
+
+                  <Stack divider={<Divider flexItem sx={{ borderStyle: 'dashed' }} />} spacing={0}>
+                    {materials.map((m) => {
+                      const kind = mimeKind(m.mime);
+                      return (
+                        <Stack
+                          key={m.id}
+                          direction={{ xs: 'column', sm: 'row' }}
+                          alignItems={{ xs: 'stretch', sm: 'center' }}
+                          spacing={2}
+                          sx={{
+                            py: 2,
+                            px: { xs: 0, sm: 0.5 },
+                            borderRadius: 1,
+                            transition: theme.transitions.create(['background-color'], {
+                              duration: theme.transitions.duration.shorter,
+                            }),
+                            '&:hover': {
+                              bgcolor: (t) => alpha(t.palette.primary.main, 0.04),
+                            },
+                          }}
+                        >
+                          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ flex: 1, minWidth: 0 }}>
+                            <Box
+                              sx={{
+                                width: 44,
+                                height: 44,
+                                borderRadius: 1,
+                                flexShrink: 0,
+                                display: 'grid',
+                                placeItems: 'center',
+                                bgcolor: 'background.neutral',
+                                color: 'text.secondary',
+                              }}
+                            >
+                              <Iconify icon={fileRowIcon(kind)} width={26} />
+                            </Box>
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography variant="subtitle2" noWrap title={m.name} sx={{ fontWeight: 700 }}>
+                                {m.name ?? 'File'}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {formatBytes(m.sizeBytes)}
+                              </Typography>
+                            </Box>
+                          </Stack>
+                          <Button
+                            variant="soft"
+                            color="primary"
+                            size="small"
+                            startIcon={<Iconify icon="solar:download-minimalistic-bold" width={18} />}
+                            onClick={() => downloadMaterial(m.id, m.name)}
+                            sx={{ alignSelf: { xs: 'flex-start', sm: 'center' }, flexShrink: 0 }}
+                          >
+                            Download
+                          </Button>
+                        </Stack>
+                      );
+                    })}
+                  </Stack>
+
+                  <Divider sx={{ my: 2 }} />
+
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1.5}>
+                    <Typography variant="body2" color="text.secondary">
+                      <Box component="span" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                        {materials.length}
+                      </Box>{' '}
+                      {materials.length === 1 ? 'file attached' : 'files attached'}
+                    </Typography>
+                    <Button
+                      variant="text"
+                      color="primary"
+                      size="small"
+                      startIcon={<Iconify icon="solar:archive-down-minimlistic-bold" width={18} />}
+                      onClick={() => downloadAll()}
+                      sx={{ fontWeight: 700 }}
+                    >
+                      Download all
+                    </Button>
+                  </Stack>
+                </CardContent>
+              </Card>
+            ) : null}
 
             <Paper
               elevation={0}

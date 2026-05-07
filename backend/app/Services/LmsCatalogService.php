@@ -59,15 +59,87 @@ class LmsCatalogService
             ->all();
     }
 
+    public function programPayload(Program $program): array
+    {
+        return $this->formatProgram($program);
+    }
+
+    /**
+     * Public stats for one program (safe for guests).
+     *
+     * @return array{programId: string, totalCourses: int, totalDurationHours: int, totalLectures: int, totalVideos: int, totalQuizzes: int}
+     */
+    public function programStats(string $programPublicId): array
+    {
+        /** @var Program $program */
+        $program = Program::query()->where('public_id', $programPublicId)->firstOrFail();
+
+        $courseIds = Course::query()
+            ->where('program_id', $program->id)
+            ->pluck('id');
+
+        $totalCourses = (int) $courseIds->count();
+
+        $totalDurationHours = (int) Course::query()
+            ->whereIn('id', $courseIds)
+            ->sum('hours');
+
+        $moduleIds = Module::query()
+            ->whereIn('course_id', $courseIds)
+            ->pluck('id');
+
+        $totalLectures = (int) $moduleIds->count();
+
+        $totalQuizzes = (int) Quiz::query()
+            ->whereIn('course_id', $courseIds)
+            ->count();
+
+        $totalVideos = (int) ModuleResource::query()
+            ->whereIn('module_id', $moduleIds)
+            ->where('format', 'Video')
+            ->distinct('module_id')
+            ->count('module_id');
+
+        return [
+            'programId' => $program->public_id,
+            'totalCourses' => $totalCourses,
+            'totalDurationHours' => $totalDurationHours,
+            'totalLectures' => $totalLectures,
+            'totalVideos' => $totalVideos,
+            'totalQuizzes' => $totalQuizzes,
+        ];
+    }
+
     /**
      * @return array{data: array<int, array<string, mixed>>, meta: array<string, int>}
      */
-    public function coursesPaginated(User $user, int $page, int $perPage): array
+    public function coursesPaginated(User $user, int $page, int $perPage, ?string $programHint = null): array
     {
         $completedMods = UserModuleProgress::query()
             ->where('user_id', $user->id)
             ->where('progress_percent', '>=', 100)
             ->pluck('module_id');
+
+        $programHint = trim((string) ($programHint ?? ''));
+        $programAliasMap = [
+            'civil-engineering' => 'program-ce',
+            'civil_engineering' => 'program-ce',
+            'civil-engineing' => 'program-ce',
+            'civil_engineing' => 'program-ce',
+            'civilengineering' => 'program-ce',
+            'ce' => 'program-ce',
+            'master-plumbing' => 'program-plumbing',
+            'master_plumbing' => 'program-plumbing',
+            'masterplumbing' => 'program-plumbing',
+            'mpl' => 'program-plumbing',
+            'materials-engineering' => 'program-materials',
+            'materials_engineering' => 'program-materials',
+            'materialsengineering' => 'program-materials',
+            'mse' => 'program-materials',
+        ];
+        $normalizedProgramHint = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $programHint) ?? '');
+        $normalizedProgramHint = trim($normalizedProgramHint, '-');
+        $resolvedProgramPublicId = $programAliasMap[$normalizedProgramHint] ?? null;
 
         /** @var LengthAwarePaginator $paginator */
         $paginator = Course::query()
@@ -78,6 +150,18 @@ class LmsCatalogService
                 'nextModule',
                 'modules',
             ])
+            ->when($programHint !== '', function ($query) use ($programHint, $normalizedProgramHint, $resolvedProgramPublicId) {
+                $query->whereHas('program', function ($programQuery) use ($programHint, $normalizedProgramHint, $resolvedProgramPublicId) {
+                    $programQuery->where('public_id', $programHint)
+                        ->orWhereRaw('LOWER(code) = ?', [strtolower($programHint)])
+                        ->orWhereRaw('LOWER(slug) = ?', [strtolower($programHint)])
+                        ->orWhereRaw('LOWER(title) = ?', [str_replace('-', ' ', $normalizedProgramHint)]);
+
+                    if ($resolvedProgramPublicId !== null) {
+                        $programQuery->orWhere('public_id', $resolvedProgramPublicId);
+                    }
+                });
+            })
             ->orderBy('title')
             ->paginate($perPage, ['*'], 'page', $page);
 
@@ -252,8 +336,11 @@ class LmsCatalogService
         return [
             'id' => $p->public_id,
             'code' => $p->code,
+            'slug' => $p->slug,
             'title' => $p->title,
             'description' => $p->description,
+            'status' => $p->status ?? 'active',
+            'bannerPath' => $p->banner_path,
         ];
     }
 
@@ -295,10 +382,10 @@ class LmsCatalogService
     }
 
     /**
-     * Average of each quiz's best score for this user on this course's quizzes (null when no attempts).
-     * Only quizzes tied to stats modules are included once module ids exist.
+     * Average score across the learner's recorded attempts for this course's visible quizzes.
+     * Returns null when no attempts exist.
      */
-    protected function averageQuizBestScorePercent(Course $course, User $user, Collection $modulesStat): ?int
+    protected function averageQuizScorePercent(Course $course, User $user, Collection $modulesStat): ?int
     {
         $visibleModuleDbIds = $modulesStat->pluck('id');
         $query = Quiz::query()->where('course_id', $course->id);
@@ -315,21 +402,12 @@ class LmsCatalogService
             return null;
         }
 
-        $bests = [];
-        foreach ($quizIds as $quizId) {
-            $best = QuizAttempt::query()
-                ->where('user_id', $user->id)
-                ->where('quiz_id', $quizId)
-                ->max('score');
+        $avg = QuizAttempt::query()
+            ->where('user_id', $user->id)
+            ->whereIn('quiz_id', $quizIds)
+            ->avg('score');
 
-            if ($best !== null) {
-                $bests[] = (int) $best;
-            }
-        }
-
-        return $bests === []
-            ? null
-            : (int) round(array_sum($bests) / count($bests));
+        return $avg === null ? null : (int) round((float) $avg);
     }
 
     /**
@@ -424,13 +502,14 @@ class LmsCatalogService
             ? 0
             : $this->averageModuleProgressPercent($modulesStat, $user);
 
-        $averageQuizScorePercent = $this->averageQuizBestScorePercent($c, $user, $modulesStat);
+        $averageQuizScorePercent = $this->averageQuizScorePercent($c, $user, $modulesStat);
 
         return [
             'id' => $c->public_id,
             'slug' => $c->slug,
             'title' => $c->title,
             'programId' => $c->program->public_id,
+            'programSlug' => $c->program?->slug,
             'programTitle' => $c->program?->title ?? '',
             'mentor' => $c->mentor_display_name,
             'description' => $c->description,

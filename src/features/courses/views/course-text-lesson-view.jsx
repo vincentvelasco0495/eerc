@@ -1,5 +1,6 @@
-import { useMemo, useCallback } from 'react';
+import { useSWRConfig } from 'swr';
 import { useParams, useNavigate } from 'react-router';
+import { useRef, useMemo, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -27,6 +28,7 @@ import {
 import axios from 'src/lib/axios';
 import { CONFIG } from 'src/global-config';
 import { DashboardContent } from 'src/layouts/dashboard';
+import { postLmsLessonProgress } from 'src/lib/lms-instructor-api';
 
 import { Iconify } from 'src/components/iconify';
 import { CourseDetailBackArrowSvg } from 'src/components/course-detail/course-detail-back-arrow';
@@ -81,6 +83,8 @@ export function CourseTextLessonView() {
   const { slug = '', courseId = '', lessonId = '' } = useParams();
   const courseLookup = slug || courseId;
   const navigate = useNavigate();
+  const { mutate } = useSWRConfig();
+  const sentLessonRef = useRef('');
 
   const { isLoading: coursesLoading } = useLmsCourses(1, 500);
   const resolvedCourseId = useResolvedCourseIdFromLookup(courseLookup);
@@ -97,6 +101,27 @@ export function CourseTextLessonView() {
     () => resolveTextLessonFromModules(lessonId, modules),
     [lessonId, modules]
   );
+
+  useEffect(() => {
+    if (!resolvedCourseId || !lessonId || !lessonPayload) {
+      return;
+    }
+    const k = `${resolvedCourseId}:${lessonId}`;
+    if (sentLessonRef.current === k) {
+      return;
+    }
+    sentLessonRef.current = k;
+    void postLmsLessonProgress(resolvedCourseId, lessonId)
+      .then(() =>
+        Promise.all([
+          mutate(`/api/courses/${encodeURIComponent(resolvedCourseId)}/lesson-progress`),
+          mutate(`/api/modules?courseId=${encodeURIComponent(resolvedCourseId)}`),
+        ])
+      )
+      .catch(() => {
+        // Keep lesson UX uninterrupted if progress post fails.
+      });
+  }, [resolvedCourseId, lessonId, lessonPayload, mutate]);
 
   const navIds = useMemo(() => {
     if (!course || !lessonId) {
@@ -126,6 +151,14 @@ export function CourseTextLessonView() {
     (id) => (id ? paths.dashboard.courseTextLesson(courseLookup, id) : null),
     [courseLookup]
   );
+  const handleBackToCourse = useCallback(() => {
+    const idx = Number(window.history?.state?.idx ?? 0);
+    if (idx > 0) {
+      navigate(-1);
+      return;
+    }
+    navigate(courseLinkHref, { replace: true });
+  }, [navigate, courseLinkHref]);
 
   const downloadMaterial = useCallback(async (materialPublicId, filename) => {
     const url = `/api/lesson-materials/${encodeURIComponent(materialPublicId)}/file`;
@@ -238,8 +271,9 @@ export function CourseTextLessonView() {
             <Stack direction="row" alignItems="flex-start" justifyContent="space-between" flexWrap="wrap" gap={2}>
               <Stack spacing={1.25} sx={{ minWidth: 0 }}>
                 <Box
-                  component={RouterLink}
-                  href={courseLinkHref}
+                  component="button"
+                  type="button"
+                  onClick={handleBackToCourse}
                   aria-label="Back to course"
                   sx={(t) => ({
                     alignSelf: 'flex-start',
@@ -254,7 +288,6 @@ export function CourseTextLessonView() {
                     borderRadius: '8px',
                     color: courseDetailColors.headingNavy,
                     bgcolor: 'transparent',
-                    textDecoration: 'none',
                     cursor: 'pointer',
                     '&:hover': {
                       bgcolor: 'rgba(30, 58, 138, 0.06)',

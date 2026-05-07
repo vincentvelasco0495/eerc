@@ -45,7 +45,11 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
 
   const hideDashboardHeader =
     pathname === paths.dashboard.instructorCourseCurriculum ||
+    /^\/program-course-detail(\/.*)?$/.test(pathname ?? '') ||
     /^\/instructor-course\/[^/]+\/edit\/?$/.test(pathname ?? '');
+  const hideHeaderLogo =
+    /^\/course-details\/[^/]+\/?$/.test(pathname ?? '') ||
+    /^\/courses\/[^/]+\/?$/.test(pathname ?? '');
 
   const isNavMini = settings.state.navLayout === 'mini';
   const isNavHorizontal = settings.state.navLayout === 'horizontal';
@@ -82,7 +86,7 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
       leftArea: (
         <>
           {/** @slot Logo */}
-          {showHorizontalNavRail && <Logo sx={{ display: 'inline-flex' }} />}
+          {showHorizontalNavRail && !hideHeaderLogo && <Logo sx={{ display: 'inline-flex' }} />}
         </>
       ),
       rightArea: (

@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import styled from 'styled-components';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
+
+import { paths } from 'src/routes/paths';
+
+import { useLmsUser } from 'src/hooks/use-lms';
+
+import { useAuthContext } from 'src/auth/hooks';
 
 import { space, colors } from './course-detail-tokens';
 import { CourseDetailBackArrowSvg } from './course-detail-back-arrow';
@@ -213,20 +219,45 @@ const DESCRIPTION_PREVIEW = 148;
  * vertical dividers between sections only.
  */
 export function CourseHeader({ data }) {
-  const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const { category, badge, title, instructor, shortDescription } = data;
+  const { authenticated } = useAuthContext();
+  const { user } = useLmsUser(authenticated);
+  const [searchParams] = useSearchParams();
 
   const needsToggle = shortDescription.length > DESCRIPTION_PREVIEW;
   const collapsedText = needsToggle
     ? `${shortDescription.slice(0, DESCRIPTION_PREVIEW).trimEnd()}…`
     : shortDescription;
 
+  const navigate = useNavigate();
+  const handleBack = () => {
+    if (!authenticated) {
+      const byData = typeof data?.programSlug === 'string' ? data.programSlug.trim() : '';
+      const byQuery = String(searchParams.get('program') ?? '').trim();
+      const programSlug = byData || byQuery;
+      navigate(
+        programSlug
+          ? `${paths.programCourseDetail}?program=${encodeURIComponent(programSlug)}`
+          : paths.programCourseDetail,
+        { replace: true }
+      );
+      return;
+    }
+
+    const role = typeof user?.role === 'string' ? user.role.trim().toLowerCase() : '';
+    const isInstructorLike = role === 'instructor' || role === 'admin';
+    navigate(
+      isInstructorLike ? paths.dashboard.instructorProfile : paths.dashboard.studentProfile,
+      { replace: true }
+    );
+  };
+
   return (
     <Outer>
       <MetaSection>
         <HeaderTopNav>
-          <BackButton type="button" aria-label="Go back" onClick={() => navigate(-1)}>
+          <BackButton type="button" aria-label="Go back" onClick={handleBack}>
             <CourseDetailBackArrowSvg />
           </BackButton>
           {badge ? <BadgeChip>{badge}</BadgeChip> : null}

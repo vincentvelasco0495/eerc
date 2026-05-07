@@ -17,6 +17,10 @@ export function AuthGuard({ children }) {
 
   const [isChecking, setIsChecking] = useState(true);
 
+  const isPublicPath =
+    /^\/course-details\/[^/]+(\/.*)?$/.test(pathname ?? '') ||
+    /^\/program-course-detail(\/.*)?$/.test(pathname ?? '');
+
   const createRedirectPath = (currentPath) => {
     const queryString = new URLSearchParams({ returnTo: pathname }).toString();
     return `${currentPath}?${queryString}`;
@@ -24,6 +28,11 @@ export function AuthGuard({ children }) {
 
   const checkPermissions = async () => {
     if (loading) {
+      return;
+    }
+
+    if (isPublicPath) {
+      setIsChecking(false);
       return;
     }
 

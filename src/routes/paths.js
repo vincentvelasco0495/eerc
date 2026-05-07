@@ -22,6 +22,7 @@ const LMS_HOME = '/student-profile';
 const DASHBOARD_LAYOUT_FIRST_SEGMENTS = new Set([
   'courses',
   'course-details',
+  'programs',
   'modules',
   'quizzes',
   'analytics',
@@ -164,6 +165,7 @@ export const paths = {
     instructorCourseEdit: (slugOrPublicId) =>
       `/instructor-course/${encodeURIComponent(String(slugOrPublicId ?? ''))}/edit`,
     instructorAssignments: `/instructor-assignments`,
+    programs: `/programs`,
     studentAssignments: `/assignments`,
     studentProfile: `/student-profile`,
     studentSettings: `/settings`,

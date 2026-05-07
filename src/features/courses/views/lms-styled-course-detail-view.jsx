@@ -8,6 +8,8 @@ import {
   useLmsCourse,
   useLmsCourses,
   useLmsQuizzes,
+  useLmsQuizResults,
+  useLmsLessonProgress,
   useLmsModulesByCourse,
   useResolvedCourseIdFromLookup,
 } from 'src/hooks/use-lms';
@@ -18,14 +20,19 @@ import { DashboardContent } from 'src/layouts/dashboard';
 import { CourseDetailLayout } from 'src/components/course-detail/CourseDetailLayout';
 import { mapLmsToStyledCourseDetail } from 'src/components/course-detail/map-lms-to-styled-shell';
 
+import { useAuthContext } from 'src/auth/hooks';
+
 // ----------------------------------------------------------------------
 
 export function LmsStyledCourseDetailView({ courseLookup }) {
+  const { authenticated } = useAuthContext();
   const courseId = useResolvedCourseIdFromLookup(courseLookup ?? '');
   const course = useLmsCourse(courseId);
-  const { courses, isLoading: coursesLoading } = useLmsCourses(1, 500);
+  const { isLoading: coursesLoading } = useLmsCourses(1, 500);
   const { modules } = useLmsModulesByCourse(courseId);
   const { quizzes } = useLmsQuizzes();
+  const { results: quizResults } = useLmsQuizResults(authenticated);
+  const { lessonProgressKeys } = useLmsLessonProgress(courseId, authenticated);
 
   const quizzesForCourse = useMemo(
     () => quizzes.filter((q) => q.courseId === courseId),
@@ -37,8 +44,14 @@ export function LmsStyledCourseDetailView({ courseLookup }) {
       return null;
     }
 
-    return mapLmsToStyledCourseDetail(course, modules, quizzesForCourse);
-  }, [course, courses, modules, quizzesForCourse]);
+    return mapLmsToStyledCourseDetail(
+      course,
+      modules,
+      quizzesForCourse,
+      quizResults,
+      lessonProgressKeys
+    );
+  }, [course, modules, quizzesForCourse, quizResults, lessonProgressKeys]);
 
   if (!courseLookup) {
     return (

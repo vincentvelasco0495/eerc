@@ -35,6 +35,7 @@ const InstructorCourseCurriculumPage = lazy(() =>
 );
 const InstructorCourseEditPage = lazy(() => import('src/pages/dashboard/instructor-course-edit'));
 const InstructorAssignmentsPage = lazy(() => import('src/pages/dashboard/instructor-assignments'));
+const ProgramsPage = lazy(() => import('src/pages/dashboard/programs'));
 const SettingsPage = lazy(() => import('src/pages/dashboard/settings'));
 const StudentProfilePage = lazy(() => import('src/pages/dashboard/student-profile'));
 
@@ -100,6 +101,7 @@ export const dashboardRoutes = [
       { path: 'instructor-course-curriculum', element: <InstructorCourseCurriculumPage /> },
       { path: 'instructor-course/:courseLookup/edit', element: <InstructorCourseEditPage /> },
       { path: 'instructor-assignments', element: <InstructorAssignmentsPage /> },
+      { path: 'programs', element: <ProgramsPage /> },
       { path: 'assignments', element: <AssignmentsPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'student-profile', element: <StudentProfilePage /> },

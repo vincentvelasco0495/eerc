@@ -20,9 +20,10 @@ class LmsCourseController extends Controller
     {
         $page = max(1, (int) $request->query('page', 1));
         $limit = min(100, max(1, (int) $request->query('limit', 20)));
+        $program = trim((string) $request->query('program', ''));
 
         $user = $this->lmsActor();
-        $payload = $catalog->coursesPaginated($user, $page, $limit);
+        $payload = $catalog->coursesPaginated($user, $page, $limit, $program !== '' ? $program : null);
 
         return response()->json($payload);
     }

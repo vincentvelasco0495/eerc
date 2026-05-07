@@ -4,7 +4,23 @@ import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
-export const navData = [
+export function buildMainNavData(programs = []) {
+  const activePrograms = (programs ?? []).filter(
+    (program) => String(program?.status ?? '').toLowerCase() === 'active'
+  );
+
+  const programItems = activePrograms.map((program) => {
+    const programSlug = String(program?.slug ?? '').trim();
+    const fallbackSlug = String(program?.code ?? '').trim().toLowerCase();
+    const resolvedSlug = programSlug || fallbackSlug;
+
+    return {
+      title: String(program?.title ?? '').trim() || 'Program',
+      path: `${paths.programCourseDetail}?program=${encodeURIComponent(resolvedSlug)}`,
+    };
+  });
+
+  return [
   { title: 'Home', path: '/', icon: <Iconify width={22} icon="solar:home-angle-bold-duotone" /> },
   {
     title: 'About Us',
@@ -19,20 +35,7 @@ export const navData = [
     children: [
       {
         subheader: 'Programs',
-        items: [
-          {
-            title: 'Civil Engineering',
-            path: paths.programCourseDetail,
-          },
-          {
-            title: 'Master Plumbing',
-            path: paths.programCourseDetail,
-          },
-          {
-            title: 'Materials Engineering',
-            path: paths.programCourseDetail,
-          },
-        ],
+        items: programItems,
       },
     ],
   },
@@ -46,4 +49,7 @@ export const navData = [
     path: paths.contact,
     icon: <Iconify width={22} icon="solar:phone-calling-rounded-bold-duotone" />,
   },
-];
+  ];
+}
+
+export const navData = buildMainNavData();

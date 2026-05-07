@@ -64,10 +64,28 @@ function reviewsToRating(copy) {
  * @param {object} course
  * @param {object[]} modules
  * @param {object[]} quizzesForCourse  quizzes where `quiz.courseId === course.id`
+ * @param {object[]} [quizResults] learner attempt history (`/api/quiz-results`)
+ * @param {string[]} [lessonProgressKeys] learner-completed lesson keys
  */
-export function mapLmsToStyledCourseDetail(course, modules, quizzesForCourse) {
+export function mapLmsToStyledCourseDetail(
+  course,
+  modules,
+  quizzesForCourse,
+  quizResults = [],
+  lessonProgressKeys = []
+) {
   const copy = getCourseCopy(course);
   const tabs = mergeTabsContentFromCourseApi(course, copy);
+  const attemptedQuizIds = new Set(
+    (Array.isArray(quizResults) ? quizResults : [])
+      .map((row) => row?.quizId)
+      .filter((id) => typeof id === 'string' && id.trim() !== '')
+  );
+  const completedLessonKeys = new Set(
+    (Array.isArray(lessonProgressKeys) ? lessonProgressKeys : [])
+      .filter((id) => typeof id === 'string' && id.trim() !== '')
+      .map((id) => id.trim())
+  );
 
   const sortedModules = (Array.isArray(modules) ? [...modules] : []).filter((m) => m && m.visible !== false);
 
@@ -90,6 +108,8 @@ export function mapLmsToStyledCourseDetail(course, modules, quizzesForCourse) {
     sortedModules.length > 0
       ? sortedModules.map((m, mi) => {
           const quizzes = quizzesByModule.get(m.id) ?? [];
+          const moduleCompleted =
+            typeof m?.progress === 'number' && Number.isFinite(m.progress) ? m.progress >= 100 : false;
           const mainType = deriveLessonType(m);
           const corePeek = plainTextFromRichLessonFields({
             excerptHtml: m.excerptHtml,
@@ -117,6 +137,7 @@ export function mapLmsToStyledCourseDetail(course, modules, quizzesForCourse) {
               type: sl.kind,
               title: sl.title ?? 'Lesson',
               meta,
+              completed: moduleCompleted || completedLessonKeys.has(sl.id),
               expandable: slExpandable,
               peekBody: slExpandable ? peekText.slice(0, 620) : undefined,
             };
@@ -129,6 +150,7 @@ export function mapLmsToStyledCourseDetail(course, modules, quizzesForCourse) {
               type: mainType,
               title: coreLessonListTitle(m),
               meta: m.duration ?? '—',
+              completed: moduleCompleted || completedLessonKeys.has(`${m.id}-core`),
               expandable,
               peekBody,
             },
@@ -139,6 +161,7 @@ export function mapLmsToStyledCourseDetail(course, modules, quizzesForCourse) {
               type: 'quiz',
               title: q.title,
               meta: `${q.questionCount ?? 0} questions`,
+              completed: attemptedQuizIds.has(q.id),
               expandable: false,
             })),
           ];
@@ -207,8 +230,34 @@ export function mapLmsToStyledCourseDetail(course, modules, quizzesForCourse) {
   const safeTotal = Math.max(totalModsRaw, 1);
   const doneMods = typeof course.completedModules === 'number' ? course.completedModules : 0;
 
+  const moduleProgressRows = sortedModules
+    .map((m) => (typeof m?.progress === 'number' && Number.isFinite(m.progress) ? m.progress : null))
+    .filter((v) => v != null);
+  const modulesProgressPercent =
+    moduleProgressRows.length > 0
+      ? Math.round(moduleProgressRows.reduce((sum, v) => sum + v, 0) / moduleProgressRows.length)
+      : null;
+
+  const totalLessonCount = curriculumModules.reduce((sum, mod) => sum + (mod.lessons?.length ?? 0), 0);
+  const completedLessonCount = curriculumModules.reduce(
+    (sum, mod) => sum + mod.lessons.filter((les) => les.completed).length,
+    0
+  );
+  const lessonCompletionPercent =
+    totalLessonCount > 0 ? Math.round((completedLessonCount / totalLessonCount) * 100) : null;
+
   let pct;
-  if (typeof course.averageModuleProgressPercent === 'number' && Number.isFinite(course.averageModuleProgressPercent)) {
+  if (lessonCompletionPercent != null) {
+    // Primary signal: completed lesson rows (text/video + quizzes).
+    pct = Math.min(100, Math.max(0, lessonCompletionPercent));
+  } else
+  if (modulesProgressPercent != null) {
+    // Primary signal: learner lesson/module progress from module payload.
+    pct = Math.min(100, Math.max(0, modulesProgressPercent));
+  } else if (
+    typeof course.averageModuleProgressPercent === 'number' &&
+    Number.isFinite(course.averageModuleProgressPercent)
+  ) {
     pct = Math.min(100, Math.max(0, Math.round(course.averageModuleProgressPercent)));
   } else {
     pct = Math.min(100, Math.round((doneMods / safeTotal) * 100));
@@ -226,19 +275,26 @@ export function mapLmsToStyledCourseDetail(course, modules, quizzesForCourse) {
     quizScorePercent = Math.min(100, Math.max(0, Math.round(course.averageQuizScorePercent)));
   }
 
+  // Fallback only: if lesson/module progress is unavailable, estimate from attempted course quizzes.
+  if (pct === 0 && quizzesForCourseVisible.length > 0) {
+    const attemptedCount = quizzesForCourseVisible.reduce(
+      (sum, q) => sum + (attemptedQuizIds.has(q.id) ? 1 : 0),
+      0
+    );
+    pct = Math.min(100, Math.round((attemptedCount / quizzesForCourseVisible.length) * 100));
+  }
+
   const completion = {
     label: pct >= 100 ? 'Course complete' : `${pct}% complete`,
     quizScorePercent,
   };
 
-  const nextModuleCandidate =
-    course.nextModuleId && sortedModules.some((m) => m.id === course.nextModuleId)
-      ? course.nextModuleId
-      : sortedModules[0]?.id;
+  const courseLookup =
+    typeof course.slug === 'string' && course.slug.trim() ? course.slug.trim() : (course.id ?? '');
 
-  const continueHref = nextModuleCandidate
-    ? paths.dashboard.modules.details(nextModuleCandidate)
-    : paths.dashboard.courses.root;
+  const continueHref = courseLookup
+    ? `${paths.dashboard.courseDetails(courseLookup)}#curriculum`
+    : '#curriculum';
 
   const mentorName =
     typeof course.mentor === 'string' && course.mentor.trim() ? course.mentor.trim() : 'Instructor';
@@ -252,6 +308,10 @@ export function mapLmsToStyledCourseDetail(course, modules, quizzesForCourse) {
 
   const data = {
     category: copy.category ?? 'Course',
+    programSlug:
+      typeof course.programSlug === 'string' && course.programSlug.trim()
+        ? course.programSlug.trim()
+        : '',
     badge: '',
     title: course.title ?? 'Course',
     instructor: {
@@ -305,9 +365,6 @@ export function mapLmsToStyledCourseDetail(course, modules, quizzesForCourse) {
     question: row.question,
     answer: row.answer,
   }));
-
-  const courseLookup =
-    typeof course.slug === 'string' && course.slug.trim() ? course.slug.trim() : (course.id ?? '');
 
   return {
     data,

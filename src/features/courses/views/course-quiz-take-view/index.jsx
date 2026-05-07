@@ -1,3 +1,4 @@
+import { useSWRConfig } from 'swr';
 import { useParams, useSearchParams } from 'react-router';
 import { useRef, useMemo, useState, useEffect, useCallback, useLayoutEffect } from 'react';
 
@@ -23,7 +24,7 @@ import {
 
 import { CONFIG } from 'src/global-config';
 import { DashboardContent } from 'src/layouts/dashboard';
-import { getLmsQuizQuestions } from 'src/lib/lms-instructor-api';
+import { postLmsQuizAttempt, getLmsQuizQuestions } from 'src/lib/lms-instructor-api';
 
 import { Iconify } from 'src/components/iconify';
 import { CourseDetailBackArrowSvg } from 'src/components/course-detail/course-detail-back-arrow';
@@ -182,6 +183,7 @@ export function CourseQuizTakeView() {
   const { slug = '', courseId = '', quizId = '' } = useParams();
   const courseLookup = slug || courseId;
   const [searchParams, setSearchParams] = useSearchParams();
+  const { mutate } = useSWRConfig();
 
   const { isLoading: coursesLoading } = useLmsCourses(1, 500);
   useLmsQuizzes();
@@ -202,8 +204,10 @@ export function CourseQuizTakeView() {
   const [secondsLeft, setSecondsLeft] = useState(0);
   /** Absolute end time (ms); drives countdown. State (not ref) so the tick effect re-subscribes after hydrate when `quizMeta` arrives after questions. */
   const [deadlineAtMs, setDeadlineAtMs] = useState(null);
+  const [attemptResetToken, setAttemptResetToken] = useState(0);
 
   const hydrateKeyRef = useRef('');
+  const attemptSubmitRef = useRef('');
   /** Block take UI: `pass` = passed with retake-after-pass OFF; `attempts` = no attempts left. */
   const [takeBlocked, setTakeBlocked] = useState('');
 
@@ -223,7 +227,9 @@ export function CourseQuizTakeView() {
     } catch {
       // ignore
     }
+    attemptSubmitRef.current = '';
     hydrateKeyRef.current = '';
+    setAttemptResetToken((n) => n + 1);
     const next = new URLSearchParams(searchParams);
     next.delete('new');
     setSearchParams(next, { replace: true });
@@ -374,6 +380,7 @@ export function CourseQuizTakeView() {
     }
 
     setTakeBlocked('');
+    attemptSubmitRef.current = '';
 
     const ts = Math.max(0, Math.round((quizMeta.durationMinutes ?? 0) * 60));
     const deadlineAt = ts > 0 ? Date.now() + ts * 1000 : null;
@@ -411,7 +418,7 @@ export function CourseQuizTakeView() {
       })
     );
     hydrateKeyRef.current = versionKey;
-  }, [quizId, courseLookup, apiQuestions, quizMeta]);
+  }, [quizId, courseLookup, apiQuestions, quizMeta, attemptResetToken]);
 
   useEffect(() => {
     if (!quizId || !courseLookup || apiQuestions.length === 0) {
@@ -477,6 +484,27 @@ export function CourseQuizTakeView() {
   }, [phase, quizMeta, displayQuestions, selections, quizId]);
 
   useEffect(() => {
+    if (phase !== 'complete' || !quizId || displayQuestions.length === 0) {
+      return;
+    }
+    const submissionKey = `${quizId}|${questionIdsSignature(displayQuestions)}|${JSON.stringify(selections)}`;
+    if (attemptSubmitRef.current === submissionKey) {
+      return;
+    }
+    attemptSubmitRef.current = submissionKey;
+    const totalSeconds = Math.max(0, Math.round((quizMeta?.durationMinutes ?? 0) * 60));
+    const durationUsedSeconds = totalSeconds > 0 ? Math.max(0, totalSeconds - secondsLeft) : 0;
+    void postLmsQuizAttempt(quizId, {
+      selections,
+      durationUsedSeconds,
+    })
+      .then(() => Promise.all([mutate('/api/quiz-results'), mutate('/api/quizzes')]))
+      .catch(() => {
+        // Keep the quiz UX unblocked even if attempt logging fails.
+      });
+  }, [phase, quizId, displayQuestions, selections, quizMeta, secondsLeft, mutate]);
+
+  useEffect(() => {
     if (phase !== 'taking') {
       return undefined;
     }
@@ -519,6 +547,17 @@ export function CourseQuizTakeView() {
     () => `${paths.dashboard.courseQuizTake(courseLookup, quizId)}?new=1`,
     [courseLookup, quizId]
   );
+  const historyHref = useMemo(() => {
+    const q = new URLSearchParams();
+    if (quizId) {
+      q.set('quizId', quizId);
+    }
+    if (courseLookup) {
+      q.set('course', courseLookup);
+    }
+    const s = q.toString();
+    return s ? `${paths.dashboard.quizzes.history}?${s}` : paths.dashboard.quizzes.history;
+  }, [quizId, courseLookup]);
 
   const attemptsExhausted =
     Boolean(quizMeta?.limitedRetakeAttempts) &&
@@ -607,7 +646,7 @@ export function CourseQuizTakeView() {
         <Typography variant="body1">{msg}</Typography>
         {quizMeta?.quizAttemptHistory ? (
           <Typography variant="body2" sx={{ mt: 2 }}>
-            <RouterLink href={paths.dashboard.quizzes.history}>View quiz attempt history</RouterLink>
+            <RouterLink href={historyHref}>View quiz attempt history</RouterLink>
           </Typography>
         ) : null}
       </DashboardContent>
@@ -706,7 +745,7 @@ export function CourseQuizTakeView() {
 
         {phase === 'complete' && quizMeta?.quizAttemptHistory ? (
           <Typography variant="body2" sx={{ mb: 2 }}>
-            <RouterLink href={paths.dashboard.quizzes.history}>View quiz attempt history</RouterLink>
+            <RouterLink href={historyHref}>View quiz attempt history</RouterLink>
           </Typography>
         ) : null}
 

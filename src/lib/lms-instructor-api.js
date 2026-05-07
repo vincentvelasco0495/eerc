@@ -29,6 +29,32 @@ export async function patchLmsCourse(publicId, payload) {
   return data;
 }
 
+export async function postLmsProgram(payload = {}) {
+  const { data } = await axios.post('/api/programs', payload ?? {});
+  return data;
+}
+
+export async function patchLmsProgram(publicId, payload = {}) {
+  const endpoint = `/api/programs/${encodeURIComponent(publicId)}`;
+  const body = payload ?? {};
+
+  if (typeof FormData !== 'undefined' && body instanceof FormData) {
+    if (!body.has('_method')) {
+      body.append('_method', 'PATCH');
+    }
+    const { data } = await axios.post(endpoint, body);
+    return data;
+  }
+
+  const { data } = await axios.patch(endpoint, body);
+  return data;
+}
+
+export async function deleteLmsProgram(publicId) {
+  const { data } = await axios.delete(`/api/programs/${encodeURIComponent(publicId)}`);
+  return data;
+}
+
 /**
  * @param {{ title?: string, programId?: string|null }} [payload]
  */
@@ -105,6 +131,35 @@ export async function patchLmsQuiz(publicId, payload) {
   const { data } = await axios.patch(
     `/api/quizzes/${encodeURIComponent(publicId)}`,
     payload ?? {}
+  );
+  return data;
+}
+
+/**
+ * Store one quiz attempt for the current learner (`POST /api/quizzes/{id}/attempts`).
+ * @param {{ selections: Record<string, string>, durationUsedSeconds?: number }} payload
+ */
+export async function postLmsQuizAttempt(publicId, payload) {
+  const { data } = await axios.post(
+    `/api/quizzes/${encodeURIComponent(publicId)}/attempts`,
+    payload ?? {}
+  );
+  return data;
+}
+
+/** List learner-completed lesson keys for one course (`GET /api/courses/{id}/lesson-progress`). */
+export async function getLmsLessonProgress(coursePublicId) {
+  const { data } = await axios.get(
+    `/api/courses/${encodeURIComponent(coursePublicId)}/lesson-progress`
+  );
+  return data?.data ?? [];
+}
+
+/** Mark one lesson as completed for current learner (`POST /api/courses/{id}/lesson-progress`). */
+export async function postLmsLessonProgress(coursePublicId, lessonKey) {
+  const { data } = await axios.post(
+    `/api/courses/${encodeURIComponent(coursePublicId)}/lesson-progress`,
+    { lessonKey }
   );
   return data;
 }

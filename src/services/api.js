@@ -14,8 +14,17 @@ export async function lmsGet(path) {
     return mockResponseForKey(path);
   }
 
-  const { data } = await axios.get(path);
-  return data;
+  try {
+    const { data } = await axios.get(path);
+    return data;
+  } catch (error) {
+    const status = error?.response?.status ?? error?.status;
+    if (status === 401 || status === 403) {
+      // Public read fallback: when not logged in, keep LMS pages usable via local mock data.
+      return mockResponseForKey(path);
+    }
+    throw error;
+  }
 }
 
 export const getUser = () => lmsGet('/api/user');

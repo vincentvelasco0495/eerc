@@ -1,6 +1,5 @@
-import { CourseQuizTakeView } from 'src/features/courses/views/course-quiz-take-view';
-
 import { CONFIG } from 'src/global-config';
+import { CourseQuizTakeView } from 'src/features/courses/views/course-quiz-take-view';
 
 // ----------------------------------------------------------------------
 
