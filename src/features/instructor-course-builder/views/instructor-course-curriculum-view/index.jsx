@@ -1034,7 +1034,20 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
                 <CourseSettingsWorkspace
                   tiedCourse={course ?? null}
                   onEnsureCourse={!course?.id ? ensureCourseCreated : undefined}
-                  onSaved={() => mutateCourses()}
+                  onSaved={(updatedCourse) =>
+                    mutateCourses(
+                      (prev) => {
+                        if (!prev || typeof prev !== 'object') return prev;
+                        const list = Array.isArray(prev.data) ? prev.data : [];
+                        const nextId =
+                          updatedCourse && typeof updatedCourse === 'object' ? updatedCourse.id : null;
+                        if (!nextId) return prev;
+                        const nextList = list.map((row) => (row?.id === nextId ? updatedCourse : row));
+                        return { ...prev, data: nextList };
+                      },
+                      { revalidate: false }
+                    )
+                  }
                 />
               ) : (
                 <CourseSettingsWorkspace />

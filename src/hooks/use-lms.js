@@ -92,12 +92,32 @@ export function useResolvedCourseIdFromLookup(courseLookup) {
     if (!courseLookup) {
       return '';
     }
-    const byId = courses.find((course) => course.id === courseLookup);
+    const normalizedLookup = decodeURIComponent(String(courseLookup).trim()).toLowerCase();
+    if (!normalizedLookup) {
+      return '';
+    }
+
+    const byId = courses.find((course) => String(course.id ?? '').trim() === courseLookup);
     if (byId) {
       return byId.id;
     }
-    const bySlug = courses.find((course) => course.slug === courseLookup);
-    return bySlug?.id ?? '';
+
+    const byExactSlug = courses.find(
+      (course) => String(course.slug ?? '').trim().toLowerCase() === normalizedLookup
+    );
+    if (byExactSlug) {
+      return byExactSlug.id;
+    }
+
+    // Fallback for stale links when a slug was later de-duplicated to `${slug}-2`, `${slug}-3`, etc.
+    const prefixed = courses
+      .filter((course) => {
+        const slug = String(course.slug ?? '').trim().toLowerCase();
+        return slug.startsWith(`${normalizedLookup}-`);
+      })
+      .sort((a, b) => String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? '')));
+
+    return prefixed[0]?.id ?? '';
   }, [courses, courseLookup]);
 }
 

@@ -2,7 +2,6 @@ import { paths } from 'src/routes/paths';
 
 import { resolveCourseHeroImageUrl } from 'src/utils/course-hero-image';
 
-import { getCourseCopy } from 'src/features/courses/data/course-page-copy';
 import { mergeTabsContentFromCourseApi } from 'src/features/courses/utils/merge-course-tabs-from-api';
 import {
   deriveLessonType,
@@ -30,8 +29,7 @@ function plainTextFromRichLessonFields(row) {
   return '';
 }
 
-function reviewsToRating(copy) {
-  const reviews = copy.reviews ?? [];
+function reviewsToRating(reviews = []) {
   if (reviews.length === 0) {
     return {
       value: 4,
@@ -74,8 +72,7 @@ export function mapLmsToStyledCourseDetail(
   quizResults = [],
   lessonProgressKeys = []
 ) {
-  const copy = getCourseCopy(course);
-  const tabs = mergeTabsContentFromCourseApi(course, copy);
+  const tabs = mergeTabsContentFromCourseApi(course);
   const attemptedQuizIds = new Set(
     (Array.isArray(quizResults) ? quizResults : [])
       .map((row) => row?.quizId)
@@ -306,8 +303,13 @@ export function mapLmsToStyledCourseDetail(
     .join('')
     .toUpperCase();
 
+  const resolvedProgramTitle =
+    typeof course.programTitle === 'string' && course.programTitle.trim()
+      ? course.programTitle.trim()
+      : 'Course';
+
   const data = {
-    category: copy.category ?? 'Course',
+    category: resolvedProgramTitle,
     programSlug:
       typeof course.programSlug === 'string' && course.programSlug.trim()
         ? course.programSlug.trim()
@@ -318,11 +320,11 @@ export function mapLmsToStyledCourseDetail(
       name: mentorName,
       avatarUrl: `https://i.pravatar.cc/120?u=${encodeURIComponent(course.id ?? mentorInitials)}`,
     },
-    rating: reviewsToRating(copy),
+    rating: reviewsToRating([]),
     shortDescription:
       typeof course.description === 'string' && course.description.trim()
         ? course.description.trim()
-        : (tabs.paragraphs[0] ?? copy.description ?? ''),
+        : (tabs.paragraphs[0] ?? ''),
     paragraphs: tabs.paragraphs,
     learningOutcomes: tabs.learningOutcomes,
     audience: tabs.audience,

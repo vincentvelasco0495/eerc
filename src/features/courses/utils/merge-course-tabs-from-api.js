@@ -1,7 +1,5 @@
 /** @typedef {{ question?: string; answer?: string }} FaqLike */
 
-/** @typedef {{ body?: string[]; learn?: string[]; audience?: string[]; faqs?: FaqLike[]; notices?: string[]; description?: string }} CopyShape */
-
 /** @returns {string[]} */
 function normalizeStringList(value) {
   if (!Array.isArray(value)) {
@@ -11,34 +9,30 @@ function normalizeStringList(value) {
 }
 
 /**
- * Prefer LMS `course.marketing` from API when non-empty; otherwise use static `copy` fallback.
+ * API-only tab content from LMS `course.marketing`.
  * @param {object} course LMS course payload (includes optional `marketing` from `/api/courses`)
- * @param {CopyShape} copy from {@link import('../data/course-page-copy.js').getCourseCopy}
  */
-export function mergeTabsContentFromCourseApi(course, copy) {
+export function mergeTabsContentFromCourseApi(course) {
   const m = course?.marketing && typeof course.marketing === 'object' ? course.marketing : {};
 
   const paragraphs = (() => {
-    const api = normalizeStringList(m.paragraphs);
-    if (api.length > 0) {
-      return api;
-    }
-    return normalizeStringList(copy?.body);
+    const api = normalizeStringList(m.description ?? m.paragraphs);
+    return api;
   })();
 
   const learningOutcomes = (() => {
     const api = normalizeStringList(m.learningOutcomes);
-    return api.length > 0 ? api : normalizeStringList(copy?.learn);
+    return api;
   })();
 
   const audience = (() => {
     const api = normalizeStringList(m.audience);
-    return api.length > 0 ? api : normalizeStringList(copy?.audience);
+    return api;
   })();
 
   const noticeStrings = (() => {
     const api = normalizeStringList(m.notices);
-    return api.length > 0 ? api : normalizeStringList(copy?.notices);
+    return api;
   })();
 
   const faqPairs = (() => {
@@ -53,16 +47,6 @@ export function mergeTabsContentFromCourseApi(course, copy) {
     if (fromApi.length > 0) {
       return fromApi;
     }
-    const fromCopy = Array.isArray(copy?.faqs)
-      ? copy.faqs.map((row) => ({
-          question: String(row?.question ?? '').trim(),
-          answer: String(row?.answer ?? '').trim(),
-        }))
-      : [];
-    const merged = fromCopy.filter((row) => row.question || row.answer);
-    if (merged.length > 0) {
-      return merged;
-    }
 
     return [
       {
@@ -75,11 +59,6 @@ export function mergeTabsContentFromCourseApi(course, copy) {
     ];
   })();
 
-  const finalNoticeStrings =
-    noticeStrings.length > 0
-      ? noticeStrings
-      : ['Program announcements and pacing updates will appear here.'];
-
   const noticeHeading =
     typeof m.noticeHeading === 'string' && m.noticeHeading.trim() ? m.noticeHeading.trim() : null;
 
@@ -88,7 +67,7 @@ export function mergeTabsContentFromCourseApi(course, copy) {
     learningOutcomes,
     audience,
     faqPairs,
-    noticeStrings: finalNoticeStrings,
+    noticeStrings,
     noticeHeading,
   };
 }

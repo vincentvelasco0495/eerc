@@ -10,6 +10,7 @@ use App\Models\UserModuleProgress;
 use App\Services\LmsCatalogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class LmsCourseController extends Controller
@@ -103,17 +104,51 @@ class LmsCourseController extends Controller
 
         $validated = $request->validate([
             'title' => ['sometimes', 'string', 'max:512'],
+            'slug' => ['sometimes', 'nullable', 'string', 'max:191'],
+            'programId' => ['sometimes', 'nullable', 'string', 'max:64'],
             'description' => ['sometimes', 'nullable', 'string'],
             'mentor' => ['sometimes', 'nullable', 'string', 'max:191'],
             'level' => ['sometimes', 'nullable', 'string', 'max:64'],
             'hours' => ['sometimes', 'integer', 'min:0', 'max:65535'],
             'videoHoursLabel' => ['sometimes', 'nullable', 'string', 'max:191'],
             'marketing' => ['sometimes', 'array'],
+            'marketingPayload' => ['sometimes', 'nullable', 'string'],
+            'bannerImage' => ['sometimes', 'nullable', 'image', 'max:4096'],
             'isPublished' => ['sometimes', 'boolean'],
         ]);
 
         if (isset($validated['title'])) {
             $course->title = trim($validated['title']);
+        }
+
+        if (array_key_exists('slug', $validated)) {
+            $incomingSlug = trim((string) ($validated['slug'] ?? ''));
+            if ($incomingSlug !== '') {
+                $baseSlug = Str::slug($incomingSlug);
+                if ($baseSlug === '') {
+                    $baseSlug = 'course';
+                }
+                $resolvedSlug = $baseSlug;
+                $n = 2;
+                while (Course::query()
+                    ->where('slug', $resolvedSlug)
+                    ->where('id', '!=', $course->id)
+                    ->exists()) {
+                    $resolvedSlug = $baseSlug.'-'.$n;
+                    $n++;
+                }
+                $course->slug = $resolvedSlug;
+            }
+        }
+
+        if (array_key_exists('programId', $validated)) {
+            $programHint = trim((string) ($validated['programId'] ?? ''));
+            if ($programHint !== '') {
+                $program = Program::query()->where('public_id', $programHint)->first();
+                if ($program !== null) {
+                    $course->program_id = $program->id;
+                }
+            }
         }
 
         if (array_key_exists('description', $validated)) {
@@ -142,18 +177,52 @@ class LmsCourseController extends Controller
             $course->is_published = (bool) $validated['isPublished'];
         }
 
+        $incomingMarketing = null;
         if (isset($validated['marketing']) && is_array($validated['marketing'])) {
-            $incoming = $validated['marketing'];
+            $incomingMarketing = $validated['marketing'];
+        } elseif (array_key_exists('marketingPayload', $validated)) {
+            $decoded = json_decode((string) $validated['marketingPayload'], true);
+            if (is_array($decoded)) {
+                $incomingMarketing = $decoded;
+            }
+        }
+
+        if (is_array($incomingMarketing)) {
+            $incoming = $incomingMarketing;
             $base = $course->marketing_json ?? [];
 
-            foreach (['paragraphs', 'learningOutcomes', 'audience', 'notices'] as $listKey) {
+            if (! array_key_exists('description', $incoming) && array_key_exists('paragraphs', $incoming)) {
+                $incoming['description'] = $incoming['paragraphs'];
+            }
+
+            foreach (['description', 'learningOutcomes', 'notices'] as $listKey) {
                 if (array_key_exists($listKey, $incoming)) {
                     $base[$listKey] = self::sanitizeStringArray($incoming[$listKey]);
                 }
             }
 
+            if (array_key_exists('description', $incoming)) {
+                unset($base['paragraphs']);
+            }
+            unset($base['audience']);
+
+            if (array_key_exists('coInstructors', $incoming)) {
+                $base['coInstructors'] = self::sanitizeStringArray($incoming['coInstructors']);
+            }
+
             if (array_key_exists('faq', $incoming)) {
                 $base['faq'] = self::sanitizeFaqArray($incoming['faq']);
+            }
+
+            foreach (['featuredCourse', 'lockLessonsInOrder'] as $boolKey) {
+                if (array_key_exists($boolKey, $incoming)) {
+                    $boolValue = filter_var($incoming[$boolKey], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                    if ($boolValue === null) {
+                        unset($base[$boolKey]);
+                    } else {
+                        $base[$boolKey] = (bool) $boolValue;
+                    }
+                }
             }
 
             if (array_key_exists('noticeHeading', $incoming)) {
@@ -170,7 +239,7 @@ class LmsCourseController extends Controller
                 if ($u === null || $u === '') {
                     unset($base['bannerImageUrl']);
                 } else {
-                    $base['bannerImageUrl'] = $u;
+                    $base['bannerImageUrl'] = self::normalizeBannerStoragePath($u) ?? $u;
                     unset($base['heroImageUrl']);
                 }
             }
@@ -184,6 +253,25 @@ class LmsCourseController extends Controller
                 }
             }
 
+            $course->marketing_json = $base;
+        }
+
+        if ($request->hasFile('bannerImage')) {
+            $base = $course->marketing_json ?? [];
+            $previous = isset($base['bannerImageUrl']) && is_string($base['bannerImageUrl'])
+                ? trim((string) $base['bannerImageUrl'])
+                : '';
+            if ($previous !== '' && ! str_starts_with($previous, 'http')) {
+                $normalizedPrevious = self::normalizeBannerStoragePath($previous) ?? $previous;
+                $toDelete = ltrim($normalizedPrevious, '/');
+                if ($toDelete !== '') {
+                    Storage::disk('public')->delete($toDelete);
+                }
+            }
+
+            $stored = Storage::disk('public')->putFile('course-banners', $request->file('bannerImage'));
+            $base['bannerImageUrl'] = $stored;
+            unset($base['heroImageUrl']);
             $course->marketing_json = $base;
         }
 
@@ -277,5 +365,31 @@ class LmsCourseController extends Controller
         }
 
         return mb_substr($s, 0, 2048);
+    }
+
+    private static function normalizeBannerStoragePath(string $value): ?string
+    {
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        if (str_starts_with($trimmed, '/storage/')) {
+            return ltrim(substr($trimmed, 9), '/');
+        }
+
+        if (preg_match('#^https?://#i', $trimmed)) {
+            $path = parse_url($trimmed, PHP_URL_PATH);
+            if (! is_string($path) || trim($path) === '') {
+                return null;
+            }
+            $path = trim($path);
+            if (str_starts_with($path, '/storage/')) {
+                return ltrim(substr($path, 9), '/');
+            }
+            return ltrim($path, '/');
+        }
+
+        return ltrim($trimmed, '/');
     }
 }

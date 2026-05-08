@@ -22,10 +22,18 @@ export function getLmsAxiosErrorMessage(error, fallback = 'Request failed.') {
 }
 
 export async function patchLmsCourse(publicId, payload) {
-  const { data } = await axios.patch(
-    `/api/courses/${encodeURIComponent(publicId)}`,
-    payload ?? {}
-  );
+  const endpoint = `/api/courses/${encodeURIComponent(publicId)}`;
+  const body = payload ?? {};
+
+  if (typeof FormData !== 'undefined' && body instanceof FormData) {
+    if (!body.has('_method')) {
+      body.append('_method', 'PATCH');
+    }
+    const { data } = await axios.post(endpoint, body);
+    return data;
+  }
+
+  const { data } = await axios.patch(endpoint, body);
   return data;
 }
 

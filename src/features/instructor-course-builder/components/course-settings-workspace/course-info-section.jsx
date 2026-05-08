@@ -1,5 +1,6 @@
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
+import Button from '@mui/material/Button';
 import Select from '@mui/material/Select';
 import Avatar from '@mui/material/Avatar';
 import MenuItem from '@mui/material/MenuItem';
@@ -9,12 +10,31 @@ import IconButton from '@mui/material/IconButton';
 import FormControl from '@mui/material/FormControl';
 import InputAdornment from '@mui/material/InputAdornment';
 
-import { LMS_PROGRAM_SELECT_OPTIONS } from 'src/constants/lms';
+import { CONFIG } from 'src/global-config';
 
 import { Editor } from 'src/components/editor';
 import { Iconify } from 'src/components/iconify';
 
 import { css } from './styles';
+
+function resolveServerAssetUrl(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  if (/^(https?:\/\/|blob:|data:)/i.test(raw)) return raw;
+
+  const configured = String(CONFIG.serverUrl ?? '').trim();
+  const fallback =
+    typeof window !== 'undefined'
+      ? `${window.location.protocol}//${window.location.hostname}:8000`
+      : '';
+  const origin = configured || fallback;
+  if (!origin) return raw;
+
+  if (raw.startsWith('/')) {
+    return `${origin}${raw}`;
+  }
+  return `${origin}/storage/${raw.replace(/^\/+/, '')}`;
+}
 
 export function CourseInfoSection({
   courseName,
@@ -26,13 +46,12 @@ export function CourseInfoSection({
   programId,
   onProgramIdChange,
   programDisabled = false,
-  mentorDisplayName,
-  onMentorDisplayNameChange,
-  bannerImageUrl = '',
-  onBannerImageUrlChange,
+  programOptions = [],
+  onBannerImageFileChange,
   ownerName,
-  coInstructor,
-  onCoInstructorChange,
+  instructor = '',
+  instructorOptions = [],
+  onInstructorChange,
   courseCoverSrc,
   courseDuration,
   onCourseDurationChange,
@@ -42,6 +61,7 @@ export function CourseInfoSection({
   onDescriptionHtmlChange,
 }) {
   const displayUrlPrefix = `${fullCourseUrlPrefix.replace(/\/$/, '')}/`;
+  const coverSrcResolved = resolveServerAssetUrl(courseCoverSrc);
 
   return (
     <>
@@ -105,8 +125,8 @@ export function CourseInfoSection({
             onChange={(e) => onProgramIdChange(e.target.value)}
             sx={{ borderRadius: '8px' }}
           >
-            {LMS_PROGRAM_SELECT_OPTIONS.map((o) => (
-              <MenuItem key={o.id} value={o.id}>
+            {programOptions.map((o) => (
+              <MenuItem key={o.id} value={o.id} disabled={o.disabled}>
                 {o.label}
               </MenuItem>
             ))}
@@ -132,56 +152,44 @@ export function CourseInfoSection({
           </Box>
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
-          <Typography sx={css.fieldLabel}>Add a co-instructor</Typography>
+          <Typography sx={css.fieldLabel}>Instructor</Typography>
           <FormControl fullWidth size="small">
             <Select
               displayEmpty
-              value={coInstructor}
-              onChange={(e) => onCoInstructorChange(e.target.value)}
+              value={instructor}
+              onChange={(e) => onInstructorChange?.(String(e.target.value))}
+              renderValue={(selected) => (selected ? String(selected) : 'Choose instructor')}
               sx={{ borderRadius: '8px' }}
             >
-              <MenuItem value="">
-                <em>Choose instructor</em>
-              </MenuItem>
-              <MenuItem value="alice">Alice Mentor</MenuItem>
-              <MenuItem value="bob">Bob Designer</MenuItem>
+              {instructorOptions.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
         </Grid>
       </Grid>
 
-      {typeof onMentorDisplayNameChange === 'function' ? (
-        <Box sx={{ mt: 2.5 }}>
-          <Typography sx={css.fieldLabel} component="label" htmlFor="mentor-display-settings">
-            Mentor display name
-          </Typography>
-          <TextField
-            id="mentor-display-settings"
-            fullWidth
-            size="small"
-            value={mentorDisplayName ?? ''}
-            onChange={(e) => onMentorDisplayNameChange(e.target.value)}
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+      <Box sx={{ mt: 2.5 }}>
+        <Typography sx={css.fieldLabel}>Banner image</Typography>
+        <Button variant="outlined" component="label" sx={{ borderRadius: '8px' }}>
+          Upload banner image
+          <input
+            type="file"
+            hidden
+            accept="image/*"
+            onClick={(event) => {
+              event.currentTarget.value = '';
+            }}
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              if (!file) return;
+              onBannerImageFileChange?.(file);
+            }}
           />
-        </Box>
-      ) : null}
-
-      {typeof onBannerImageUrlChange === 'function' ? (
-        <Box sx={{ mt: 2.5 }}>
-          <Typography sx={css.fieldLabel} component="label" htmlFor="banner-url-settings">
-            Banner image URL
-          </Typography>
-          <TextField
-            id="banner-url-settings"
-            fullWidth
-            size="small"
-            placeholder="https://…"
-            value={bannerImageUrl}
-            onChange={(e) => onBannerImageUrlChange(e.target.value)}
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-          />
-        </Box>
-      ) : null}
+        </Button>
+      </Box>
 
       <Box sx={{ mt: 3 }}>
         <Typography sx={css.fieldLabel}>Image</Typography>
@@ -189,7 +197,7 @@ export function CourseInfoSection({
           <Box
             component="img"
             alt=""
-            src={courseCoverSrc}
+            src={coverSrcResolved}
             sx={{ width: 1, maxHeight: 320, objectFit: 'cover' }}
           />
         </Box>

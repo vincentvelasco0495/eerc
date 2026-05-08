@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+
+import { useLmsPrograms } from 'src/hooks/use-lms';
 
 import { patchLmsCourse } from 'src/lib/lms-instructor-api';
 
@@ -45,31 +46,50 @@ export function CourseSettingsWorkspace({
 } = {}) {
   const hasCourseRow = tiedCourse?.id != null;
   const canPersistToLms = hasCourseRow || typeof onEnsureCourse === 'function';
+  const { programs } = useLmsPrograms();
 
   const [courseName, setCourseName] = useState(curriculumBuilderCourse.title);
   const [slug, setSlug] = useState('how-to-design-components-right');
   const [programId, setProgramId] = useState('program-ce');
-  const [level, setLevel] = useState('');
-  const [mentorDisplayName, setMentorDisplayName] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
-  const [coInstructor, setCoInstructor] = useState('');
+  const [bannerImageFile, setBannerImageFile] = useState(null);
+  const [bannerPreviewUrl, setBannerPreviewUrl] = useState('');
+  const [instructor, setInstructor] = useState('Instructor');
   const [courseDuration, setCourseDuration] = useState('9 hours');
   const [videoDuration, setVideoDuration] = useState('5 hours');
-  const [descriptionHtml, setDescriptionHtml] = useState(courseMainDescriptionSeedHtml);
-  const [audienceHtml, setAudienceHtml] = useState('');
-  const [learnHtml, setLearnHtml] = useState(courseWhatYouLearnSeedHtml);
+  const [descriptionHtml, setDescriptionHtml] = useState(
+    canPersistToLms ? '' : courseMainDescriptionSeedHtml
+  );
+  const [learnHtml, setLearnHtml] = useState(canPersistToLms ? '' : courseWhatYouLearnSeedHtml);
   const [previewDescription, setPreviewDescription] = useState(coursePreviewDescriptionSeedText);
 
   const [featuredCourse, setFeaturedCourse] = useState(false);
   const [lockLessonsInOrder, setLockLessonsInOrder] = useState(false);
 
-  const [accessDuration, setAccessDuration] = useState('');
-  const [accessDeviceTypes, setAccessDeviceTypes] = useState('');
-  const [certificateInfo, setCertificateInfo] = useState('');
-
   const [saveBusy, setSaveBusy] = useState(false);
 
   const baseUrlPrefix = curriculumBuilderCourse.baseUrlSlugPrefix ?? '';
+
+  const programOptions = useMemo(() => {
+    const list = Array.isArray(programs) ? programs : [];
+    const active = list.filter((p) => String(p?.status ?? '').toLowerCase() === 'active');
+    const opts = active.map((p) => ({
+      id: p.id,
+      label: String(p.title ?? p.code ?? p.id),
+    }));
+
+    // If the currently selected program is inactive/missing, include it as disabled to avoid blank UI.
+    const selected = list.find((p) => String(p?.id) === String(programId));
+    if (selected && String(selected?.status ?? '').toLowerCase() !== 'active') {
+      opts.unshift({
+        id: selected.id,
+        label: `${String(selected.title ?? selected.code ?? selected.id)} (inactive)`,
+        disabled: true,
+      });
+    }
+
+    return opts.length ? opts : [{ id: programId, label: programId, disabled: true }];
+  }, [programId, programs]);
 
   useEffect(() => {
     if (hasCourseRow) {
@@ -78,55 +98,51 @@ export function CourseSettingsWorkspace({
     setCourseName(curriculumBuilderCourse.title);
     setSlug(curriculumBuilderCourse.defaultSlug ?? 'how-to-design-components-right');
     setProgramId(curriculumBuilderCourse.defaultProgramId ?? 'program-ce');
-    setLevel('');
-    setMentorDisplayName('');
     setBannerUrl('');
-    setCoInstructor('');
+    setBannerImageFile(null);
+    setBannerPreviewUrl('');
+    setInstructor('Instructor');
     setCourseDuration('9 hours');
     setVideoDuration('5 hours');
-    setAudienceHtml('');
-    setDescriptionHtml(courseMainDescriptionSeedHtml);
-    setLearnHtml(courseWhatYouLearnSeedHtml);
+    setDescriptionHtml(canPersistToLms ? '' : courseMainDescriptionSeedHtml);
+    setLearnHtml(canPersistToLms ? '' : courseWhatYouLearnSeedHtml);
     setPreviewDescription(coursePreviewDescriptionSeedText);
     setFeaturedCourse(false);
     setLockLessonsInOrder(false);
-    setAccessDuration('');
-    setAccessDeviceTypes('');
-    setCertificateInfo('');
-  }, [hasCourseRow]);
+  }, [canPersistToLms, hasCourseRow]);
 
   useEffect(() => {
     if (!tiedCourse) {
       return;
     }
     const m = tiedCourse.marketing ?? {};
-    const paragraphs = Array.isArray(m.paragraphs) ? m.paragraphs : [];
+    const descriptionParagraphs = Array.isArray(m.description)
+      ? m.description
+      : Array.isArray(m.paragraphs)
+        ? m.paragraphs
+        : [];
 
     setCourseName(String(tiedCourse.title ?? '').trim() || curriculumBuilderCourse.title);
     setSlug(String(tiedCourse.slug ?? '').trim());
     setProgramId(String(tiedCourse.programId ?? '').trim());
-    setLevel(String(tiedCourse.level ?? '').trim());
-    setMentorDisplayName(String(tiedCourse.mentor ?? '').trim());
+    setInstructor(String(tiedCourse.mentor ?? '').trim() || 'Instructor');
     setBannerUrl(typeof m.bannerImageUrl === 'string' ? m.bannerImageUrl.trim() : '');
+    setBannerImageFile(null);
+    setBannerPreviewUrl('');
     setCourseDuration(`${Number.isFinite(Number(tiedCourse.hours)) ? tiedCourse.hours : 0} hours`);
     setVideoDuration(
       typeof tiedCourse.videoHoursLabel === 'string' ? tiedCourse.videoHoursLabel.trim() : ''
     );
     setPreviewDescription(String(tiedCourse.description ?? '').trim());
-    const descFallback = paragraphsToHtml(paragraphs);
+    const descFallback = paragraphsToHtml(descriptionParagraphs);
     const fromDesc = paragraphsToHtml([
       typeof tiedCourse.description === 'string' ? tiedCourse.description.trim() : '',
     ].filter(Boolean));
-    setDescriptionHtml(descFallback || fromDesc || courseMainDescriptionSeedHtml);
-    setLearnHtml(learningOutcomesToHtml(m.learningOutcomes ?? []) || courseWhatYouLearnSeedHtml);
-    setAudienceHtml(learningOutcomesToHtml(m.audience ?? []));
-
-    setFeaturedCourse(false);
-    setLockLessonsInOrder(false);
-    setAccessDuration('');
-    setAccessDeviceTypes('');
-    setCertificateInfo('');
-    setCoInstructor('');
+    setDescriptionHtml(descFallback || fromDesc || '');
+    setLearnHtml(learningOutcomesToHtml(m.learningOutcomes ?? []) || '');
+    setFeaturedCourse(Boolean(m.featuredCourse));
+    setLockLessonsInOrder(Boolean(m.lockLessonsInOrder));
+    // no-op: instructor value is stored on the course row
     // eslint-disable-next-line react-hooks/exhaustive-deps -- seed when switching authoring target only
   }, [tiedCourse?.id]);
 
@@ -147,22 +163,44 @@ export function CourseSettingsWorkspace({
     }
     try {
       setSaveBusy(true);
-      await patchLmsCourse(courseId, {
-        title: courseName.trim(),
-        description: previewDescription.trim(),
-        mentor: mentorDisplayName.trim(),
-        level: level.trim(),
-        hours: parseHoursLabel(courseDuration),
-        videoHoursLabel: videoDuration.trim() === '' ? null : videoDuration.trim(),
-        marketing: {
-          paragraphs: htmlToParagraphTexts(descriptionHtml),
-          learningOutcomes: htmlToLearningOutcomeLines(learnHtml),
-          audience: htmlToLearningOutcomeLines(audienceHtml),
-          bannerImageUrl: bannerUrl.trim() === '' ? null : bannerUrl.trim(),
-        },
-      });
+      const description = htmlToParagraphTexts(descriptionHtml);
+      const learningOutcomes = htmlToLearningOutcomeLines(learnHtml);
+      const marketingPayload = {
+        ...(description.length ? { description } : {}),
+        ...(learningOutcomes.length ? { learningOutcomes } : {}),
+        bannerImageUrl: bannerUrl.trim() === '' ? null : bannerUrl.trim(),
+        featuredCourse,
+        lockLessonsInOrder,
+      };
+
+      if (bannerImageFile) {
+        const formData = new FormData();
+        formData.append('title', courseName.trim());
+        formData.append('slug', slug.trim());
+        formData.append('programId', programId || '');
+        formData.append('description', previewDescription.trim());
+        formData.append('mentor', instructor.trim());
+        formData.append('hours', String(parseHoursLabel(courseDuration)));
+        formData.append('videoHoursLabel', videoDuration.trim() === '' ? '' : videoDuration.trim());
+        formData.append('marketingPayload', JSON.stringify(marketingPayload));
+        formData.append('bannerImage', bannerImageFile);
+        const json = await patchLmsCourse(courseId, formData);
+        onSaved?.(json?.data);
+      } else {
+        const json = await patchLmsCourse(courseId, {
+          title: courseName.trim(),
+          slug: slug.trim(),
+          programId: programId || null,
+          description: previewDescription.trim(),
+          mentor: instructor.trim(),
+          hours: parseHoursLabel(courseDuration),
+          videoHoursLabel: videoDuration.trim() === '' ? null : videoDuration.trim(),
+          marketing: marketingPayload,
+        });
+        onSaved?.(json?.data);
+      }
       toast.success('Course saved.');
-      onSaved?.();
+      setBannerImageFile(null);
     } catch (e) {
       toast.error(e?.message ?? 'Save failed.');
     } finally {
@@ -171,16 +209,19 @@ export function CourseSettingsWorkspace({
   }, [
     tiedCourse?.id,
     onEnsureCourse,
-    audienceHtml,
+    bannerImageFile,
     bannerUrl,
     courseDuration,
     courseName,
     descriptionHtml,
+    instructor,
     learnHtml,
-    level,
-    mentorDisplayName,
+    lockLessonsInOrder,
     previewDescription,
+    programId,
+    slug,
     videoDuration,
+    featuredCourse,
     onSaved,
   ]);
 
@@ -191,21 +232,29 @@ export function CourseSettingsWorkspace({
           courseName={courseName}
           onCourseNameChange={setCourseName}
           slug={slug}
-          slugReadOnly={hasCourseRow}
+          slugReadOnly={false}
           onSlugChange={setSlug}
           fullCourseUrlPrefix={baseUrlPrefix}
           programId={programId}
-          programDisabled={hasCourseRow}
+          programDisabled={false}
           onProgramIdChange={setProgramId}
-          ownerName={canPersistToLms ? mentorDisplayName || 'Instructor' : 'Demo Instructor'}
-          mentorDisplayName={mentorDisplayName}
-          onMentorDisplayNameChange={canPersistToLms ? setMentorDisplayName : undefined}
-          bannerImageUrl={bannerUrl}
-          onBannerImageUrlChange={canPersistToLms ? setBannerUrl : undefined}
-          coInstructor={coInstructor}
-          onCoInstructorChange={setCoInstructor}
+          programOptions={programOptions}
+          ownerName={instructor}
+          instructor={instructor}
+          onInstructorChange={setInstructor}
+          instructorOptions={[
+            { value: 'Engr. Hannah Cruz', label: 'Engr. Hannah Cruz' },
+            { value: 'Engr. Miguel Santos', label: 'Engr. Miguel Santos' },
+            { value: 'Dr. Reese Navarro', label: 'Dr. Reese Navarro' },
+            { value: 'Demo Instructor', label: 'Demo Instructor' },
+          ]}
+          onBannerImageFileChange={(file) => {
+            setBannerImageFile(file);
+            setBannerPreviewUrl(URL.createObjectURL(file));
+          }}
           courseCoverSrc={
-            canPersistToLms ? bannerUrl?.trim() || curriculumCourseCoverImageUrl : curriculumCourseCoverImageUrl
+            bannerPreviewUrl ||
+            (canPersistToLms ? bannerUrl?.trim() || curriculumCourseCoverImageUrl : curriculumCourseCoverImageUrl)
           }
           courseDuration={courseDuration}
           onCourseDurationChange={setCourseDuration}
@@ -218,20 +267,12 @@ export function CourseSettingsWorkspace({
         <CourseContinuationSection
           learnHtml={learnHtml}
           onLearnHtmlChange={setLearnHtml}
-          audienceHtml={audienceHtml}
-          onAudienceHtmlChange={setAudienceHtml}
           previewDescription={previewDescription}
           onPreviewDescriptionChange={setPreviewDescription}
           featuredCourse={featuredCourse}
           onFeaturedCourseChange={setFeaturedCourse}
           lockLessonsInOrder={lockLessonsInOrder}
           onLockLessonsInOrderChange={setLockLessonsInOrder}
-          accessDuration={accessDuration}
-          onAccessDurationChange={setAccessDuration}
-          accessDeviceTypes={accessDeviceTypes}
-          onAccessDeviceTypesChange={setAccessDeviceTypes}
-          certificateInfo={certificateInfo}
-          onCertificateInfoChange={setCertificateInfo}
           hideEmbeddedSaveFooter={canPersistToLms}
         />
 
@@ -239,17 +280,9 @@ export function CourseSettingsWorkspace({
           <>
             <Divider sx={[css.dividerSection, { my: 3 }]} component="hr" />
             <Stack spacing={2}>
-              <TextField
-                label="Difficulty / level label"
-                value={level}
-                onChange={(e) => setLevel(e.target.value)}
-                fullWidth
-                size="small"
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-              />
               <Typography variant="caption" color="text.secondary">
                 {hasCourseRow
-                  ? 'Slug and program assignments are locked while editing a live LMS course catalog row.'
+                  ? 'Editing a live LMS course row. Banner file path is stored server-side only.'
                   : 'Save creates the course in the catalog, then applies these settings.'}
               </Typography>
               <Stack direction="row" justifyContent="flex-end">

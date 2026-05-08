@@ -1,5 +1,4 @@
 import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Switch from '@mui/material/Switch';
@@ -19,20 +18,12 @@ import { css } from './styles';
 export function CourseContinuationSection({
   learnHtml,
   onLearnHtmlChange,
-  audienceHtml,
-  onAudienceHtmlChange,
   previewDescription,
   onPreviewDescriptionChange,
   featuredCourse,
   onFeaturedCourseChange,
   lockLessonsInOrder,
   onLockLessonsInOrderChange,
-  accessDuration,
-  onAccessDurationChange,
-  accessDeviceTypes,
-  onAccessDeviceTypesChange,
-  certificateInfo,
-  onCertificateInfoChange,
   onSave,
   hideEmbeddedSaveFooter = false,
 }) {
@@ -54,25 +45,6 @@ export function CourseContinuationSection({
         }}
         tinymceResizeBounds={{ min: 100, max: 320 }}
       />
-
-      {typeof onAudienceHtmlChange === 'function' ? (
-        <>
-          <Typography sx={[css.sectionHeadingMuted, { mt: 4 }]} component="h2">
-            Who is the target audience?
-          </Typography>
-          <Editor
-            value={audienceHtml ?? ''}
-            onChange={onAudienceHtmlChange}
-            chrome="tinymce"
-            sx={{
-              mt: 1,
-              minHeight: 220,
-              maxHeight: 420,
-            }}
-            tinymceResizeBounds={{ min: 100, max: 320 }}
-          />
-        </>
-      ) : null}
 
       <Box sx={{ mt: 3 }}>
         <Typography sx={css.fieldLabel} component="label" htmlFor="course-preview-description">
@@ -114,51 +86,6 @@ export function CourseContinuationSection({
           </Alert>
         ) : null}
       </Box>
-
-      <Typography sx={[css.sectionHeadingMuted, { mt: 4 }]} component="h2">
-        Additional information
-      </Typography>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Typography sx={css.fieldLabel} component="label" htmlFor="access-duration-field">
-            Access duration
-          </Typography>
-          <TextField
-            id="access-duration-field"
-            fullWidth
-            size="small"
-            placeholder="Enter access duration"
-            value={accessDuration}
-            onChange={(e) => onAccessDurationChange(e.target.value)}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Typography sx={css.fieldLabel} component="label" htmlFor="access-device-types">
-            Access device types
-          </Typography>
-          <TextField
-            id="access-device-types"
-            fullWidth
-            size="small"
-            placeholder="Enter access device types"
-            value={accessDeviceTypes}
-            onChange={(e) => onAccessDeviceTypesChange(e.target.value)}
-          />
-        </Grid>
-        <Grid size={12}>
-          <Typography sx={css.fieldLabel} component="label" htmlFor="certificate-info-field">
-            Certificate info
-          </Typography>
-          <TextField
-            id="certificate-info-field"
-            fullWidth
-            size="small"
-            placeholder="Enter certificate info"
-            value={certificateInfo}
-            onChange={(e) => onCertificateInfoChange(e.target.value)}
-          />
-        </Grid>
-      </Grid>
 
       {!hideEmbeddedSaveFooter ? (
         <Box sx={css.footerRow}>

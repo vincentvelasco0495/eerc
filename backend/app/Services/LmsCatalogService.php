@@ -412,11 +412,12 @@ class LmsCatalogService
 
     /**
      * @param  array<string, mixed>|null  $raw  courses.marketing_json
-     * @return array{paragraphs: array<int, string>, learningOutcomes: array<int, string>, audience: array<int, string>, faq: array<int, array{question: string, answer: string}>, notices: array<int, string>, noticeHeading: string|null, bannerImageUrl: string|null}
+     * @return array{description: array<int, string>, paragraphs: array<int, string>, learningOutcomes: array<int, string>, audience: array<int, string>, faq: array<int, array{question: string, answer: string}>, notices: array<int, string>, noticeHeading: string|null, bannerImageUrl: string|null, featuredCourse: bool, lockLessonsInOrder: bool}
      */
     protected function formatMarketingPayload(?array $raw): array
     {
         $j = is_array($raw) ? $raw : [];
+        $description = $this->normalizeStringListField($j['description'] ?? $j['paragraphs'] ?? []);
 
         $banner = $j['bannerImageUrl'] ?? $j['heroImageUrl'] ?? null;
         $bannerTrimmed = null;
@@ -425,15 +426,18 @@ class LmsCatalogService
         }
 
         return [
-            'paragraphs' => $this->normalizeStringListField($j['paragraphs'] ?? []),
+            'description' => $description,
+            'paragraphs' => $description,
             'learningOutcomes' => $this->normalizeStringListField($j['learningOutcomes'] ?? $j['learn'] ?? []),
-            'audience' => $this->normalizeStringListField($j['audience'] ?? []),
+            'audience' => [],
             'faq' => $this->normalizeFaqListField($j['faq'] ?? $j['faqs'] ?? []),
             'notices' => $this->normalizeStringListField($j['notices'] ?? []),
             'noticeHeading' => isset($j['noticeHeading']) && is_string($j['noticeHeading']) && trim($j['noticeHeading']) !== ''
                 ? trim($j['noticeHeading'])
                 : null,
             'bannerImageUrl' => $bannerTrimmed,
+            'featuredCourse' => (bool) ($j['featuredCourse'] ?? false),
+            'lockLessonsInOrder' => (bool) ($j['lockLessonsInOrder'] ?? false),
         ];
     }
 
