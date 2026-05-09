@@ -34,9 +34,19 @@ export function CurriculumBuilderModuleCard({
   onRenameModule,
   onDeleteLesson,
   liveMode = false,
+  onReorderLessons,
+  draggable = false,
+  isDragging = false,
+  dropEdge = null,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameDraft, setRenameDraft] = useState(() => mod.title ?? '');
+  const [dragLessonId, setDragLessonId] = useState(null);
+  const [dropLessonTarget, setDropLessonTarget] = useState(null);
 
   useEffect(() => {
     if (!renameOpen) {
@@ -50,8 +60,72 @@ export function CurriculumBuilderModuleCard({
     setRenameOpen(false);
   }, [mod.id, onRenameModule, renameDraft]);
 
+  const handleLessonDragStart = useCallback(
+    (event, lessonId) => {
+      if (typeof onReorderLessons !== 'function') return;
+      setDragLessonId(lessonId);
+      setDropLessonTarget(null);
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', String(lessonId));
+    },
+    [onReorderLessons]
+  );
+
+  const handleLessonDragOver = useCallback(
+    (event, lessonId) => {
+      if (typeof onReorderLessons !== 'function' || !dragLessonId || dragLessonId === lessonId) {
+        return;
+      }
+      event.preventDefault();
+      const rect = event.currentTarget.getBoundingClientRect();
+      const edge = event.clientY < rect.top + rect.height / 2 ? 'top' : 'bottom';
+      setDropLessonTarget({ lessonId, edge });
+    },
+    [dragLessonId, onReorderLessons]
+  );
+
+  const handleLessonDrop = useCallback(
+    (event, lessonId) => {
+      if (typeof onReorderLessons !== 'function') return;
+      event.preventDefault();
+      const fromId = dragLessonId;
+      const edge = dropLessonTarget?.lessonId === lessonId ? dropLessonTarget.edge : 'bottom';
+      setDragLessonId(null);
+      setDropLessonTarget(null);
+      if (!fromId || fromId === lessonId) return;
+
+      const list = Array.isArray(mod.lessons) ? [...mod.lessons] : [];
+      const fromIndex = list.findIndex((l) => l.id === fromId);
+      const toIndex = list.findIndex((l) => l.id === lessonId);
+      if (fromIndex === -1 || toIndex === -1) return;
+      const [moved] = list.splice(fromIndex, 1);
+      const insertBase = list.findIndex((l) => l.id === lessonId);
+      const insertAt = edge === 'top' ? insertBase : insertBase + 1;
+      list.splice(Math.max(0, insertAt), 0, moved);
+      onReorderLessons(mod.id, list.map((l) => l.id));
+    },
+    [dragLessonId, dropLessonTarget, mod.id, mod.lessons, onReorderLessons]
+  );
+
+  const handleLessonDragEnd = useCallback(() => {
+    setDragLessonId(null);
+    setDropLessonTarget(null);
+  }, []);
+
   return (
-    <Card sx={styles.card}>
+    <Card
+      draggable={draggable}
+      onDragStart={(e) => onDragStart?.(e, mod.id)}
+      onDragOver={(e) => onDragOver?.(e, mod.id)}
+      onDrop={(e) => onDrop?.(e, mod.id)}
+      onDragEnd={onDragEnd}
+      sx={(theme) => ({
+        ...styles.card(theme),
+        ...(isDragging ? styles.cardDragging(theme) : null),
+        ...(dropEdge === 'top' ? styles.cardDropTop(theme) : null),
+        ...(dropEdge === 'bottom' ? styles.cardDropBottom(theme) : null),
+      })}
+    >
       <Box
         className="module-header-item"
         onClick={() => onToggle?.(mod.id)}
@@ -140,6 +214,13 @@ export function CurriculumBuilderModuleCard({
                   lesson={lesson}
                   selected={lesson.id === selectedLessonId}
                   onSelect={onSelectLesson}
+                  draggable={typeof onReorderLessons === 'function' && !String(lesson.id).endsWith('-core')}
+                  isDragging={dragLessonId === lesson.id}
+                  dropEdge={dropLessonTarget?.lessonId === lesson.id ? dropLessonTarget.edge : null}
+                  onDragStart={handleLessonDragStart}
+                  onDragOver={handleLessonDragOver}
+                  onDrop={handleLessonDrop}
+                  onDragEnd={handleLessonDragEnd}
                   showDeleteLesson={showTrash}
                   onDeleteLesson={
                     showTrash ? (l) => onDeleteLesson(mod.id, l) : undefined

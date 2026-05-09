@@ -29,6 +29,48 @@ class LmsCourseController extends Controller
         return response()->json($payload);
     }
 
+    public function show(string $courseLookup, LmsCatalogService $catalog): JsonResponse
+    {
+        $user = $this->lmsActor();
+        $lookup = trim(urldecode($courseLookup));
+        $normalized = strtolower($lookup);
+
+        $course = Course::query()
+            ->with(['program', 'tags', 'subjects', 'nextModule', 'modules'])
+            ->where('public_id', $lookup)
+            ->orWhereRaw('LOWER(slug) = ?', [$normalized])
+            ->first();
+
+        if ($course === null && $normalized !== '') {
+            // Fallback for stale links when a slug was later de-duplicated to `${slug}-2`, etc.
+            $course = Course::query()
+                ->with(['program', 'tags', 'subjects', 'nextModule', 'modules'])
+                ->whereRaw('LOWER(slug) LIKE ?', [$normalized.'-%'])
+                ->orderByDesc('updated_at')
+                ->first();
+        }
+
+        if ($course === null) {
+            abort(404, 'Course not found.');
+        }
+
+        $completedMods = UserModuleProgress::query()
+            ->where('user_id', $user->id)
+            ->where('progress_percent', '>=', 100)
+            ->pluck('module_id');
+
+        return response()->json([
+            'data' => $catalog->formatCourse($course, $user, $completedMods),
+        ]);
+    }
+
+    public function stats(string $coursePublicId, LmsCatalogService $catalog): JsonResponse
+    {
+        return response()->json([
+            'data' => $catalog->courseStats($coursePublicId),
+        ]);
+    }
+
     /**
      * Create a new catalog course (instructor authoring). Program defaults to the first program
      * when `programId` is omitted. Slug is generated from the title and made unique.

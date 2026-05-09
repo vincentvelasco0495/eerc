@@ -1,8 +1,10 @@
+import { useDispatch } from 'react-redux';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
 import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -10,31 +12,20 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { paths } from 'src/routes/paths';
 
 import {
-  useLmsCourse,
-  useLmsCourses,
-  useLmsQuizzes,
+  useLmsActions,
+  useLmsCourseByLookup,
   useLmsModulesByCourse,
-  useResolvedCourseIdFromLookup,
+  extractQuizzesFromModules,
 } from 'src/hooks/use-lms';
 
 import { CONFIG } from 'src/global-config';
 import { DashboardContent } from 'src/layouts/dashboard';
-import {
-  patchLmsQuiz,
-  postLmsCourse,
-  patchLmsCourse,
-  patchLmsModule,
-  deleteLmsModule,
-  getLmsQuizQuestions,
-  postLmsQuizForModule,
-  postLmsModuleForCourse,
-  getLmsAxiosErrorMessage,
-  postLmsStandaloneLesson,
-  patchLmsStandaloneLesson,
-  deleteLmsStandaloneLesson,
-} from 'src/lib/lms-instructor-api';
+import { lmsEndpoints } from 'src/redux/api/lmsEndpoints';
+import { lmsResourceFetchSuccess } from 'src/app/store/modules/lms';
+import { getLmsAxiosErrorMessage } from 'src/lib/lms-instructor-api';
 
 import { toast } from 'src/components/snackbar';
+import { ConfirmDialog } from 'src/components/custom-dialog';
 
 import { styles } from './styles';
 import { CourseFaqWorkspace } from '../../components/course-faq-workspace';
@@ -93,6 +84,20 @@ function lessonExistsInModules(lessonId, mods) {
   return mods.some((m) => m.lessons.some((l) => l.id === lessonId));
 }
 
+function reorderModuleList(modules, fromId, toId, edge = 'bottom') {
+  const list = Array.isArray(modules) ? [...modules] : [];
+  const fromIndex = list.findIndex((m) => m.id === fromId);
+  const toIndex = list.findIndex((m) => m.id === toId);
+  if (fromIndex === -1 || toIndex === -1) {
+    return list;
+  }
+  const [moved] = list.splice(fromIndex, 1);
+  const insertAtBase = list.findIndex((m) => m.id === toId);
+  const insertAt = edge === 'top' ? insertAtBase : insertAtBase + 1;
+  list.splice(Math.max(0, insertAt), 0, moved);
+  return list;
+}
+
 /**
  * `courseLookup=null` → offline demo.
  * With API + `?new=1` → live authoring that creates `POST /api/courses` on first save/module.
@@ -101,9 +106,11 @@ function lessonExistsInModules(lessonId, mods) {
 export function InstructorCourseCurriculumView({ courseLookup = null, isNewCourseIntent = false }) {
   const theme = useTheme();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
   const [bootstrapCourseId, setBootstrapCourseId] = useState(null);
   const [creatingCourse, setCreatingCourse] = useState(false);
+  const { runCommand } = useLmsActions();
 
   const attemptedLiveCourse =
     typeof courseLookup === 'string' && courseLookup.trim() !== '';
@@ -112,32 +119,136 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
     apiEnabled &&
     (attemptedLiveCourse || isNewCourseIntent || Boolean(bootstrapCourseId));
   const trimmedLookup = attemptedLiveCourse ? courseLookup.trim() : '';
+  const effectiveLookup = (trimmedLookup || bootstrapCourseId || '').trim();
 
-  const resolvedId = useResolvedCourseIdFromLookup(isLive ? trimmedLookup : '');
+  const {
+    course,
+    isLoading: courseLoading,
+    mutate: mutateCourse,
+  } = useLmsCourseByLookup(isLive ? effectiveLookup : '');
   const effectiveCourseId = useMemo(
-    () => (resolvedId || bootstrapCourseId || '').trim(),
-    [resolvedId, bootstrapCourseId]
+    () => (course?.id || bootstrapCourseId || '').trim(),
+    [bootstrapCourseId, course?.id]
   );
-
-  const { isLoading: coursesLoading, mutate: mutateCourses } = useLmsCourses(1, 500);
-  const course = useLmsCourse(isLive && effectiveCourseId ? effectiveCourseId : '');
+  const modulesCacheKey = useMemo(
+    () => (effectiveCourseId ? lmsEndpoints.modulesByCourse(effectiveCourseId) : null),
+    [effectiveCourseId]
+  );
   const { modules: lmsModules, mutate: mutateLmsModules } = useLmsModulesByCourse(
     isLive && effectiveCourseId ? effectiveCourseId : null,
     { revalidateOnFocus: false }
   );
-  const { quizzes: allQuizzes, mutate: mutateQuizzes } = useLmsQuizzes();
+
+  const mergeReturnedModuleIntoLmsModulesCache = useCallback(
+    (incomingModule) => {
+      if (!incomingModule?.id || !modulesCacheKey) {
+        return;
+      }
+      const list = Array.isArray(lmsModules) ? lmsModules : [];
+      const idx = list.findIndex((m) => m.id === incomingModule.id);
+      const next =
+        idx === -1 ? [...list, incomingModule] : list.map((m, i) => (i === idx ? incomingModule : m));
+      dispatch(
+        lmsResourceFetchSuccess({
+          key: modulesCacheKey,
+          data: { data: next },
+        })
+      );
+    },
+    [dispatch, modulesCacheKey, lmsModules]
+  );
+
+  const mergeReturnedQuizIntoLmsModulesCache = useCallback(
+    (incomingQuiz) => {
+      if (!incomingQuiz?.id || !incomingQuiz?.moduleId || !modulesCacheKey) {
+        return;
+      }
+      const list = Array.isArray(lmsModules) ? lmsModules : [];
+      const next = list.map((m) => {
+        if (m.id !== incomingQuiz.moduleId) {
+          return m;
+        }
+        const quizzes = Array.isArray(m.quizzes) ? m.quizzes : [];
+        const qi = quizzes.findIndex((q) => q.id === incomingQuiz.id);
+        const nextQuizzes =
+          qi === -1
+            ? [...quizzes, incomingQuiz]
+            : quizzes.map((q, i) => (i === qi ? incomingQuiz : q));
+        return { ...m, quizzes: nextQuizzes };
+      });
+      dispatch(
+        lmsResourceFetchSuccess({
+          key: modulesCacheKey,
+          data: { data: next },
+        })
+      );
+    },
+    [dispatch, modulesCacheKey, lmsModules]
+  );
 
   const quizzesForCourse = useMemo(
-    () =>
-      isLive && effectiveCourseId
-        ? allQuizzes.filter((q) => q.courseId === effectiveCourseId)
-        : [],
-    [allQuizzes, isLive, effectiveCourseId]
+    () => (isLive && effectiveCourseId ? extractQuizzesFromModules(lmsModules) : []),
+    [lmsModules, isLive, effectiveCourseId]
+  );
+
+  const postLmsCourse = useCallback(
+    (payload) => runCommand('course.create', { body: payload }),
+    [runCommand]
+  );
+  const patchLmsCourse = useCallback(
+    (publicId, body) => runCommand('course.update', { publicId, body }),
+    [runCommand]
+  );
+  const patchLmsModule = useCallback(
+    (publicId, body) => runCommand('module.update', { publicId, body }),
+    [runCommand]
+  );
+  const reorderLmsModules = useCallback(
+    (coursePublicId, moduleIds) =>
+      runCommand('module.reorder', { coursePublicId, body: { moduleIds } }),
+    [runCommand]
+  );
+  const reorderLmsModuleLessons = useCallback(
+    (modulePublicId, lessonIds) =>
+      runCommand('module.lessons.reorder', { modulePublicId, body: { lessonIds } }),
+    [runCommand]
+  );
+  const deleteLmsModule = useCallback(
+    (publicId) => runCommand('module.delete', { publicId }),
+    [runCommand]
+  );
+  const postLmsQuizForModule = useCallback(
+    (modulePublicId, body) => runCommand('quiz.create', { modulePublicId, body }),
+    [runCommand]
+  );
+  const postLmsModuleForCourse = useCallback(
+    (coursePublicId, body) => runCommand('module.create', { coursePublicId, body }),
+    [runCommand]
+  );
+  const postLmsStandaloneLesson = useCallback(
+    (modulePublicId, body) => runCommand('standaloneLesson.create', { modulePublicId, body }),
+    [runCommand]
+  );
+  const patchLmsStandaloneLesson = useCallback(
+    (publicId, body) => runCommand('standaloneLesson.update', { publicId, body }),
+    [runCommand]
+  );
+  const deleteLmsStandaloneLesson = useCallback(
+    (publicId) => runCommand('standaloneLesson.delete', { publicId }),
+    [runCommand]
+  );
+  const patchLmsQuiz = useCallback(
+    (publicId, body) => runCommand('quiz.update', { publicId, body }),
+    [runCommand]
+  );
+  const getLmsQuizQuestions = useCallback(
+    (publicId) => runCommand('quiz.questions', { publicId }),
+    [runCommand]
   );
 
   const ensureCourseCreated = useCallback(
     async (opts) => {
-      const fromUrl = (resolvedId || '').trim();
+      const fromUrl = (course?.id || '').trim();
       if (fromUrl) {
         return fromUrl;
       }
@@ -158,7 +269,6 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
           throw new Error('Invalid create response');
         }
         setBootstrapCourseId(newId);
-        await mutateCourses();
         const next = new URLSearchParams(searchParams);
         next.delete('new');
         next.set('course', newId);
@@ -171,7 +281,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
         setCreatingCourse(false);
       }
     },
-    [resolvedId, bootstrapCourseId, mutateCourses, navigate, searchParams]
+    [course?.id, bootstrapCourseId, navigate, postLmsCourse, searchParams]
   );
 
   const liveBuilderModules = useMemo(
@@ -197,6 +307,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
   const [expandedLive, setExpandedLive] = useState({});
   const [selectedLiveLessonId, setSelectedLiveLessonId] = useState(null);
   const [addingLiveModule, setAddingLiveModule] = useState(false);
+  const [pendingDeleteModuleId, setPendingDeleteModuleId] = useState(null);
 
   useEffect(() => {
     if (!isLive) {
@@ -348,7 +459,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
             curriculumNewLessonTitleByType.quiz ?? curriculumNewLessonTitleByType.document;
           const json = await postLmsQuizForModule(modulePublicId, { title: quizTitle });
           const newQuizId = json?.data?.id;
-          await mutateQuizzes();
+          await mutateLmsModules();
           toast.success('Quiz lesson added.');
           if (newQuizId && typeof newQuizId === 'string') {
             setSelectedLiveLessonId(newQuizId);
@@ -385,7 +496,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
         toast.error(getLmsAxiosErrorMessage(e, 'Could not add lesson.'));
       }
     },
-    [ensureCourseCreated, mutateQuizzes, mutateLmsModules]
+    [ensureCourseCreated, mutateLmsModules, postLmsQuizForModule, postLmsStandaloneLesson]
   );
 
   const handleAddLesson = useCallback(
@@ -399,7 +510,8 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
     [handleDemoAddLesson, handleLiveAddLesson, isLive]
   );
 
-  const handleAddDemoModule = useCallback(() => {
+  const handleAddDemoModule = useCallback((moduleKind = 'document') => {
+    const defaultType = moduleKind === 'video' ? 'video' : 'document';
     const ts = Date.now();
     const moduleId = `module-${ts}`;
     const lessonId = `lesson-${ts}`;
@@ -411,8 +523,8 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
         lessons: [
           {
             id: lessonId,
-            title: curriculumNewLessonTitleByType.document,
-            type: 'document',
+            title: curriculumNewLessonTitleByType[defaultType] ?? curriculumNewLessonTitleByType.document,
+            type: defaultType,
             draft: true,
           },
         ],
@@ -422,7 +534,8 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
     setSelectedDemoLessonId(lessonId);
   }, []);
 
-  const handleAddLiveModule = useCallback(async () => {
+  const handleAddLiveModule = useCallback(async (moduleKind = 'document') => {
+    const asVideoModule = moduleKind === 'video';
     let courseId = effectiveCourseId;
     if (!courseId) {
       try {
@@ -433,10 +546,17 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
     }
     setAddingLiveModule(true);
     try {
-      const json = await postLmsModuleForCourse(courseId, {});
-      const newModId = json?.data?.id;
-      await mutateLmsModules();
-      toast.success('Module added.');
+      const json = await postLmsModuleForCourse(courseId, {
+        streaming_only: asVideoModule,
+      });
+      const incoming = json?.data ?? null;
+      const newModId = incoming?.id;
+      if (incoming?.id) {
+        mergeReturnedModuleIntoLmsModulesCache(incoming);
+      } else {
+        await mutateLmsModules();
+      }
+      toast.success(asVideoModule ? 'Video module added.' : 'Text module added.');
       if (newModId && typeof newModId === 'string') {
         setExpandedLive((prev) => ({ ...prev, [newModId]: true }));
         setSelectedLiveLessonId(`${newModId}-core`);
@@ -446,14 +566,20 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
     } finally {
       setAddingLiveModule(false);
     }
-  }, [effectiveCourseId, ensureCourseCreated, mutateLmsModules]);
+  }, [
+    effectiveCourseId,
+    ensureCourseCreated,
+    mergeReturnedModuleIntoLmsModulesCache,
+    mutateLmsModules,
+    postLmsModuleForCourse,
+  ]);
 
-  const handleAddModule = useCallback(() => {
+  const handleAddModule = useCallback((moduleKind = 'document') => {
     if (isLive) {
-      void handleAddLiveModule();
+      void handleAddLiveModule(moduleKind);
       return;
     }
-    handleAddDemoModule();
+    handleAddDemoModule(moduleKind);
   }, [handleAddDemoModule, handleAddLiveModule, isLive]);
 
   const handleRenameDemoModule = useCallback((moduleId, nextTitle) => {
@@ -487,7 +613,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
         String(coreBefore?.title ?? '').trim();
 
       try {
-        await patchLmsModule(modulePublicId, {
+        const envelope = await patchLmsModule(modulePublicId, {
           title,
           subject: null,
           topic: null,
@@ -496,7 +622,12 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
             ...(mergedCoreLabel !== '' ? { coreLessonTitle: mergedCoreLabel } : {}),
           },
         });
-        await mutateLmsModules();
+        const incoming = envelope?.data ?? null;
+        if (incoming?.id) {
+          mergeReturnedModuleIntoLmsModulesCache(incoming);
+        } else {
+          await mutateLmsModules();
+        }
         setLiveLessonTitles((prev) => {
           const next = { ...prev };
           delete next[coreKey];
@@ -507,7 +638,14 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
         toast.error(getLmsAxiosErrorMessage(e, 'Could not rename module.'));
       }
     },
-    [liveBuilderModules, liveLessonTitles, lmsModules, mutateLmsModules]
+    [
+      liveBuilderModules,
+      liveLessonTitles,
+      lmsModules,
+      mergeReturnedModuleIntoLmsModulesCache,
+      mutateLmsModules,
+      patchLmsModule,
+    ]
   );
 
   const handleRenameModule = useCallback(
@@ -519,6 +657,142 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
       }
     },
     [handleRenameDemoModule, handleRenameLiveModule, isLive]
+  );
+
+  const handleReorderLiveModules = useCallback(
+    async (fromModuleId, toModuleId, edge = 'bottom') => {
+      if (!modulesCacheKey) {
+        return;
+      }
+      const current = Array.isArray(lmsModules) ? lmsModules : [];
+      const next = reorderModuleList(current, fromModuleId, toModuleId, edge);
+      if (next.length === 0 || next.every((m, i) => m.id === current[i]?.id)) {
+        return;
+      }
+
+      dispatch(
+        lmsResourceFetchSuccess({
+          key: modulesCacheKey,
+          data: { data: next },
+        })
+      );
+
+      try {
+        const courseId = effectiveCourseId || course?.id;
+        if (!courseId) {
+          throw new Error('Missing course id for reorder');
+        }
+        const moduleIds = next.map((m) => m.id).filter(Boolean);
+        const envelope = await reorderLmsModules(courseId, moduleIds);
+        const rows = Array.isArray(envelope?.data) ? envelope.data : null;
+        if (rows) {
+          dispatch(
+            lmsResourceFetchSuccess({
+              key: modulesCacheKey,
+              data: { data: rows },
+            })
+          );
+        }
+      } catch (e) {
+        dispatch(
+          lmsResourceFetchSuccess({
+            key: modulesCacheKey,
+            data: { data: current },
+          })
+        );
+        toast.error(getLmsAxiosErrorMessage(e, 'Could not reorder modules.'));
+      }
+    },
+    [course?.id, dispatch, effectiveCourseId, lmsModules, modulesCacheKey, reorderLmsModules]
+  );
+
+  const handleReorderLessons = useCallback(
+    async (moduleId, orderedLessonIds) => {
+      if (!moduleId || !Array.isArray(orderedLessonIds) || orderedLessonIds.length === 0) {
+        return;
+      }
+
+      if (!isLive) {
+        setDemoModules((prev) =>
+          prev.map((m) => {
+            if (m.id !== moduleId) return m;
+            const byId = new Map(m.lessons.map((l) => [l.id, l]));
+            const ordered = orderedLessonIds.map((id) => byId.get(id)).filter(Boolean);
+            return { ...m, lessons: ordered.length > 0 ? ordered : m.lessons };
+          })
+        );
+        return;
+      }
+
+      if (!modulesCacheKey) {
+        return;
+      }
+
+      const current = Array.isArray(lmsModules) ? lmsModules : [];
+      const moduleRow = current.find((m) => m.id === moduleId);
+      if (!moduleRow) {
+        return;
+      }
+
+      const lessonIds = orderedLessonIds.filter((id) => typeof id === 'string' && !id.endsWith('-core'));
+      const rank = new Map(lessonIds.map((id, index) => [id, index + 1]));
+      const big = 1_000_000;
+
+      const nextModules = current.map((m) => {
+        if (m.id !== moduleId) return m;
+        const standalone = Array.isArray(m.standaloneLessons) ? [...m.standaloneLessons] : [];
+        const quizzes = Array.isArray(m.quizzes) ? [...m.quizzes] : [];
+        standalone.sort((a, b) => (rank.get(a.id) ?? big) - (rank.get(b.id) ?? big));
+        quizzes.sort((a, b) => (rank.get(a.id) ?? big) - (rank.get(b.id) ?? big));
+        return {
+          ...m,
+          standaloneLessons: standalone.map((row) => ({
+            ...row,
+            sortOrder: rank.get(row.id) ?? row.sortOrder ?? 0,
+          })),
+          quizzes: quizzes.map((q) => ({
+            ...q,
+            sortOrder: rank.get(q.id) ?? q.sortOrder ?? 0,
+          })),
+        };
+      });
+
+      dispatch(
+        lmsResourceFetchSuccess({
+          key: modulesCacheKey,
+          data: { data: nextModules },
+        })
+      );
+
+      try {
+        const envelope = await reorderLmsModuleLessons(moduleId, lessonIds);
+        const incoming = envelope?.data ?? null;
+        if (incoming?.id) {
+          const merged = nextModules.map((m) => (m.id === incoming.id ? incoming : m));
+          dispatch(
+            lmsResourceFetchSuccess({
+              key: modulesCacheKey,
+              data: { data: merged },
+            })
+          );
+        }
+      } catch (e) {
+        dispatch(
+          lmsResourceFetchSuccess({
+            key: modulesCacheKey,
+            data: { data: current },
+          })
+        );
+        toast.error(getLmsAxiosErrorMessage(e, 'Could not reorder lessons.'));
+      }
+    },
+    [
+      dispatch,
+      isLive,
+      lmsModules,
+      modulesCacheKey,
+      reorderLmsModuleLessons,
+    ]
   );
 
   const handleDeleteDemoModule = useCallback((moduleId) => {
@@ -591,33 +865,61 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
         toast.error(getLmsAxiosErrorMessage(e, 'Could not remove lesson.'));
       }
     },
-    [mutateLmsModules]
+    [deleteLmsStandaloneLesson, mutateLmsModules]
   );
 
   const handleDeleteLiveModule = useCallback(
     async (modulePublicId) => {
-      if (
-        !window.confirm(
-          'Delete this module from the course? Quizzes attached to this module will be deleted.'
-        )
-      ) {
+      if (!modulePublicId || typeof modulePublicId !== 'string') {
         return;
       }
-      try {
-        await deleteLmsModule(modulePublicId);
-        setLiveLessonTitles((prev) => {
+      setPendingDeleteModuleId(modulePublicId);
+    },
+    []
+  );
+
+  const handleConfirmDeleteLiveModule = useCallback(async () => {
+    const modulePublicId = pendingDeleteModuleId;
+    if (!modulePublicId || typeof modulePublicId !== 'string') {
+      setPendingDeleteModuleId(null);
+      return;
+    }
+    try {
+      await deleteLmsModule(modulePublicId);
+      setLiveLessonTitles((prev) => {
+        const copy = { ...prev };
+        delete copy[`${modulePublicId}-core`];
+        return copy;
+      });
+      if (modulesCacheKey) {
+        const current = Array.isArray(lmsModules) ? lmsModules : [];
+        const next = current.filter((m) => m.id !== modulePublicId);
+        dispatch(
+          lmsResourceFetchSuccess({
+            key: modulesCacheKey,
+            data: { data: next },
+          })
+        );
+        setExpandedLive((prev) => {
           const copy = { ...prev };
-          delete copy[`${modulePublicId}-core`];
+          delete copy[modulePublicId];
           return copy;
         });
+        setSelectedLiveLessonId((sid) => {
+          if (!sid || !sid.startsWith(`${modulePublicId}`)) {
+            return sid;
+          }
+          return next[0]?.id ? `${next[0].id}-core` : null;
+        });
+      } else {
         await mutateLmsModules();
-        toast.success('Module deleted.');
-      } catch (e) {
-        toast.error(getLmsAxiosErrorMessage(e, 'Could not delete module.'));
       }
-    },
-    [mutateLmsModules]
-  );
+      toast.success('Module deleted.');
+      setPendingDeleteModuleId(null);
+    } catch (e) {
+      toast.error(getLmsAxiosErrorMessage(e, 'Could not delete module.'));
+    }
+  }, [deleteLmsModule, dispatch, lmsModules, modulesCacheKey, mutateLmsModules, pendingDeleteModuleId]);
 
   const handleDeleteLessonOrModuleLesson = useCallback(
     (moduleId, lesson) => {
@@ -769,29 +1071,6 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
     selectedLesson?.type,
   ]);
 
-  const mergeReturnedModuleIntoLmsModulesCache = useCallback(
-    (incomingModule) => {
-      if (!incomingModule?.id || typeof mutateLmsModules !== 'function') {
-        return;
-      }
-      void mutateLmsModules(
-        (current) => {
-          const envelope =
-            current && typeof current === 'object' ? current : { data: [] };
-          const list = Array.isArray(envelope.data) ? envelope.data : [];
-          const idx = list.findIndex((m) => m.id === incomingModule.id);
-          const next =
-            idx === -1
-              ? [...list, incomingModule]
-              : list.map((m, i) => (i === idx ? incomingModule : m));
-          return { ...envelope, data: next };
-        },
-        { revalidate: false }
-      );
-    },
-    [mutateLmsModules]
-  );
-
   const handleSaveLiveRichLesson = useCallback(
     async ({ title, durationLabel, shortDescriptionHtml, lessonContentHtml, lessonMeta }) => {
       const isVideoCore =
@@ -847,6 +1126,8 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
       liveStandaloneLesson,
       lmsModules,
       mergeReturnedModuleIntoLmsModulesCache,
+      patchLmsModule,
+      patchLmsStandaloneLesson,
       selectedLesson?.type,
     ]
   );
@@ -858,16 +1139,25 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
       ? handleSaveLiveRichLesson
       : undefined;
 
-  const liveQuizLoader =
-    isLive && selectedLesson?.type === 'quiz'
-      ? async (quizPublicId) => getLmsQuizQuestions(quizPublicId)
-      : undefined;
+  // Stable reference — inline async broke CurriculumQuizLessonWorkspace `useEffect` deps and refetched
+  // GET /quizzes/:id/questions on every parent re-render (e.g. after save merges Redux modules).
+  const liveQuizLoader = useMemo(() => {
+    if (!isLive || selectedLesson?.type !== 'quiz') {
+      return undefined;
+    }
+    return async (quizPublicId) => getLmsQuizQuestions(quizPublicId);
+  }, [isLive, selectedLesson?.type, getLmsQuizQuestions]);
 
   const saveLiveQuizLesson =
     isLive && selectedLesson?.type === 'quiz'
       ? async ({ quizId, title, questions }) => {
-          await patchLmsQuiz(quizId, { title, questions });
-          await mutateQuizzes();
+          const envelope = await patchLmsQuiz(quizId, { title, questions });
+          const incoming = envelope?.data ?? null;
+          if (incoming?.id && incoming?.moduleId) {
+            mergeReturnedQuizIntoLmsModulesCache(incoming);
+          } else {
+            await mutateLmsModules();
+          }
         }
       : undefined;
 
@@ -881,8 +1171,13 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
   const saveLiveQuizSettings =
     isLive && selectedLesson?.type === 'quiz'
       ? async ({ quizId, title, ...settings }) => {
-          await patchLmsQuiz(quizId, { title, ...settings });
-          await mutateQuizzes();
+          const envelope = await patchLmsQuiz(quizId, { title, ...settings });
+          const incoming = envelope?.data ?? null;
+          if (incoming?.id && incoming?.moduleId) {
+            mergeReturnedQuizIntoLmsModulesCache(incoming);
+          } else {
+            await mutateLmsModules();
+          }
         }
       : undefined;
 
@@ -904,8 +1199,8 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
       },
     });
     toast.success('FAQ saved.');
-    await mutateCourses();
-  }, [course?.id, ensureCourseCreated, faqItems, mutateCourses]);
+    await mutateCourse();
+  }, [course?.id, ensureCourseCreated, faqItems, mutateCourse, patchLmsCourse]);
 
   const persistNotice = useCallback(async () => {
     let courseId = course?.id;
@@ -923,8 +1218,8 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
       },
     });
     toast.success('Notice saved.');
-    await mutateCourses();
-  }, [course?.id, ensureCourseCreated, noticeHeading, noticeHtml, mutateCourses]);
+    await mutateCourse();
+  }, [course?.id, ensureCourseCreated, noticeHeading, noticeHtml, mutateCourse, patchLmsCourse]);
 
   const previewHref =
     isLive && course?.slug ? paths.dashboard.courseDetails(course.slug) : paths.courseDetailDemo;
@@ -943,8 +1238,8 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
   if (
     isLive &&
     trimmedLookup &&
-    !coursesLoading &&
-    !resolvedId &&
+    !courseLoading &&
+    !course?.id &&
     !isNewCourseIntent &&
     !bootstrapCourseId
   ) {
@@ -955,7 +1250,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
     );
   }
 
-  if (isLive && effectiveCourseId && !course && coursesLoading) {
+  if (isLive && effectiveCourseId && !course && courseLoading) {
     return (
       <DashboardContent maxWidth={false} sx={styles.content}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
@@ -965,7 +1260,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
     );
   }
 
-  if (isLive && effectiveCourseId && !course && !coursesLoading) {
+  if (isLive && effectiveCourseId && !course && !courseLoading) {
     return (
       <DashboardContent maxWidth={false} sx={styles.content}>
         <Typography variant="body2">Unable to load this course.</Typography>
@@ -996,6 +1291,8 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
               selectedLessonId={selectedLessonId}
               onSelectLesson={onSelectLesson}
               onAddLesson={handleAddLesson}
+              onReorderModules={isLive ? handleReorderLiveModules : undefined}
+              onReorderLessons={handleReorderLessons}
               onAddModule={handleAddModule}
               disableAddModule={Boolean(
                 isLive && (addingLiveModule || creatingCourse)
@@ -1034,20 +1331,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
                 <CourseSettingsWorkspace
                   tiedCourse={course ?? null}
                   onEnsureCourse={!course?.id ? ensureCourseCreated : undefined}
-                  onSaved={(updatedCourse) =>
-                    mutateCourses(
-                      (prev) => {
-                        if (!prev || typeof prev !== 'object') return prev;
-                        const list = Array.isArray(prev.data) ? prev.data : [];
-                        const nextId =
-                          updatedCourse && typeof updatedCourse === 'object' ? updatedCourse.id : null;
-                        if (!nextId) return prev;
-                        const nextList = list.map((row) => (row?.id === nextId ? updatedCourse : row));
-                        return { ...prev, data: nextList };
-                      },
-                      { revalidate: false }
-                    )
-                  }
+                  onSaved={() => mutateCourse()}
                 />
               ) : (
                 <CourseSettingsWorkspace />
@@ -1079,6 +1363,17 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
           </Box>
         )}
       </Box>
+      <ConfirmDialog
+        open={Boolean(pendingDeleteModuleId)}
+        onClose={() => setPendingDeleteModuleId(null)}
+        title="Delete module?"
+        content="Delete this module from the course? Quizzes attached to this module will be deleted."
+        action={
+          <Button color="error" variant="contained" onClick={handleConfirmDeleteLiveModule}>
+            Delete
+          </Button>
+        }
+      />
     </DashboardContent>
   );
 }

@@ -6,9 +6,7 @@ import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 
-import { useLmsPrograms } from 'src/hooks/use-lms';
-
-import { patchLmsCourse } from 'src/lib/lms-instructor-api';
+import { useLmsActions, useLmsPrograms } from 'src/hooks/use-lms';
 
 import { toast } from 'src/components/snackbar';
 
@@ -47,6 +45,7 @@ export function CourseSettingsWorkspace({
   const hasCourseRow = tiedCourse?.id != null;
   const canPersistToLms = hasCourseRow || typeof onEnsureCourse === 'function';
   const { programs } = useLmsPrograms();
+  const { runCommand } = useLmsActions();
 
   const [courseName, setCourseName] = useState(curriculumBuilderCourse.title);
   const [slug, setSlug] = useState('how-to-design-components-right');
@@ -184,10 +183,15 @@ export function CourseSettingsWorkspace({
         formData.append('videoHoursLabel', videoDuration.trim() === '' ? '' : videoDuration.trim());
         formData.append('marketingPayload', JSON.stringify(marketingPayload));
         formData.append('bannerImage', bannerImageFile);
-        const json = await patchLmsCourse(courseId, formData);
+        const json = await runCommand('course.update', {
+          publicId: courseId,
+          body: formData,
+        });
         onSaved?.(json?.data);
       } else {
-        const json = await patchLmsCourse(courseId, {
+        const json = await runCommand('course.update', {
+          publicId: courseId,
+          body: {
           title: courseName.trim(),
           slug: slug.trim(),
           programId: programId || null,
@@ -196,6 +200,7 @@ export function CourseSettingsWorkspace({
           hours: parseHoursLabel(courseDuration),
           videoHoursLabel: videoDuration.trim() === '' ? null : videoDuration.trim(),
           marketing: marketingPayload,
+          },
         });
         onSaved?.(json?.data);
       }
@@ -209,6 +214,7 @@ export function CourseSettingsWorkspace({
   }, [
     tiedCourse?.id,
     onEnsureCourse,
+    runCommand,
     bannerImageFile,
     bannerUrl,
     courseDuration,

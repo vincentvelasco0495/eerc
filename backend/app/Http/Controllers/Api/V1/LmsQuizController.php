@@ -46,6 +46,8 @@ class LmsQuizController extends Controller
             $title = 'New quiz';
         }
 
+        $maxSortOrder = (int) Quiz::query()->where('module_id', $module->id)->max('sort_order');
+
         $quiz = Quiz::query()->create([
             'public_id' => (string) Str::uuid(),
             'course_id' => $module->course_id,
@@ -53,6 +55,7 @@ class LmsQuizController extends Controller
             'title' => $title,
             'duration_minutes' => 15,
             'attempts_allowed' => 3,
+            'sort_order' => $maxSortOrder + 1,
             'question_count' => 0,
             'question_pool_count' => 0,
         ]);
@@ -251,10 +254,14 @@ class LmsQuizController extends Controller
             'durationUsedSeconds' => ['sometimes', 'integer', 'min:0', 'max:31536000'],
         ]);
 
-        $settings = is_array($quiz->settings_json) ? $quiz->settings_json : [];
-        $limitedRetakeAttempts = (bool) ($settings['limitedRetakeAttempts'] ?? false);
         $used = QuizAttempt::query()->where('user_id', $user->id)->where('quiz_id', $quiz->id)->count();
-        if ($limitedRetakeAttempts && $used >= $quiz->attempts_allowed) {
+        $settings = is_array($quiz->settings_json) ? $quiz->settings_json : [];
+        $limitedRetakes = (bool) ($settings['limitedRetakeAttempts'] ?? false);
+        if (
+            $limitedRetakes
+            && (int) $quiz->attempts_allowed > 0
+            && $used >= (int) $quiz->attempts_allowed
+        ) {
             return response()->json(['message' => 'No attempts remaining for this quiz.'], 422);
         }
 

@@ -1,4 +1,3 @@
-import { useSWRConfig } from 'swr';
 import { useParams, useNavigate } from 'react-router';
 import { useRef, useMemo, useEffect, useCallback } from 'react';
 
@@ -18,17 +17,14 @@ import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 
 import {
-  useLmsCourse,
-  useLmsCourses,
-  useLmsQuizzes,
+  useLmsActions,
+  useLmsCourseByLookup,
   useLmsModulesByCourse,
-  useResolvedCourseIdFromLookup,
+  extractQuizzesFromModules,
 } from 'src/hooks/use-lms';
 
-import axios from 'src/lib/axios';
 import { CONFIG } from 'src/global-config';
 import { DashboardContent } from 'src/layouts/dashboard';
-import { postLmsLessonProgress } from 'src/lib/lms-instructor-api';
 
 import { Iconify } from 'src/components/iconify';
 import { CourseDetailBackArrowSvg } from 'src/components/course-detail/course-detail-back-arrow';
@@ -38,6 +34,16 @@ import { mapLmsToStyledCourseDetail } from 'src/components/course-detail/map-lms
 import { resolveTextLessonFromModules } from '../utils/resolve-text-lesson-from-modules';
 
 // ----------------------------------------------------------------------
+
+function normalizeAssetUrl(path) {
+  const raw = typeof path === 'string' ? path.trim() : '';
+  if (!raw) return '';
+  if (/^(blob:|data:)/i.test(raw)) return raw;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const base = String(CONFIG.serverUrl ?? '').trim().replace(/\/$/, '');
+  const rel = raw.startsWith('/') ? raw : `/${raw}`;
+  return base ? `${base}${rel}` : rel;
+}
 
 function formatBytes(n) {
   const v = Number(n);
@@ -83,18 +89,17 @@ export function CourseTextLessonView() {
   const { slug = '', courseId = '', lessonId = '' } = useParams();
   const courseLookup = slug || courseId;
   const navigate = useNavigate();
-  const { mutate } = useSWRConfig();
+  const { runCommand } = useLmsActions();
   const sentLessonRef = useRef('');
 
-  const { isLoading: coursesLoading } = useLmsCourses(1, 500);
-  const resolvedCourseId = useResolvedCourseIdFromLookup(courseLookup);
-  const course = useLmsCourse(resolvedCourseId);
-  const { modules, isLoading: modulesLoading } = useLmsModulesByCourse(resolvedCourseId);
-  const { quizzes } = useLmsQuizzes();
+  const { course, isLoading: courseLoading } = useLmsCourseByLookup(courseLookup);
+  const resolvedCourseId = course?.id ?? '';
+  const { modules, isLoading: modulesLoading, mutate: mutateModules } =
+    useLmsModulesByCourse(resolvedCourseId);
 
   const quizzesForCourse = useMemo(
-    () => (resolvedCourseId ? quizzes.filter((q) => q.courseId === resolvedCourseId) : []),
-    [quizzes, resolvedCourseId]
+    () => extractQuizzesFromModules(modules),
+    [modules]
   );
 
   const lessonPayload = useMemo(
@@ -111,17 +116,15 @@ export function CourseTextLessonView() {
       return;
     }
     sentLessonRef.current = k;
-    void postLmsLessonProgress(resolvedCourseId, lessonId)
-      .then(() =>
-        Promise.all([
-          mutate(`/api/courses/${encodeURIComponent(resolvedCourseId)}/lesson-progress`),
-          mutate(`/api/modules?courseId=${encodeURIComponent(resolvedCourseId)}`),
-        ])
-      )
+    void runCommand('lessonProgress.complete', {
+      coursePublicId: resolvedCourseId,
+      lessonKey: lessonId,
+    })
+      .then(() => mutateModules())
       .catch(() => {
         // Keep lesson UX uninterrupted if progress post fails.
       });
-  }, [resolvedCourseId, lessonId, lessonPayload, mutate]);
+  }, [resolvedCourseId, lessonId, lessonPayload, mutateModules, runCommand]);
 
   const navIds = useMemo(() => {
     if (!course || !lessonId) {
@@ -161,19 +164,20 @@ export function CourseTextLessonView() {
   }, [navigate, courseLinkHref]);
 
   const downloadMaterial = useCallback(async (materialPublicId, filename) => {
-    const url = `/api/lesson-materials/${encodeURIComponent(materialPublicId)}/file`;
-    const res = await axios.get(url, { responseType: 'blob' });
-    const blob = res.data;
-    const objectUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = objectUrl;
-    a.download = filename || 'download';
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(objectUrl);
-  }, []);
+    const material = (lessonPayload?.lessonMaterials ?? []).find((m) => m?.id === materialPublicId);
+    const directUrl = normalizeAssetUrl(material?.fileUrl);
+    if (directUrl) {
+      const a = document.createElement('a');
+      a.href = directUrl;
+      a.download = filename || 'download';
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      return;
+    }
+    throw new Error(`Missing file URL for lesson material ${materialPublicId}`);
+  }, [lessonPayload?.lessonMaterials]);
 
   const downloadAll = useCallback(() => {
     const mats = lessonPayload?.lessonMaterials ?? [];
@@ -187,8 +191,12 @@ export function CourseTextLessonView() {
     })();
   }, [lessonPayload?.lessonMaterials, downloadMaterial]);
 
+  const hasCourseData = Boolean(course);
+  const hasModuleData = Array.isArray(modules) && modules.length > 0;
   const loading = Boolean(
-    courseLookup && (coursesLoading || (resolvedCourseId && modulesLoading))
+    courseLookup &&
+      ((!hasCourseData && courseLoading) ||
+        (resolvedCourseId && !hasModuleData && modulesLoading))
   );
 
   if (!courseLookup || !lessonId) {

@@ -11,7 +11,6 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { CONFIG } from 'src/global-config';
 import {
   deleteLessonMaterial,
-  fetchLessonMaterialBlob,
   getLmsAxiosErrorMessage,
   postLessonMaterialForModule,
   postLessonMaterialForStandaloneLesson,
@@ -35,6 +34,16 @@ function formatBytes(bytes) {
     return `${kb.toFixed(1)} KB`;
   }
   return `${(kb / 1024).toFixed(1)} MB`;
+}
+
+function normalizeAssetUrl(path) {
+  const raw = typeof path === 'string' ? path.trim() : '';
+  if (!raw) return '';
+  if (/^(blob:|data:)/i.test(raw)) return raw;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const base = String(CONFIG.serverUrl ?? '').trim().replace(/\/$/, '');
+  const rel = raw.startsWith('/') ? raw : `/${raw}`;
+  return base ? `${base}${rel}` : rel;
 }
 
 export function TextLessonWorkspaceMaterials({
@@ -106,13 +115,16 @@ export function TextLessonWorkspaceMaterials({
 
   const handleDownload = async (id, fallbackName) => {
     try {
-      const blob = await fetchLessonMaterialBlob(id);
-      const url = URL.createObjectURL(blob);
+      const material = (Array.isArray(lessonMaterials) ? lessonMaterials : []).find((m) => m?.id === id);
+      const directUrl = normalizeAssetUrl(material?.fileUrl);
+      if (!directUrl) {
+        throw new Error('File URL is missing.');
+      }
       const a = document.createElement('a');
-      a.href = url;
+      a.href = directUrl;
       a.download = fallbackName ?? 'lesson-material';
+      a.rel = 'noopener';
       a.click();
-      URL.revokeObjectURL(url);
     } catch (err) {
       toast.error(getLmsAxiosErrorMessage(err, 'Download failed.'));
     }

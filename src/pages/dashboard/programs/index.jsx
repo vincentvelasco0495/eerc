@@ -17,17 +17,14 @@ import TableHead from '@mui/material/TableHead';
 import Typography from '@mui/material/Typography';
 import CardContent from '@mui/material/CardContent';
 
-import { useLmsUser, useLmsPrograms } from 'src/hooks/use-lms';
+import { useLmsUser, useLmsActions, useLmsPrograms } from 'src/hooks/use-lms';
 
 import { CONFIG } from 'src/global-config';
-import { StudentWorkspaceShell } from 'src/features/student-profile/components/student-workspace-shell';
-import { InstructorWorkspaceShell } from 'src/features/instructor-profile/components/instructor-workspace-shell';
 import {
-  postLmsProgram,
-  patchLmsProgram,
-  deleteLmsProgram,
   getLmsAxiosErrorMessage,
 } from 'src/lib/lms-instructor-api';
+import { StudentWorkspaceShell } from 'src/features/student-profile/components/student-workspace-shell';
+import { InstructorWorkspaceShell } from 'src/features/instructor-profile/components/instructor-workspace-shell';
 
 import { Editor } from 'src/components/editor';
 import { toast } from 'src/components/snackbar';
@@ -46,6 +43,7 @@ const DEFAULT_FORM = {
 
 export default function ProgramsPage() {
   const { programs, isLoading, error, mutate: mutatePrograms } = useLmsPrograms();
+  const { runCommand } = useLmsActions();
   const { user } = useLmsUser();
   const [form, setForm] = useState(DEFAULT_FORM);
   const [saving, setSaving] = useState(false);
@@ -110,10 +108,10 @@ export default function ProgramsPage() {
       }
 
       if (editingId) {
-        await patchLmsProgram(editingId, formData);
+        await runCommand('program.update', { publicId: editingId, body: formData });
         toast.success('Program updated.');
       } else {
-        await postLmsProgram(formData);
+        await runCommand('program.create', formData);
         toast.success('Program created.');
       }
 
@@ -147,7 +145,7 @@ export default function ProgramsPage() {
     }
     setBusyId(programId);
     try {
-      await deleteLmsProgram(programId);
+      await runCommand('program.delete', { publicId: programId });
       toast.success('Program deleted.');
       setConfirmOpen(false);
       setPendingDeleteRow(null);

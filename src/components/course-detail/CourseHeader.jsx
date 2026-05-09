@@ -4,8 +4,6 @@ import { useNavigate, useSearchParams } from 'react-router';
 
 import { paths } from 'src/routes/paths';
 
-import { useLmsUser } from 'src/hooks/use-lms';
-
 import { useAuthContext } from 'src/auth/hooks';
 
 import { space, colors } from './course-detail-tokens';
@@ -221,8 +219,7 @@ const DESCRIPTION_PREVIEW = 148;
 export function CourseHeader({ data }) {
   const [expanded, setExpanded] = useState(false);
   const { category, badge, title, instructor, shortDescription } = data;
-  const { authenticated } = useAuthContext();
-  const { user } = useLmsUser(authenticated);
+  const { authenticated, user } = useAuthContext();
   const [searchParams] = useSearchParams();
 
   const needsToggle = shortDescription.length > DESCRIPTION_PREVIEW;

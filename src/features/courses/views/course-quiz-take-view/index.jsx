@@ -1,4 +1,3 @@
-import { useSWRConfig } from 'swr';
 import { useParams, useSearchParams } from 'react-router';
 import { useRef, useMemo, useState, useEffect, useCallback, useLayoutEffect } from 'react';
 
@@ -15,16 +14,16 @@ import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 
 import {
-  useLmsQuiz,
   useLmsCourse,
+  useLmsActions,
   useLmsCourses,
-  useLmsQuizzes,
+  useLmsQuizResults,
+  useLmsCourseQuizzes,
   useResolvedCourseIdFromLookup,
 } from 'src/hooks/use-lms';
 
 import { CONFIG } from 'src/global-config';
 import { DashboardContent } from 'src/layouts/dashboard';
-import { postLmsQuizAttempt, getLmsQuizQuestions } from 'src/lib/lms-instructor-api';
 
 import { Iconify } from 'src/components/iconify';
 import { CourseDetailBackArrowSvg } from 'src/components/course-detail/course-detail-back-arrow';
@@ -183,13 +182,17 @@ export function CourseQuizTakeView() {
   const { slug = '', courseId = '', quizId = '' } = useParams();
   const courseLookup = slug || courseId;
   const [searchParams, setSearchParams] = useSearchParams();
-  const { mutate } = useSWRConfig();
+  const { runCommand } = useLmsActions();
 
   const { isLoading: coursesLoading } = useLmsCourses(1, 500);
-  useLmsQuizzes();
+  const { mutate: mutateQuizResults } = useLmsQuizResults();
   const resolvedCourseId = useResolvedCourseIdFromLookup(courseLookup);
   const course = useLmsCourse(resolvedCourseId);
-  const quizMeta = useLmsQuiz(quizId);
+  const { quizzes, mutateModules } = useLmsCourseQuizzes(resolvedCourseId);
+  const quizMeta = useMemo(
+    () => quizzes.find((item) => item.id === quizId) ?? null,
+    [quizzes, quizId]
+  );
 
   const [apiQuestions, setApiQuestions] = useState([]);
   /** Order / option shuffle applied when instructor toggles are ON (stable across refresh via session). */
@@ -249,7 +252,7 @@ export function CourseQuizTakeView() {
     setLoadError(null);
     void (async () => {
       try {
-        const rows = await getLmsQuizQuestions(quizId);
+        const rows = await runCommand('quiz.questions', { publicId: quizId });
         if (!cancelled) {
           setApiQuestions(normalizeQuestions(rows));
         }
@@ -268,7 +271,7 @@ export function CourseQuizTakeView() {
     return () => {
       cancelled = true;
     };
-  }, [quizId]);
+  }, [quizId, runCommand]);
 
   const finishQuiz = useCallback(() => {
     setPhase('complete');
@@ -494,15 +497,28 @@ export function CourseQuizTakeView() {
     attemptSubmitRef.current = submissionKey;
     const totalSeconds = Math.max(0, Math.round((quizMeta?.durationMinutes ?? 0) * 60));
     const durationUsedSeconds = totalSeconds > 0 ? Math.max(0, totalSeconds - secondsLeft) : 0;
-    void postLmsQuizAttempt(quizId, {
+    void runCommand('quiz.attempt', {
+      publicId: quizId,
+      body: {
       selections,
       durationUsedSeconds,
+      },
     })
-      .then(() => Promise.all([mutate('/api/quiz-results'), mutate('/api/quizzes')]))
+      .then(() => Promise.all([mutateQuizResults(), mutateModules()]))
       .catch(() => {
         // Keep the quiz UX unblocked even if attempt logging fails.
       });
-  }, [phase, quizId, displayQuestions, selections, quizMeta, secondsLeft, mutate]);
+  }, [
+    phase,
+    quizId,
+    displayQuestions,
+    selections,
+    quizMeta,
+    secondsLeft,
+    mutateQuizResults,
+    mutateModules,
+    runCommand,
+  ]);
 
   useEffect(() => {
     if (phase !== 'taking') {

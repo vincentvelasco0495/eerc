@@ -18,6 +18,7 @@ class Quiz extends Model
         'settings_json',
         'duration_minutes',
         'attempts_allowed',
+        'sort_order',
         'question_count',
         'question_pool_count',
     ];

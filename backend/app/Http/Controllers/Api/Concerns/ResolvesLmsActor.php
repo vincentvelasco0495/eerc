@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Concerns;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 trait ResolvesLmsActor
 {
@@ -15,7 +16,12 @@ trait ResolvesLmsActor
      */
     protected function lmsActor(): User
     {
-        $user = request()->user();
+        $request = request();
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            $user = Auth::guard('sanctum')->user();
+        }
 
         if ($user instanceof User) {
             return $user;

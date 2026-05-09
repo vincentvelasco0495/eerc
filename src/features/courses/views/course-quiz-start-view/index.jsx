@@ -12,10 +12,9 @@ import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 
 import {
-  useLmsQuiz,
   useLmsCourse,
   useLmsCourses,
-  useLmsQuizzes,
+  useLmsCourseQuizzes,
   useResolvedCourseIdFromLookup,
 } from 'src/hooks/use-lms';
 
@@ -50,10 +49,13 @@ export function CourseQuizStartView() {
   const courseLookup = slug || courseId;
 
   const { isLoading: coursesLoading } = useLmsCourses(1, 500);
-  useLmsQuizzes();
   const resolvedCourseId = useResolvedCourseIdFromLookup(courseLookup);
   const course = useLmsCourse(resolvedCourseId);
-  const quiz = useLmsQuiz(quizId);
+  const { quizzes } = useLmsCourseQuizzes(resolvedCourseId);
+  const quiz = useMemo(
+    () => quizzes.find((item) => item.id === quizId) ?? null,
+    [quizzes, quizId]
+  );
 
   const courseLinkHref = paths.dashboard.courseDetails(
     typeof course?.slug === 'string' && course.slug.trim() ? course.slug.trim() : courseLookup
@@ -71,6 +73,16 @@ export function CourseQuizStartView() {
     () => formatTimeLimitMinutes(quiz?.durationMinutes),
     [quiz?.durationMinutes]
   );
+  const attemptsUsed =
+    typeof quiz?.attemptsUsed === 'number' && Number.isFinite(quiz.attemptsUsed) ? quiz.attemptsUsed : 0;
+  const attemptsAllowed =
+    typeof quiz?.attemptsAllowed === 'number' && Number.isFinite(quiz.attemptsAllowed)
+      ? quiz.attemptsAllowed
+      : 0;
+  /** When OFF, retakes are unlimited — `attemptsAllowed` is ignored for blocking (see instructor Settings). */
+  const limitedRetakeAttempts = Boolean(quiz?.limitedRetakeAttempts);
+  const attemptsExhausted =
+    limitedRetakeAttempts && attemptsAllowed > 0 && attemptsUsed >= attemptsAllowed;
 
   const loading = Boolean(
     courseLookup && (coursesLoading || (resolvedCourseId && !course && !coursesLoading))
@@ -196,17 +208,42 @@ export function CourseQuizStartView() {
               Time limit: <strong>{timeLimitLabel}</strong>
             </Typography>
           </Stack>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Box sx={iconWrapSx} aria-hidden>
+              <Iconify icon="solar:restart-bold-duotone" width={22} />
+            </Box>
+            <Typography variant="body1" color="text.primary">
+              Attempts: <strong>{attemptsUsed}</strong>
+              {limitedRetakeAttempts && attemptsAllowed > 0 ? (
+                <>
+                  {' '}
+                  / <strong>{attemptsAllowed}</strong>
+                </>
+              ) : (
+                <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.75 }}>
+                  · unlimited retakes
+                </Typography>
+              )}
+            </Typography>
+          </Stack>
         </Stack>
+
+        {attemptsExhausted ? (
+          <Typography variant="body2" color="error.main" sx={{ mb: 2, textAlign: 'left' }}>
+            You have reached the maximum allowed attempts for this quiz.
+          </Typography>
+        ) : null}
 
         <Button
           component={RouterLink}
-          href={takeHref}
+          href={attemptsExhausted ? undefined : takeHref}
           variant="contained"
           size="large"
           fullWidth
+          disabled={attemptsExhausted}
           sx={{ py: 1.5, fontWeight: 700, borderRadius: 2 }}
         >
-          Start Quiz
+          {attemptsExhausted ? 'No attempts remaining' : 'Start Quiz'}
         </Button>
       </Box>
     </DashboardContent>

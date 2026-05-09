@@ -1,1 +1,1 @@
-export const selectAuthFlash = (state) => state.auth?.flash ?? null;
+export { selectAuthFlash } from 'src/redux/selectors/authSelectors';

@@ -12,11 +12,13 @@ use App\Models\Program;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\User;
+use App\Models\UserLessonProgress;
 use App\Models\UserModuleProgress;
 use App\Support\LmsMeta;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Domain queries and serializers for modular LMS API endpoints (no combined bootstrap payload).
@@ -111,6 +113,47 @@ class LmsCatalogService
     }
 
     /**
+     * Public aggregate stats for one course (safe for guests).
+     *
+     * @return array{courseId: string, totalDurationHours: int, totalLectures: int, totalVideos: int, totalQuizzes: int, level: string}
+     */
+    public function courseStats(string $coursePublicId): array
+    {
+        /** @var Course $course */
+        $course = Course::query()
+            ->with(['modules.resources'])
+            ->where('public_id', $coursePublicId)
+            ->firstOrFail();
+
+        $modulesStat = $this->modulesForCourseStats($course);
+        $moduleIds = $modulesStat->pluck('id');
+
+        $totalQuizzes = (int) Quiz::query()
+            ->where('course_id', $course->id)
+            ->when($moduleIds->isNotEmpty(), function ($query) use ($moduleIds) {
+                $query->where(function ($q) use ($moduleIds) {
+                    $q->whereIn('module_id', $moduleIds)->orWhereNull('module_id');
+                });
+            })
+            ->count();
+
+        $totalVideos = (int) ModuleResource::query()
+            ->whereIn('module_id', $moduleIds)
+            ->where('format', 'Video')
+            ->distinct('module_id')
+            ->count('module_id');
+
+        return [
+            'courseId' => $course->public_id,
+            'totalDurationHours' => (int) $course->hours,
+            'totalLectures' => (int) $modulesStat->count(),
+            'totalVideos' => $totalVideos,
+            'totalQuizzes' => $totalQuizzes,
+            'level' => (string) ($course->level ?? ''),
+        ];
+    }
+
+    /**
      * @return array{data: array<int, array<string, mixed>>, meta: array<string, int>}
      */
     public function coursesPaginated(User $user, int $page, int $perPage, ?string $programHint = null): array
@@ -200,6 +243,7 @@ class LmsCatalogService
             'modules.resources.lessonMaterials.moduleResource',
             'modules.moduleLessonMaterials.moduleResource',
             'modules.course',
+            'modules.quizzes' => fn ($query) => $query->withCount('questions'),
         ])->firstOrFail();
 
         return $course->modules
@@ -225,6 +269,7 @@ class LmsCatalogService
                 'resources.lessonMaterials.moduleResource',
                 'moduleLessonMaterials.moduleResource',
                 'course',
+                'quizzes' => fn ($query) => $query->withCount('questions'),
             ])
             ->get()
             ->sortBy(fn ($m) => array_search($m->public_id, $publicIds, true))
@@ -243,7 +288,7 @@ class LmsCatalogService
             $q->where('module_id', $module->id);
         }
 
-        return $q->orderBy('title')->get()
+        return $q->withCount('questions')->orderBy('title')->get()
             ->map(fn (Quiz $quiz) => $this->formatQuiz($quiz, $user))
             ->all();
     }
@@ -548,6 +593,25 @@ class LmsCatalogService
             ->where('user_id', $user->id)
             ->where('module_id', $m->id)
             ->first();
+        $coreLessonKey = $m->public_id.'-core';
+        $standaloneLessonKeys = $m->resources
+            ->filter(fn (ModuleResource $r) => (bool) $r->is_standalone_lesson)
+            ->pluck('public_id')
+            ->map(fn ($id) => (string) $id)
+            ->values()
+            ->all();
+        $lessonKeys = array_values(array_unique(array_merge([$coreLessonKey], $standaloneLessonKeys)));
+        $completedSet = [];
+        if ($user->id > 0 && $lessonKeys !== []) {
+            $completedLessonKeys = UserLessonProgress::query()
+                ->where('user_id', $user->id)
+                ->where('course_id', $m->course_id)
+                ->whereIn('lesson_key', $lessonKeys)
+                ->pluck('lesson_key')
+                ->map(fn ($k) => (string) $k)
+                ->all();
+            $completedSet = array_fill_keys($completedLessonKeys, true);
+        }
 
         return [
             'id' => $m->public_id,
@@ -585,6 +649,8 @@ class LmsCatalogService
                     'excerptHtml' => $r->excerpt_html,
                     'bodyHtml' => filled($r->body_html ?? null) ? $r->body_html : ($r->summary ?? ''),
                     'lessonMeta' => $r->lesson_meta_json ?? null,
+                    'sortOrder' => (int) $r->sort_order,
+                    'completed' => isset($completedSet[(string) $r->public_id]),
                     'lessonMaterials' => $r->lessonMaterials
                         ->map(fn (LessonMaterial $f) => $this->formatLessonMaterial($f))
                         ->values()
@@ -596,8 +662,20 @@ class LmsCatalogService
             'excerptHtml' => $m->excerpt_html,
             'bodyHtml' => filled($m->body_html ?? null) ? $m->body_html : ($m->summary ?? ''),
             'lessonMeta' => $m->lesson_meta_json ?? null,
+            'coreCompleted' => isset($completedSet[$coreLessonKey]),
             'lessonMaterials' => $m->moduleLessonMaterials
                 ->map(fn (LessonMaterial $f) => $this->formatLessonMaterial($f))
+                ->values()
+                ->all(),
+            'quizzes' => $m->quizzes
+                ->map(function (Quiz $q) use ($user) {
+                    // Full authoring shape (matches PATCH payload / instructor Settings tab) so refetched modules
+                    // keep description, toggles, duration, etc. — not only id/title/questionCount.
+                    $row = $this->formatQuiz($q, $user);
+                    $row['completed'] = ((int) ($row['attemptsUsed'] ?? 0)) > 0;
+
+                    return $row;
+                })
                 ->values()
                 ->all(),
         ];
@@ -605,18 +683,57 @@ class LmsCatalogService
 
     protected function formatLessonMaterial(LessonMaterial $f): array
     {
+        $publicPath = $this->ensurePublicLessonMaterialPath($f->storage_path);
+        $fileUrl = $publicPath !== null ? Storage::disk('public')->url($publicPath) : null;
+
         return [
             'id' => $f->public_id,
             'name' => $f->original_name,
             'mime' => $f->mime,
             'sizeBytes' => (int) $f->size_bytes,
             'moduleResourceId' => $f->moduleResource?->public_id,
+            'fileUrl' => $fileUrl,
+            'inlineFileUrl' => $fileUrl,
         ];
+    }
+
+    protected function ensurePublicLessonMaterialPath(?string $rawPath): ?string
+    {
+        $storagePath = ltrim((string) $rawPath, '/');
+        if ($storagePath === '') {
+            return null;
+        }
+
+        if (Storage::disk('public')->exists($storagePath)) {
+            return $storagePath;
+        }
+
+        // Backward compatibility for files uploaded before public-disk migration.
+        if (! Storage::disk('local')->exists($storagePath)) {
+            return null;
+        }
+
+        try {
+            $source = Storage::disk('local')->readStream($storagePath);
+            if (is_resource($source)) {
+                Storage::disk('public')->writeStream($storagePath, $source);
+                fclose($source);
+            } else {
+                Storage::disk('public')->put($storagePath, Storage::disk('local')->get($storagePath));
+            }
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return Storage::disk('public')->exists($storagePath) ? $storagePath : null;
     }
 
     public function authoringQuizPayload(Quiz $quiz, User $user): array
     {
-        return $this->formatQuiz($quiz->loadMissing(['course', 'module']), $user);
+        $quiz->loadMissing(['course', 'module']);
+        $quiz->loadCount('questions');
+
+        return $this->formatQuiz($quiz, $user);
     }
 
     /**
@@ -670,6 +787,16 @@ class LmsCatalogService
         return $merged;
     }
 
+    /**
+     * Prefer the live number of `questions` rows (via `withCount('questions')`) over the denormalized `quizzes.question_count` column.
+     */
+    protected function resolvedQuizQuestionCount(Quiz $q): int
+    {
+        return isset($q->questions_count)
+            ? (int) $q->questions_count
+            : (int) $q->question_count;
+    }
+
     protected function formatQuiz(Quiz $q, User $user): array
     {
         $attempts = QuizAttempt::query()
@@ -689,7 +816,8 @@ class LmsCatalogService
             'durationMinutes' => (int) $q->duration_minutes,
             'attemptsAllowed' => (int) $q->attempts_allowed,
             'attemptsUsed' => (int) $attempts->count(),
-            'questionCount' => (int) $q->question_count,
+            'questionCount' => $this->resolvedQuizQuestionCount($q),
+            'sortOrder' => (int) $q->sort_order,
             'questionPoolCount' => (int) $q->question_pool_count,
             'bestScore' => (int) ($attempts->max('score') ?? 0),
             'shortDescription' => (string) ($q->description ?? ''),

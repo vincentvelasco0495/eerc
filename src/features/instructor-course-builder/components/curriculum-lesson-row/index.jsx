@@ -17,14 +17,31 @@ export function CurriculumLessonRow({
   onSelect,
   showDeleteLesson = false,
   onDeleteLesson,
+  draggable = false,
+  isDragging = false,
+  dropEdge = null,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }) {
   const theme = useTheme();
 
   return (
     <Box
       className="lesson-item"
+      draggable={draggable}
+      onDragStart={(e) => onDragStart?.(e, lesson.id)}
+      onDragOver={(e) => onDragOver?.(e, lesson.id)}
+      onDrop={(e) => onDrop?.(e, lesson.id)}
+      onDragEnd={onDragEnd}
       onClick={() => onSelect?.(lesson.id)}
-      sx={styles.lessonItem(theme, { selected, draft: !!lesson.draft })}
+      sx={{
+        ...styles.lessonItem(theme, { selected, draft: !!lesson.draft }),
+        ...(isDragging ? styles.dragging(theme) : null),
+        ...(dropEdge === 'top' ? styles.dropTop(theme) : null),
+        ...(dropEdge === 'bottom' ? styles.dropBottom(theme) : null),
+      }}
     >
       <Stack direction="row" alignItems="center" sx={styles.leftCluster}>
         <CurriculumDragHandle />

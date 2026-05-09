@@ -9,6 +9,18 @@ export const styles = {
     boxShadow: `0 4px 24px ${alpha(theme.palette.grey[500], 0.08)}`,
     bgcolor: 'background.paper',
     overflow: 'hidden',
+    transition: 'box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease',
+  }),
+  cardDragging: (theme) => ({
+    opacity: 0.5,
+    transform: 'scale(0.995)',
+    boxShadow: `0 2px 12px ${alpha(theme.palette.grey[500], 0.18)}`,
+  }),
+  cardDropTop: (theme) => ({
+    boxShadow: `inset 0 3px 0 ${theme.palette.primary.main}`,
+  }),
+  cardDropBottom: (theme) => ({
+    boxShadow: `inset 0 -3px 0 ${theme.palette.primary.main}`,
   }),
   header: (theme) => ({
     px: 1.75,

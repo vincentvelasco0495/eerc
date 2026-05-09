@@ -70,14 +70,28 @@ export function mapLmsToStyledCourseDetail(
   modules,
   quizzesForCourse,
   quizResults = [],
-  lessonProgressKeys = []
+  lessonProgressKeys = [],
+  courseStats = null
 ) {
+  const moduleEmbeddedQuizzes = (Array.isArray(modules) ? modules : []).flatMap((m) =>
+    Array.isArray(m?.quizzes) ? m.quizzes : []
+  );
+  const effectiveQuizzes =
+    Array.isArray(quizzesForCourse) && quizzesForCourse.length > 0 ? quizzesForCourse : moduleEmbeddedQuizzes;
+
   const tabs = mergeTabsContentFromCourseApi(course);
   const attemptedQuizIds = new Set(
     (Array.isArray(quizResults) ? quizResults : [])
       .map((row) => row?.quizId)
       .filter((id) => typeof id === 'string' && id.trim() !== '')
   );
+  effectiveQuizzes.forEach((quiz) => {
+    const used = Number(quiz?.attemptsUsed ?? 0);
+    const completed = Boolean(quiz?.completed) || (Number.isFinite(used) && used > 0);
+    if (completed && typeof quiz?.id === 'string' && quiz.id.trim() !== '') {
+      attemptedQuizIds.add(quiz.id.trim());
+    }
+  });
   const completedLessonKeys = new Set(
     (Array.isArray(lessonProgressKeys) ? lessonProgressKeys : [])
       .filter((id) => typeof id === 'string' && id.trim() !== '')
@@ -87,7 +101,7 @@ export function mapLmsToStyledCourseDetail(
   const sortedModules = (Array.isArray(modules) ? [...modules] : []).filter((m) => m && m.visible !== false);
 
   const visibleIds = new Set(sortedModules.map((m) => m.id));
-  const quizzesForCourseVisible = quizzesForCourse.filter(
+  const quizzesForCourseVisible = effectiveQuizzes.filter(
     (quiz) => !quiz.moduleId || visibleIds.has(quiz.moduleId)
   );
 
@@ -134,11 +148,25 @@ export function mapLmsToStyledCourseDetail(
               type: sl.kind,
               title: sl.title ?? 'Lesson',
               meta,
-              completed: moduleCompleted || completedLessonKeys.has(sl.id),
+              sortOrder: typeof sl.sortOrder === 'number' ? sl.sortOrder : Number.MAX_SAFE_INTEGER,
+              completed: moduleCompleted || Boolean(sl.completed) || completedLessonKeys.has(sl.id),
               expandable: slExpandable,
               peekBody: slExpandable ? peekText.slice(0, 620) : undefined,
             };
           });
+          const quizLessons = quizzes.map((q, qi) => ({
+            id: q.id,
+            order: 2 + standaloneRows.length + qi,
+            type: 'quiz',
+            title: q.title,
+            meta: `${q.questionCount ?? 0} questions`,
+            sortOrder: typeof q.sortOrder === 'number' ? q.sortOrder : Number.MAX_SAFE_INTEGER,
+            completed: attemptedQuizIds.has(q.id),
+            expandable: false,
+          }));
+          const orderedSupplemental = [...standaloneLessons, ...quizLessons]
+            .sort((a, b) => (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER))
+            .map(({ sortOrder, ...row }) => row);
 
           const lessons = [
             {
@@ -147,20 +175,11 @@ export function mapLmsToStyledCourseDetail(
               type: mainType,
               title: coreLessonListTitle(m),
               meta: m.duration ?? '—',
-              completed: moduleCompleted || completedLessonKeys.has(`${m.id}-core`),
+              completed: moduleCompleted || Boolean(m.coreCompleted) || completedLessonKeys.has(`${m.id}-core`),
               expandable,
               peekBody,
             },
-            ...standaloneLessons,
-            ...quizzes.map((q, qi) => ({
-              id: q.id,
-              order: 2 + standaloneRows.length + qi,
-              type: 'quiz',
-              title: q.title,
-              meta: `${q.questionCount ?? 0} questions`,
-              completed: attemptedQuizIds.has(q.id),
-              expandable: false,
-            })),
+            ...orderedSupplemental,
           ];
 
           const titleParts = [];
@@ -197,9 +216,14 @@ export function mapLmsToStyledCourseDetail(
   const videoLessonsCount = sortedModules.filter(
     (m) => Array.isArray(m.resources) && m.resources.includes('Video')
   ).length;
+  const statsTotalVideos = Number(courseStats?.totalVideos ?? NaN);
+  const statsTotalLectures = Number(courseStats?.totalLectures ?? NaN);
+  const statsTotalQuizzes = Number(courseStats?.totalQuizzes ?? NaN);
 
   const lecturesCount =
-    typeof course.totalModules === 'number' && course.totalModules > 0
+    Number.isFinite(statsTotalLectures) && statsTotalLectures >= 0
+      ? statsTotalLectures
+      : typeof course.totalModules === 'number' && course.totalModules > 0
       ? course.totalModules
       : sortedModules.length;
 
@@ -211,12 +235,17 @@ export function mapLmsToStyledCourseDetail(
       label: 'Video',
       value:
         course.videoHoursLabel ??
-        (videoLessonsCount > 0
-          ? `${videoLessonsCount} ${videoLessonsCount === 1 ? 'lesson' : 'lessons'} with video`
+        ((Number.isFinite(statsTotalVideos) ? statsTotalVideos : videoLessonsCount) > 0
+          ? `${Number.isFinite(statsTotalVideos) ? statsTotalVideos : videoLessonsCount} ${(Number.isFinite(statsTotalVideos) ? statsTotalVideos : videoLessonsCount) === 1 ? 'lesson' : 'lessons'} with video`
           : '—'),
       icon: 'play',
     },
-    { key: 'quizzes', label: 'Quizzes', value: String(quizzesForCourseVisible.length), icon: 'check' },
+    {
+      key: 'quizzes',
+      label: 'Quizzes',
+      value: String(Number.isFinite(statsTotalQuizzes) ? statsTotalQuizzes : quizzesForCourseVisible.length),
+      icon: 'check',
+    },
     { key: 'level', label: 'Level', value: course.level ?? '—', icon: 'level' },
   ];
 

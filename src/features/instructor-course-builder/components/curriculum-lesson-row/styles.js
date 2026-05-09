@@ -21,6 +21,17 @@ const lessonActionsRevealSelectors = {
 };
 
 export const styles = {
+  dragging: (theme) => ({
+    opacity: 0.55,
+    transform: 'scale(0.995)',
+    boxShadow: `0 2px 10px ${alpha(theme.palette.grey[500], 0.2)}`,
+  }),
+  dropTop: (theme) => ({
+    boxShadow: `inset 0 2px 0 ${theme.palette.primary.main}`,
+  }),
+  dropBottom: (theme) => ({
+    boxShadow: `inset 0 -2px 0 ${theme.palette.primary.main}`,
+  }),
   lessonItem: (theme, { selected, draft }) => {
     if (draft) {
       return {

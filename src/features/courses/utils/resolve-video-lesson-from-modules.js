@@ -11,7 +11,7 @@ const VIDEO_KINDS = new Set(['video', 'stream', 'zoom']);
  * First uploaded file suitable for HTML5 video (`lesson_materials.storage_path` via API `id`).
  *
  * @param {object[]|undefined} materials
- * @returns {{ id: string, name?: string, mime?: string } | null}
+ * @returns {{ id: string, name?: string, mime?: string, fileUrl?: string, inlineFileUrl?: string } | null}
  */
 export function pickPrimaryVideoMaterial(materials) {
   const list = Array.isArray(materials) ? materials : [];
@@ -19,7 +19,13 @@ export function pickPrimaryVideoMaterial(materials) {
     (m) => m && typeof m.id === 'string' && typeof m.mime === 'string' && m.mime.toLowerCase().startsWith('video/')
   );
   if (byMime) {
-    return { id: byMime.id, name: byMime.name, mime: byMime.mime };
+    return {
+      id: byMime.id,
+      name: byMime.name,
+      mime: byMime.mime,
+      fileUrl: byMime.fileUrl,
+      inlineFileUrl: byMime.inlineFileUrl,
+    };
   }
   const byName = list.find(
     (m) =>
@@ -29,7 +35,13 @@ export function pickPrimaryVideoMaterial(materials) {
       /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(m.name)
   );
   if (byName) {
-    return { id: byName.id, name: byName.name, mime: byName.mime };
+    return {
+      id: byName.id,
+      name: byName.name,
+      mime: byName.mime,
+      fileUrl: byName.fileUrl,
+      inlineFileUrl: byName.inlineFileUrl,
+    };
   }
   return null;
 }

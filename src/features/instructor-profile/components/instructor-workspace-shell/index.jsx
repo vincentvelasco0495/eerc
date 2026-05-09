@@ -11,12 +11,12 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 
 import { usePathname } from 'src/routes/hooks';
 
-import { useLmsUser } from 'src/hooks/use-lms';
-
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { Iconify } from 'src/components/iconify';
 import { lmsPageShellStyles } from 'src/components/layout/lms-page-shell.styles';
+
+import { useAuthContext } from 'src/auth/hooks';
 
 import { workspaceContentSx } from './styles';
 import { InstructorProfileSidebar } from '../instructor-profile-sidebar';
@@ -27,7 +27,7 @@ const NAV_DRAWER_WIDTH = 304;
 export function InstructorWorkspaceShell({ children }) {
   const theme = useTheme();
   const pathname = usePathname();
-  const { user } = useLmsUser();
+  const { user } = useAuthContext();
   const profile = buildInstructorProfileIdentity(user);
   const navGroups = getInstructorWorkspaceNavGroups(pathname);
 

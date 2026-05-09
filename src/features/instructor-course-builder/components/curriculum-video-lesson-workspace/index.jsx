@@ -12,7 +12,6 @@ import { CONFIG } from 'src/global-config';
 import {
   deleteLessonMaterial,
   getLmsAxiosErrorMessage,
-  fetchLessonMaterialBlob,
   postLessonMaterialForModule,
   postLessonMaterialForStandaloneLesson,
 } from 'src/lib/lms-instructor-api';
@@ -29,6 +28,16 @@ import {
   dayjsFromClockString,
   normalizeVideoWorkspaceMeta,
 } from '../../utils/lesson-authoring-helpers';
+
+function normalizeAssetUrl(path) {
+  const raw = typeof path === 'string' ? path.trim() : '';
+  if (!raw) return '';
+  if (/^(blob:|data:)/i.test(raw)) return raw;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const base = String(CONFIG.serverUrl ?? '').trim().replace(/\/$/, '');
+  const rel = raw.startsWith('/') ? raw : `/${raw}`;
+  return base ? `${base}${rel}` : rel;
+}
 
 export function CurriculumVideoLessonWorkspace({
   lesson,
@@ -47,24 +56,24 @@ export function CurriculumVideoLessonWorkspace({
   const videoBlobRef = useRef(null);
 
   const assignPosterPreviewUrl = useCallback((blobUrlOrNull) => {
-    const next =
-      typeof blobUrlOrNull === 'string' && blobUrlOrNull.startsWith('blob:') ? blobUrlOrNull : null;
+    const raw = typeof blobUrlOrNull === 'string' ? blobUrlOrNull.trim() : '';
+    const next = raw || null;
     const prev = posterBlobRef.current;
-    if (prev && prev !== next) {
+    if (prev && prev.startsWith('blob:') && prev !== next) {
       URL.revokeObjectURL(prev);
     }
-    posterBlobRef.current = next;
+    posterBlobRef.current = next && next.startsWith('blob:') ? next : null;
     setPosterPreviewUrl(next ?? '');
   }, []);
 
   const assignVideoPreviewUrl = useCallback((blobUrlOrNull) => {
-    const next =
-      typeof blobUrlOrNull === 'string' && blobUrlOrNull.startsWith('blob:') ? blobUrlOrNull : null;
+    const raw = typeof blobUrlOrNull === 'string' ? blobUrlOrNull.trim() : '';
+    const next = raw || null;
     const prev = videoBlobRef.current;
-    if (prev && prev !== next) {
+    if (prev && prev.startsWith('blob:') && prev !== next) {
       URL.revokeObjectURL(prev);
     }
-    videoBlobRef.current = next;
+    videoBlobRef.current = next && next.startsWith('blob:') ? next : null;
     setVideoPreviewUrl(next ?? '');
   }, []);
 
@@ -192,6 +201,15 @@ export function CurriculumVideoLessonWorkspace({
     return allLessonMaterials.find((m) => m.id === videoLessonMaterialPublicId)?.name ?? null;
   }, [allLessonMaterials, videoLessonMaterialPublicId]);
 
+  const findMaterialById = useCallback(
+    (materialId) => {
+      const id = typeof materialId === 'string' ? materialId.trim() : '';
+      if (!id) return null;
+      return allLessonMaterials.find((m) => String(m?.id ?? '').trim() === id) ?? null;
+    },
+    [allLessonMaterials]
+  );
+
   useEffect(() => {
     setWorkspaceTab(0);
   }, [lesson.id, lesson.type]);
@@ -284,9 +302,12 @@ export function CurriculumVideoLessonWorkspace({
       }
 
       try {
-        const blob = await fetchLessonMaterialBlob(pid);
+        const material = findMaterialById(pid);
+        const directInlineUrl =
+          normalizeAssetUrl(material?.inlineFileUrl) || normalizeAssetUrl(material?.fileUrl);
+        if (!directInlineUrl) return;
         if (cancelled || posterUploading) return;
-        assignPosterPreviewUrl(URL.createObjectURL(blob));
+        assignPosterPreviewUrl(directInlineUrl);
       } catch {
         /* keep thumbnail from local blob if catalog refetch lagged */
       }
@@ -297,7 +318,7 @@ export function CurriculumVideoLessonWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [videoPosterLessonMaterialPublicId, posterUploading, assignPosterPreviewUrl]);
+  }, [videoPosterLessonMaterialPublicId, posterUploading, assignPosterPreviewUrl, findMaterialById]);
 
   useEffect(() => {
     let cancelled = false;
@@ -314,9 +335,12 @@ export function CurriculumVideoLessonWorkspace({
       }
 
       try {
-        const blob = await fetchLessonMaterialBlob(vid);
+        const material = findMaterialById(vid);
+        const directInlineUrl =
+          normalizeAssetUrl(material?.inlineFileUrl) || normalizeAssetUrl(material?.fileUrl);
+        if (!directInlineUrl) return;
         if (cancelled || videoUploading) return;
-        assignVideoPreviewUrl(URL.createObjectURL(blob));
+        assignVideoPreviewUrl(directInlineUrl);
       } catch {
         /* keep optimistic preview during transient API errors */
       }
@@ -327,7 +351,7 @@ export function CurriculumVideoLessonWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [videoLessonMaterialPublicId, videoUploading, assignVideoPreviewUrl]);
+  }, [videoLessonMaterialPublicId, videoUploading, assignVideoPreviewUrl, findMaterialById]);
 
   const buildLessonMetaForSave = useCallback(
     (overrides = {}) =>

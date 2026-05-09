@@ -37,6 +37,8 @@ Route::get('/meta', [LmsMetaController::class, 'show']);
 Route::get('/programs', [LmsProgramController::class, 'index']);
 Route::get('/programs/{programPublicId}/stats', [LmsProgramController::class, 'stats']);
 Route::get('/courses', [LmsCourseController::class, 'index']);
+Route::get('/courses/{courseLookup}/detail', [LmsCourseController::class, 'show']);
+Route::get('/courses/{coursePublicId}/stats', [LmsCourseController::class, 'stats']);
 Route::get('/modules', [LmsModuleController::class, 'index']);
 Route::get('/quizzes', [LmsQuizController::class, 'index']);
 
@@ -49,6 +51,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/programs/{programPublicId}', [LmsProgramController::class, 'destroy']);
     Route::post('/courses', [LmsCourseController::class, 'store']);
     Route::post('/courses/{coursePublicId}/modules', [LmsModuleController::class, 'store']);
+    Route::patch('/courses/{coursePublicId}/modules/reorder', [LmsModuleController::class, 'reorder']);
+    Route::patch('/modules/{modulePublicId}/lessons/reorder', [LmsModuleController::class, 'reorderLessons']);
     Route::post('/modules/{modulePublicId}/standalone-lessons', [LmsModuleController::class, 'storeStandaloneLesson']);
     Route::patch('/standalone-lessons/{publicId}', [LmsModuleController::class, 'updateStandaloneLesson']);
     Route::delete('/standalone-lessons/{publicId}', [LmsModuleController::class, 'destroyStandaloneLesson']);

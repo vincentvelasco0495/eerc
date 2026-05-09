@@ -8,7 +8,6 @@ import { usePathname } from 'src/routes/hooks';
 
 import { CONFIG } from 'src/global-config';
 import { LocalizationProvider } from 'src/locales';
-import { lmsSwrFetcher } from 'src/services/lms-swr';
 import { themeConfig, ThemeProvider } from 'src/theme';
 import { I18nProvider } from 'src/locales/i18n-provider';
 import { ReduxFlashBridge, configureAppStore } from 'src/app/store';
@@ -57,7 +56,7 @@ function StoreBootstrapper({ children }) {
 export default function AppProviders({ children }) {
   return (
     <Provider store={store}>
-      <SWRConfig value={{ fetcher: lmsSwrFetcher, revalidateOnFocus: false }}>
+      <SWRConfig value={{ revalidateOnFocus: false }}>
         <StoreBootstrapper>
           <I18nProvider>
             <AuthProvider>

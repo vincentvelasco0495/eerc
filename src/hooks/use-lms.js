@@ -1,23 +1,28 @@
-import useSWR from 'swr';
-import { useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useMemo, useEffect, useCallback } from 'react';
 
-import { lmsSwrFetcher } from 'src/services/lms-swr';
+import { lmsEndpoints } from 'src/redux/api/lmsEndpoints';
+import { LMS_REDUX_FLAGS, shouldUseReduxRead } from 'src/features/lms/redux-flags';
 import {
   selectAppState,
   selectLmsLoading,
   selectQuizzesState,
   selectIsBootstrapping,
+  selectLmsResourceByKey,
   selectIsAnyLmsMutationPending,
 } from 'src/app/store/selectors/lms.selectors';
 import {
+  lmsCommandRequest,
   simulateQuizRequest,
   uploadModuleRequest,
+  lmsResourceFetchRequest,
   submitEnrollmentRequest,
   fetchQuizQuestionSetRequest,
   toggleModuleVisibilityRequest,
   updateEnrollmentStatusRequest,
 } from 'src/app/store/modules/lms';
+
+const inFlightReduxResourceRequests = new Set();
 
 export function useLmsAppState() {
   return useSelector(selectAppState);
@@ -35,16 +40,79 @@ export function useIsAnyLmsMutationPending() {
   return useSelector(selectIsAnyLmsMutationPending);
 }
 
+function useReduxLmsResource(endpoint, enabled = true, options = {}) {
+  const dispatch = useDispatch();
+  const useRedux = Boolean(enabled && shouldUseReduxRead(endpoint));
+  const resource = useSelector((state) => selectLmsResourceByKey(state, endpoint));
+  const ttlMs = Number(options.ttlMs ?? 10_000);
+  const canRefetch = Boolean(options.refetchOnMount ?? true);
+  const retryOnError = Boolean(options.retryOnError ?? false);
+
+  useEffect(() => {
+    if (!useRedux || !canRefetch) return;
+    if (!endpoint) return;
+    if (resource?.isLoading) return;
+    if (inFlightReduxResourceRequests.has(endpoint)) return;
+    const fresh = resource?.updatedAt && Date.now() - Number(resource.updatedAt) < ttlMs;
+    if (fresh) return;
+    // Avoid a tight request loop after an error; allow manual mutate() or explicit retryOnError.
+    if (resource?.error && !retryOnError) return;
+    inFlightReduxResourceRequests.add(endpoint);
+    dispatch(lmsResourceFetchRequest({ key: endpoint, endpoint }));
+  }, [
+    canRefetch,
+    dispatch,
+    endpoint,
+    resource?.error,
+    resource?.isLoading,
+    resource?.updatedAt,
+    retryOnError,
+    ttlMs,
+    useRedux,
+  ]);
+
+  useEffect(() => {
+    if (!useRedux || !endpoint) return;
+    if (resource && !resource.isLoading) {
+      inFlightReduxResourceRequests.delete(endpoint);
+    }
+  }, [endpoint, resource, resource?.isLoading, useRedux]);
+
+  const mutate = useCallback(() => {
+    if (!useRedux) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      inFlightReduxResourceRequests.add(endpoint);
+      dispatch(
+        lmsResourceFetchRequest({
+          key: endpoint,
+          endpoint,
+          resolve,
+          reject,
+        })
+      );
+    });
+  }, [dispatch, endpoint, useRedux]);
+
+  return {
+    useRedux,
+    data: resource?.data,
+    error: resource?.error ?? null,
+    isLoading: Boolean(useRedux && (resource?.isLoading || !resource)),
+    mutate,
+  };
+}
+
 export function useLmsUser(enabled = true) {
-  const key = enabled ? '/api/user' : null;
-  const { data, isLoading, error } = useSWR(key, lmsSwrFetcher, { dedupingInterval: 5000 });
-  return { user: data ?? null, isLoading: Boolean(isLoading && !data), error };
+  const key = enabled ? lmsEndpoints.user() : null;
+  const redux = useReduxLmsResource(key, Boolean(key), { ttlMs: 5000 });
+  return { user: redux.data ?? null, isLoading: redux.isLoading, error: redux.error };
 }
 
 export function useLmsMeta() {
-  const { data } = useSWR('/api/meta', lmsSwrFetcher, { dedupingInterval: 60_000 });
+  const redux = useReduxLmsResource(lmsEndpoints.meta(), true, { ttlMs: 60_000 });
+  const source = redux.data;
   return (
-    data ?? {
+    source ?? {
       todayLabel: '',
       leaderboardPeriods: [],
       learningFlowSteps: [],
@@ -53,72 +121,88 @@ export function useLmsMeta() {
 }
 
 export function useLmsPrograms() {
-  const { data, isLoading, error, mutate } = useSWR('/api/programs', lmsSwrFetcher, {
-    dedupingInterval: 10_000,
-  });
-  return { programs: data?.data ?? [], isLoading: Boolean(isLoading && !data), error, mutate };
+  const redux = useReduxLmsResource(lmsEndpoints.programs(), true, { ttlMs: 10_000 });
+  return {
+    programs: redux.data?.data ?? [],
+    isLoading: redux.isLoading,
+    error: redux.error,
+    mutate: redux.mutate,
+  };
 }
 
 export function useLmsProgramStats(programPublicId) {
-  const key = programPublicId ? `/api/programs/${encodeURIComponent(programPublicId)}/stats` : null;
-  const { data, isLoading, error } = useSWR(key, lmsSwrFetcher, { dedupingInterval: 10_000 });
+  const key = programPublicId ? lmsEndpoints.programStats(programPublicId) : null;
+  const redux = useReduxLmsResource(key, Boolean(key), { ttlMs: 10_000 });
   return {
-    stats: data?.data ?? null,
-    isLoading: Boolean(isLoading && programPublicId && !data),
-    error,
+    stats: redux.data?.data ?? null,
+    isLoading: redux.isLoading,
+    error: redux.error,
   };
 }
 
 export function useLmsCourses(page = 1, limit = 100, program = '') {
-  const programQuery =
-    typeof program === 'string' && program.trim()
-      ? `&program=${encodeURIComponent(program.trim())}`
-      : '';
-  const key = `/api/courses?page=${page}&limit=${limit}${programQuery}`;
-  const { data, isLoading, error, mutate } = useSWR(key, lmsSwrFetcher, { dedupingInterval: 10_000 });
+  const key = lmsEndpoints.courses({ page, limit, program });
+  const redux = useReduxLmsResource(key, true, { ttlMs: 10_000 });
+  const payload = redux.data ?? {};
   return {
-    courses: data?.data ?? [],
-    meta: data?.meta,
-    isLoading: Boolean(isLoading && !data),
-    error,
-    mutate,
+    courses: payload?.data ?? [],
+    meta: payload?.meta,
+    isLoading: redux.isLoading,
+    error: redux.error,
+    mutate: redux.mutate,
   };
+}
+
+export function useLmsCourseByLookup(courseLookup) {
+  const normalized = String(courseLookup ?? '').trim();
+  const key = normalized ? lmsEndpoints.courseDetail(normalized) : null;
+  const redux = useReduxLmsResource(key, Boolean(key), { ttlMs: 10_000 });
+  return {
+    course: redux.data?.data ?? null,
+    isLoading: redux.isLoading,
+    error: redux.error,
+    mutate: redux.mutate,
+  };
+}
+
+export function resolveCourseIdFromCatalog(courses, courseLookup) {
+  if (!courseLookup) {
+    return '';
+  }
+  const normalizedLookup = decodeURIComponent(String(courseLookup).trim()).toLowerCase();
+  if (!normalizedLookup) {
+    return '';
+  }
+
+  const byId = (Array.isArray(courses) ? courses : []).find(
+    (course) => String(course.id ?? '').trim() === String(courseLookup).trim()
+  );
+  if (byId) {
+    return byId.id;
+  }
+
+  const byExactSlug = (Array.isArray(courses) ? courses : []).find(
+    (course) => String(course.slug ?? '').trim().toLowerCase() === normalizedLookup
+  );
+  if (byExactSlug) {
+    return byExactSlug.id;
+  }
+
+  // Fallback for stale links when a slug was later de-duplicated to `${slug}-2`, `${slug}-3`, etc.
+  const prefixed = (Array.isArray(courses) ? courses : [])
+    .filter((course) => {
+      const slug = String(course.slug ?? '').trim().toLowerCase();
+      return slug.startsWith(`${normalizedLookup}-`);
+    })
+    .sort((a, b) => String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? '')));
+
+  return prefixed[0]?.id ?? '';
 }
 
 export function useResolvedCourseIdFromLookup(courseLookup) {
   const { courses } = useLmsCourses(1, 500);
 
-  return useMemo(() => {
-    if (!courseLookup) {
-      return '';
-    }
-    const normalizedLookup = decodeURIComponent(String(courseLookup).trim()).toLowerCase();
-    if (!normalizedLookup) {
-      return '';
-    }
-
-    const byId = courses.find((course) => String(course.id ?? '').trim() === courseLookup);
-    if (byId) {
-      return byId.id;
-    }
-
-    const byExactSlug = courses.find(
-      (course) => String(course.slug ?? '').trim().toLowerCase() === normalizedLookup
-    );
-    if (byExactSlug) {
-      return byExactSlug.id;
-    }
-
-    // Fallback for stale links when a slug was later de-duplicated to `${slug}-2`, `${slug}-3`, etc.
-    const prefixed = courses
-      .filter((course) => {
-        const slug = String(course.slug ?? '').trim().toLowerCase();
-        return slug.startsWith(`${normalizedLookup}-`);
-      })
-      .sort((a, b) => String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? '')));
-
-    return prefixed[0]?.id ?? '';
-  }, [courses, courseLookup]);
+  return useMemo(() => resolveCourseIdFromCatalog(courses, courseLookup), [courses, courseLookup]);
 }
 
 export function useLmsCourse(courseId) {
@@ -126,36 +210,54 @@ export function useLmsCourse(courseId) {
   return useMemo(() => courses.find((course) => course.id === courseId), [courses, courseId]);
 }
 
-export function useLmsModulesByCourse(courseId, swrOptions = {}) {
-  const key = courseId ? `/api/modules?courseId=${encodeURIComponent(courseId)}` : null;
-  const { data, isLoading, mutate } = useSWR(key, lmsSwrFetcher, {
-    dedupingInterval: 10_000,
-    ...swrOptions,
-  });
+export function useLmsCourseStats(courseId) {
+  const key = courseId ? lmsEndpoints.courseStats(courseId) : null;
+  const redux = useReduxLmsResource(key, Boolean(key), { ttlMs: 10_000 });
   return {
-    modules: data?.data ?? [],
-    isLoading: Boolean(isLoading && courseId && !data),
-    mutate,
+    stats: redux.data?.data ?? null,
+    isLoading: redux.isLoading,
+    error: redux.error,
+  };
+}
+
+export function useLmsModulesByCourse(courseId, swrOptions = {}) {
+  const key = courseId ? lmsEndpoints.modulesByCourse(courseId) : null;
+  const redux = useReduxLmsResource(key, Boolean(key), { ttlMs: 10_000 });
+  void swrOptions;
+  return {
+    modules: redux.data?.data ?? [],
+    isLoading: redux.isLoading,
+    mutate: redux.mutate,
   };
 }
 
 export function useLmsModule(moduleId) {
-  const key = moduleId ? `/api/modules?ids=${encodeURIComponent(moduleId)}` : null;
-  const { data, isLoading } = useSWR(key, lmsSwrFetcher);
-  const list = data?.data ?? [];
-  return { module: list[0] ?? null, isLoading: Boolean(isLoading && moduleId && !data) };
+  const key = moduleId ? lmsEndpoints.moduleById(moduleId) : null;
+  const redux = useReduxLmsResource(key, Boolean(key), { ttlMs: 10_000 });
+  const list = redux.data?.data ?? [];
+  return { module: list[0] ?? null, isLoading: redux.isLoading };
 }
 
 export function useLmsQuizzes(moduleId) {
-  const key = moduleId
-    ? `/api/quizzes?moduleId=${encodeURIComponent(moduleId)}`
-    : '/api/quizzes';
-  const { data, isLoading, mutate } = useSWR(key, lmsSwrFetcher, { dedupingInterval: 10_000 });
+  const key = lmsEndpoints.quizzes(moduleId);
+  const redux = useReduxLmsResource(key, true, { ttlMs: 10_000 });
   return {
-    quizzes: data?.data ?? [],
-    isLoading: Boolean(isLoading && !data),
-    mutate,
+    quizzes: redux.data?.data ?? [],
+    isLoading: redux.isLoading,
+    mutate: redux.mutate,
   };
+}
+
+export function extractQuizzesFromModules(modules) {
+  return (Array.isArray(modules) ? modules : []).flatMap((moduleItem) =>
+    Array.isArray(moduleItem?.quizzes) ? moduleItem.quizzes : []
+  );
+}
+
+export function useLmsCourseQuizzes(courseId) {
+  const { modules, isLoading, mutate } = useLmsModulesByCourse(courseId);
+  const quizzes = useMemo(() => extractQuizzesFromModules(modules), [modules]);
+  return { quizzes, isLoading, mutateModules: mutate };
 }
 
 export function useLmsQuiz(quizId) {
@@ -164,28 +266,27 @@ export function useLmsQuiz(quizId) {
 }
 
 export function useLmsQuizHistory(quizId) {
-  const { data } = useSWR('/api/quiz-results', lmsSwrFetcher, { dedupingInterval: 10_000 });
+  const redux = useReduxLmsResource(lmsEndpoints.quizResults(), true, { ttlMs: 10_000 });
+  const source = redux.data;
   return useMemo(() => {
-    const results = data?.data ?? [];
+    const results = source?.data ?? [];
     return results.filter((result) => result.quizId === quizId);
-  }, [data?.data, quizId]);
+  }, [source?.data, quizId]);
 }
 
 export function useLmsQuizResults(enabled = true) {
-  const key = enabled ? '/api/quiz-results' : null;
-  const { data, isLoading } = useSWR(key, lmsSwrFetcher, { dedupingInterval: 10_000 });
-  return { results: data?.data ?? [], isLoading: Boolean(isLoading && !data) };
+  const key = enabled ? lmsEndpoints.quizResults() : null;
+  const redux = useReduxLmsResource(key, Boolean(key), { ttlMs: 10_000 });
+  return { results: redux.data?.data ?? [], isLoading: redux.isLoading, mutate: redux.mutate };
 }
 
 export function useLmsLessonProgress(courseId, enabled = true) {
-  const key = enabled && courseId
-    ? `/api/courses/${encodeURIComponent(courseId)}/lesson-progress`
-    : null;
-  const { data, isLoading, mutate } = useSWR(key, lmsSwrFetcher, { dedupingInterval: 10_000 });
+  const key = enabled && courseId ? lmsEndpoints.lessonProgress(courseId) : null;
+  const redux = useReduxLmsResource(key, Boolean(key), { ttlMs: 10_000 });
   return {
-    lessonProgressKeys: Array.isArray(data?.data) ? data.data : [],
-    isLoading: Boolean(isLoading && courseId && !data),
-    mutate,
+    lessonProgressKeys: Array.isArray(redux.data?.data) ? redux.data.data : [],
+    isLoading: redux.isLoading,
+    mutate: redux.mutate,
   };
 }
 
@@ -194,34 +295,34 @@ export function useLmsQuestionSets() {
 }
 
 export function useLmsAnalytics() {
-  const { data, isLoading } = useSWR('/api/analytics', lmsSwrFetcher, { dedupingInterval: 15_000 });
-  return { analytics: data ?? null, isLoading: Boolean(isLoading && !data) };
+  const redux = useReduxLmsResource(lmsEndpoints.analytics(), true, { ttlMs: 15_000 });
+  return { analytics: redux.data ?? null, isLoading: redux.isLoading };
 }
 
 export function useSuggestedModules() {
   const { analytics } = useLmsAnalytics();
   const ids = analytics?.suggestedModuleIds ?? [];
-  const key = ids.length ? `/api/modules?ids=${encodeURIComponent(ids.join(','))}` : null;
-  const { data } = useSWR(key, lmsSwrFetcher, { dedupingInterval: 15_000 });
-  return data?.data ?? [];
+  const key = ids.length ? lmsEndpoints.modulesByIds(ids) : null;
+  const redux = useReduxLmsResource(key, Boolean(key), { ttlMs: 15_000 });
+  return redux.data?.data ?? [];
 }
 
 export function useLeaderboard(period) {
-  const key = `/api/leaderboard?type=${encodeURIComponent(period)}`;
-  const { data } = useSWR(key, lmsSwrFetcher, { dedupingInterval: 15_000 });
-  return data?.data ?? [];
+  const key = lmsEndpoints.leaderboard(period);
+  const redux = useReduxLmsResource(key, true, { ttlMs: 15_000 });
+  return redux.data?.data ?? [];
 }
 
 export function useLmsEnrollments() {
-  const { data, isLoading } = useSWR('/api/enrollments', lmsSwrFetcher, { dedupingInterval: 10_000 });
-  return { enrollments: data?.data ?? [], isLoading: Boolean(isLoading && !data) };
+  const redux = useReduxLmsResource(lmsEndpoints.enrollments(), true, { ttlMs: 10_000 });
+  return { enrollments: redux.data?.data ?? [], isLoading: redux.isLoading };
 }
 
 export function useAdminData() {
-  const { data, isLoading } = useSWR('/api/admin', lmsSwrFetcher, { dedupingInterval: 15_000 });
+  const redux = useReduxLmsResource(lmsEndpoints.admin(), true, { ttlMs: 15_000 });
   return {
-    admin: data ?? { users: [], uploads: [] },
-    isLoading: Boolean(isLoading && !data),
+    admin: redux.data ?? { users: [], uploads: [] },
+    isLoading: redux.isLoading,
   };
 }
 
@@ -248,6 +349,24 @@ export function useLmsActions() {
     (enrollmentId, status) => dispatch(updateEnrollmentStatusRequest({ enrollmentId, status })),
     [dispatch]
   );
+  const runCommand = useCallback(
+    (command, args = {}) =>
+      new Promise((resolve, reject) => {
+        if (!LMS_REDUX_FLAGS.writeByRedux) {
+          reject(new Error('Redux write pipeline is disabled.'));
+          return;
+        }
+        dispatch(
+          lmsCommandRequest({
+            command,
+            args,
+            resolve,
+            reject,
+          })
+        );
+      }),
+    [dispatch]
+  );
 
   return useMemo(
     () => ({
@@ -257,9 +376,11 @@ export function useLmsActions() {
       toggleModuleVisibility,
       uploadModule,
       updateEnrollmentStatus,
+      runCommand,
     }),
     [
       fetchQuestionSet,
+      runCommand,
       simulateQuiz,
       submitEnrollment,
       toggleModuleVisibility,

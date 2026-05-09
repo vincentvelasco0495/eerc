@@ -27,9 +27,9 @@ import { RouterLink } from 'src/routes/components';
 import {
   useLmsCourse,
   useLmsCourses,
-  useLmsQuizzes,
   useLmsPrograms,
   useLmsModulesByCourse,
+  extractQuizzesFromModules,
   useResolvedCourseIdFromLookup,
 } from 'src/hooks/use-lms';
 
@@ -195,7 +195,6 @@ export function CourseDetailsView({ courseLookup }) {
   const { courses } = useLmsCourses(1, 500);
   const { programs } = useLmsPrograms();
   const { modules } = useLmsModulesByCourse(courseId);
-  const { quizzes: lmsQuizzes } = useLmsQuizzes();
 
   const relatedCourses = useMemo(
     () => courses.filter((item) => item.id !== courseId).slice(0, 3),
@@ -203,8 +202,8 @@ export function CourseDetailsView({ courseLookup }) {
   );
 
   const quizzesForCourse = useMemo(
-    () => lmsQuizzes.filter((q) => q.courseId === courseId),
-    [lmsQuizzes, courseId]
+    () => extractQuizzesFromModules(modules),
+    [modules]
   );
 
   if (!course) {

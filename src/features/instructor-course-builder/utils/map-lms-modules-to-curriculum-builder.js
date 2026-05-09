@@ -66,7 +66,19 @@ export function mapLmsModulesToCurriculumBuilder(modules, quizzesForCourse = [])
         type: sl.kind,
         title: sl.title ?? 'Lesson',
         meta: sl.kind === 'document' ? 'Text' : `${String(sl.kind).replace(/^\w/, (c) => c.toUpperCase())}`,
+        sortOrder: typeof sl.sortOrder === 'number' ? sl.sortOrder : Number.MAX_SAFE_INTEGER,
       }));
+    const quizRows = quizzes.map((q) => ({
+      id: q.id,
+      draft: false,
+      type: 'quiz',
+      title: q.title ?? 'Quiz',
+      meta: `${q.questionCount ?? 0} questions`,
+      sortOrder: typeof q.sortOrder === 'number' ? q.sortOrder : Number.MAX_SAFE_INTEGER,
+    }));
+    const orderedRows = [...standaloneRows, ...quizRows].sort(
+      (a, b) => (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER)
+    );
     const lessons = [
       {
         id: `${m.id}-core`,
@@ -75,14 +87,7 @@ export function mapLmsModulesToCurriculumBuilder(modules, quizzesForCourse = [])
         title: coreLessonListTitle(m),
         meta: m.duration ?? '—',
       },
-      ...standaloneRows,
-      ...quizzes.map((q) => ({
-        id: q.id,
-        draft: false,
-        type: 'quiz',
-        title: q.title ?? 'Quiz',
-        meta: `${q.questionCount ?? 0} questions`,
-      })),
+      ...orderedRows.map(({ sortOrder, ...row }) => row),
     ];
 
     const titleParts = [];

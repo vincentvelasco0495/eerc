@@ -46,7 +46,14 @@ export function QuizCard({ quiz }) {
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <Chip label={`${quiz.durationMinutes} min`} size="small" />
             <Chip label={`${quiz.questionCount} questions`} size="small" />
-            <Chip label={`${quiz.attemptsUsed}/${quiz.attemptsAllowed} attempts`} size="small" />
+            <Chip
+              label={
+                quiz.limitedRetakeAttempts
+                  ? `${quiz.attemptsUsed}/${quiz.attemptsAllowed} attempts`
+                  : `${quiz.attemptsUsed} attempts · unlimited`
+              }
+              size="small"
+            />
           </Stack>
 
           <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>

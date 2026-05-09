@@ -77,6 +77,9 @@ class LmsLessonMaterialController extends Controller
             return response()->json(['ok' => true]);
         }
 
+        if (Storage::disk('public')->exists($row->storage_path)) {
+            Storage::disk('public')->delete($row->storage_path);
+        }
         if (Storage::disk('local')->exists($row->storage_path)) {
             Storage::disk('local')->delete($row->storage_path);
         }
@@ -102,11 +105,15 @@ class LmsLessonMaterialController extends Controller
             return response()->json(['message' => 'Lesson material not found.'], 404);
         }
 
-        if (! Storage::disk('local')->exists($row->storage_path)) {
+        $disk = Storage::disk('public')->exists($row->storage_path)
+            ? Storage::disk('public')
+            : (Storage::disk('local')->exists($row->storage_path) ? Storage::disk('local') : null);
+
+        if ($disk === null) {
             return response()->json(['message' => 'File missing on storage.'], 404);
         }
 
-        $absolutePath = Storage::disk('local')->path($row->storage_path);
+        $absolutePath = $disk->path($row->storage_path);
 
         if ($request->boolean('inline')) {
             $mime = is_string($row->mime) && trim($row->mime) !== ''
@@ -119,7 +126,7 @@ class LmsLessonMaterialController extends Controller
             ]);
         }
 
-        return Storage::disk('local')->download($row->storage_path, $row->original_name);
+        return $disk->download($row->storage_path, $row->original_name);
     }
 
     protected function persistUpload(Request $request, ?int $moduleId, ?int $moduleResourceId): JsonResponse
@@ -136,7 +143,7 @@ class LmsLessonMaterialController extends Controller
 
         $uploaded = $request->file('file');
 
-        $stored = Storage::disk('local')->putFile(
+        $stored = Storage::disk('public')->putFile(
             match (true) {
                 $moduleId !== null => 'lesson-materials/modules',
                 default => 'lesson-materials/standalone',

@@ -80,6 +80,7 @@ class LmsModuleController extends Controller
                 $module->fresh([
                     'resources.lessonMaterials.moduleResource',
                     'moduleLessonMaterials.moduleResource',
+                    'quizzes' => fn ($query) => $query->withCount('questions'),
                     'course',
                 ]),
                 $actor
@@ -200,6 +201,7 @@ class LmsModuleController extends Controller
             ->with([
                 'resources.lessonMaterials.moduleResource',
                 'moduleLessonMaterials.moduleResource',
+                'quizzes' => fn ($query) => $query->withCount('questions'),
                 'course',
             ])
             ->whereKey($row->module_id)
@@ -255,6 +257,148 @@ class LmsModuleController extends Controller
         LmsCatalogService::bustUserAnalyticsCache($actor->id);
 
         return response()->json(['moduleId' => $module->public_id]);
+    }
+
+    /** Reorder modules in one course; persists `sort_order` and returns fresh module list. */
+    public function reorder(Request $request, string $coursePublicId, LmsCatalogService $catalog): JsonResponse
+    {
+        $actor = $this->lmsActor();
+        $course = Course::query()->where('public_id', $coursePublicId)->firstOrFail();
+
+        $validated = $request->validate([
+            'moduleIds' => ['required', 'array', 'min:1'],
+            'moduleIds.*' => ['required', 'string', 'max:64'],
+        ]);
+
+        $requestedPublicIds = array_values(array_unique(array_map(
+            fn ($id) => trim((string) $id),
+            is_array($validated['moduleIds'] ?? null) ? $validated['moduleIds'] : []
+        )));
+
+        $rows = Module::query()
+            ->where('course_id', $course->id)
+            ->get(['id', 'public_id'])
+            ->values();
+
+        $dbIdByPublic = $rows->pluck('id', 'public_id');
+        $orderedDbIds = [];
+
+        foreach ($requestedPublicIds as $publicId) {
+            $dbId = $dbIdByPublic->get($publicId);
+            if ($dbId !== null) {
+                $orderedDbIds[] = (int) $dbId;
+            }
+        }
+
+        foreach ($rows as $row) {
+            if (! in_array((int) $row->id, $orderedDbIds, true)) {
+                $orderedDbIds[] = (int) $row->id;
+            }
+        }
+
+        DB::transaction(function () use ($orderedDbIds) {
+            foreach ($orderedDbIds as $idx => $moduleId) {
+                Module::query()->whereKey($moduleId)->update(['sort_order' => $idx + 1]);
+            }
+        });
+
+        LmsCatalogService::bustUserAnalyticsCache($actor->id);
+
+        return response()->json([
+            'data' => $catalog->modulesForCourse($actor, $coursePublicId),
+        ]);
+    }
+
+    /** Reorder lessons inside one module (core lesson remains first in UI). */
+    public function reorderLessons(Request $request, string $modulePublicId, LmsCatalogService $catalog): JsonResponse
+    {
+        $actor = $this->lmsActor();
+
+        /** @var Module $module */
+        $module = Module::query()->where('public_id', $modulePublicId)->firstOrFail();
+
+        $validated = $request->validate([
+            'lessonIds' => ['required', 'array', 'min:1'],
+            'lessonIds.*' => ['required', 'string', 'max:64'],
+        ]);
+
+        $requested = array_values(array_unique(array_filter(array_map(
+            fn ($id) => trim((string) $id),
+            is_array($validated['lessonIds'] ?? null) ? $validated['lessonIds'] : []
+        ))));
+
+        $standalone = ModuleResource::query()
+            ->where('module_id', $module->id)
+            ->where('is_standalone_lesson', true)
+            ->get(['id', 'public_id', 'sort_order']);
+        $quizzes = Quiz::query()
+            ->where('module_id', $module->id)
+            ->get(['id', 'public_id', 'sort_order']);
+
+        $all = collect()
+            ->merge($standalone->map(fn ($r) => [
+                'kind' => 'standalone',
+                'id' => (int) $r->id,
+                'public_id' => (string) $r->public_id,
+                'sort_order' => (int) $r->sort_order,
+            ]))
+            ->merge($quizzes->map(fn ($q) => [
+                'kind' => 'quiz',
+                'id' => (int) $q->id,
+                'public_id' => (string) $q->public_id,
+                'sort_order' => (int) $q->sort_order,
+            ]));
+
+        $rowByPublic = $all->keyBy('public_id');
+        $requestedKnown = [];
+        foreach ($requested as $publicId) {
+            if (str_ends_with($publicId, '-core')) {
+                continue;
+            }
+            if ($rowByPublic->has($publicId)) {
+                $requestedKnown[] = $publicId;
+            }
+        }
+
+        $remaining = $all
+            ->filter(fn ($row) => ! in_array($row['public_id'], $requestedKnown, true))
+            ->sortBy(fn ($row) => sprintf('%05d-%s-%09d', (int) $row['sort_order'], $row['kind'], (int) $row['id']))
+            ->pluck('public_id')
+            ->values()
+            ->all();
+
+        $finalPublicOrder = array_values(array_merge($requestedKnown, $remaining));
+
+        DB::transaction(function () use ($finalPublicOrder, $rowByPublic) {
+            foreach ($finalPublicOrder as $idx => $publicId) {
+                $row = $rowByPublic->get($publicId);
+                if (! is_array($row)) {
+                    continue;
+                }
+                $nextSort = $idx + 1;
+                if (($row['kind'] ?? '') === 'quiz') {
+                    Quiz::query()->whereKey((int) $row['id'])->update(['sort_order' => $nextSort]);
+                } else {
+                    ModuleResource::query()->whereKey((int) $row['id'])->update(['sort_order' => $nextSort]);
+                }
+            }
+        });
+
+        LmsCatalogService::bustUserAnalyticsCache($actor->id);
+
+        $fresh = Module::query()
+            ->whereKey($module->id)
+            ->with([
+                'resources.lessonMaterials.moduleResource',
+                'moduleLessonMaterials.moduleResource',
+                'quizzes' => fn ($query) => $query->withCount('questions'),
+                'course',
+            ])
+            ->firstOrFail();
+
+        return response()->json([
+            'data' => $catalog->modulePayloadForUser($fresh, $actor),
+        ]);
     }
 
     /** Partial module update for instructor authoring (metadata + rich lesson fields). */
@@ -330,6 +474,7 @@ class LmsModuleController extends Controller
                 $module->fresh([
                     'resources.lessonMaterials.moduleResource',
                     'moduleLessonMaterials.moduleResource',
+                    'quizzes' => fn ($query) => $query->withCount('questions'),
                     'course',
                 ]),
                 $actor

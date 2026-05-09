@@ -5,13 +5,9 @@ import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import {
-  useLmsCourse,
-  useLmsCourses,
-  useLmsQuizzes,
-  useLmsQuizResults,
-  useLmsLessonProgress,
+  useLmsCourseStats,
+  useLmsCourseByLookup,
   useLmsModulesByCourse,
-  useResolvedCourseIdFromLookup,
 } from 'src/hooks/use-lms';
 
 import { CONFIG } from 'src/global-config';
@@ -20,24 +16,13 @@ import { DashboardContent } from 'src/layouts/dashboard';
 import { CourseDetailLayout } from 'src/components/course-detail/CourseDetailLayout';
 import { mapLmsToStyledCourseDetail } from 'src/components/course-detail/map-lms-to-styled-shell';
 
-import { useAuthContext } from 'src/auth/hooks';
-
 // ----------------------------------------------------------------------
 
 export function LmsStyledCourseDetailView({ courseLookup }) {
-  const { authenticated } = useAuthContext();
-  const courseId = useResolvedCourseIdFromLookup(courseLookup ?? '');
-  const course = useLmsCourse(courseId);
-  const { isLoading: coursesLoading } = useLmsCourses(1, 500);
+  const { course, isLoading: courseLoading, error: courseError } = useLmsCourseByLookup(courseLookup ?? '');
+  const courseId = course?.id ?? '';
   const { modules } = useLmsModulesByCourse(courseId);
-  const { quizzes } = useLmsQuizzes();
-  const { results: quizResults } = useLmsQuizResults(authenticated);
-  const { lessonProgressKeys } = useLmsLessonProgress(courseId, authenticated);
-
-  const quizzesForCourse = useMemo(
-    () => quizzes.filter((q) => q.courseId === courseId),
-    [quizzes, courseId]
-  );
+  const { stats: courseStats } = useLmsCourseStats(courseId);
 
   const shell = useMemo(() => {
     if (!course) {
@@ -47,11 +32,12 @@ export function LmsStyledCourseDetailView({ courseLookup }) {
     return mapLmsToStyledCourseDetail(
       course,
       modules,
-      quizzesForCourse,
-      quizResults,
-      lessonProgressKeys
+      [],
+      [],
+      [],
+      courseStats
     );
-  }, [course, modules, quizzesForCourse, quizResults, lessonProgressKeys]);
+  }, [course, courseStats, modules]);
 
   if (!courseLookup) {
     return (
@@ -61,18 +47,20 @@ export function LmsStyledCourseDetailView({ courseLookup }) {
     );
   }
 
-  if (!courseId && !coursesLoading) {
+  if (!courseId && !courseLoading) {
     return (
       <DashboardContent maxWidth={false}>
         <>
           <title>{`Course not found — ${CONFIG.appName}`}</title>
-          <Typography variant="body2">This course is not in the LMS catalog.</Typography>
+          <Typography variant="body2">
+            {courseError || 'This course is not in the LMS catalog.'}
+          </Typography>
         </>
       </DashboardContent>
     );
   }
 
-  if ((coursesLoading && !course) || !shell) {
+  if (courseLoading && !shell) {
     return (
       <DashboardContent maxWidth={false}>
         <>
@@ -80,6 +68,17 @@ export function LmsStyledCourseDetailView({ courseLookup }) {
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
             <CircularProgress />
           </Box>
+        </>
+      </DashboardContent>
+    );
+  }
+
+  if (!shell) {
+    return (
+      <DashboardContent maxWidth={false}>
+        <>
+          <title>{`Course not found — ${CONFIG.appName}`}</title>
+          <Typography variant="body2">Unable to load this course.</Typography>
         </>
       </DashboardContent>
     );

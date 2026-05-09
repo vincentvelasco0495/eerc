@@ -47,7 +47,7 @@ class Module extends Model
 
     public function quizzes(): HasMany
     {
-        return $this->hasMany(Quiz::class, 'module_id');
+        return $this->hasMany(Quiz::class, 'module_id')->orderBy('sort_order');
     }
 
     /**
