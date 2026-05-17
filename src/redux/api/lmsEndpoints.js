@@ -2,6 +2,25 @@ export const lmsEndpoints = {
   user: () => '/api/user',
   meta: () => '/api/meta',
   programs: () => '/api/programs',
+  programsPaginated: ({ page = 1, perPage = 10, search = '' } = {}) => {
+    const base = `/api/programs?page=${page}&per_page=${perPage}`;
+    const q = typeof search === 'string' && search.trim() ? `&search=${encodeURIComponent(search.trim())}` : '';
+    return `${base}${q}`;
+  },
+  instructors: () => '/api/instructors',
+  instructorsPaginated: ({ page = 1, perPage = 10, search = '' } = {}) => {
+    const base = `/api/instructors?page=${page}&per_page=${perPage}`;
+    const q = typeof search === 'string' && search.trim() ? `&search=${encodeURIComponent(search.trim())}` : '';
+    return `${base}${q}`;
+  },
+  instructorsLinkableUsers: () => '/api/instructors/linkable-users',
+  students: () => '/api/students',
+  studentsPaginated: ({ page = 1, perPage = 10, search = '' } = {}) => {
+    const base = `/api/students?page=${page}&per_page=${perPage}`;
+    const q = typeof search === 'string' && search.trim() ? `&search=${encodeURIComponent(search.trim())}` : '';
+    return `${base}${q}`;
+  },
+  studentsLinkableUsers: () => '/api/students/linkable-users',
   programStats: (programPublicId) =>
     `/api/programs/${encodeURIComponent(programPublicId)}/stats`,
   courses: ({ page = 1, limit = 100, program = '' } = {}) => {
@@ -24,5 +43,10 @@ export const lmsEndpoints = {
   modulesByIds: (ids) => `/api/modules?ids=${encodeURIComponent(ids.join(','))}`,
   leaderboard: (period) => `/api/leaderboard?type=${encodeURIComponent(period)}`,
   enrollments: () => '/api/enrollments',
+  enrollmentsPaginated: ({ page = 1, perPage = 10, search = '' } = {}) => {
+    const base = `/api/enrollments?page=${page}&per_page=${perPage}`;
+    const q = typeof search === 'string' && search.trim() ? `&search=${encodeURIComponent(search.trim())}` : '';
+    return `${base}${q}`;
+  },
   admin: () => '/api/admin',
 };

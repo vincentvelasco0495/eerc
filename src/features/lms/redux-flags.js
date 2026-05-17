@@ -6,6 +6,10 @@ export const LMS_REDUX_FLAGS = {
     '/api/meta': true,
     '/api/programs': true,
     '/api/programs/*/stats': true,
+    '/api/instructors': true,
+    '/api/instructors/linkable-users': true,
+    '/api/students': true,
+    '/api/students/linkable-users': true,
     '/api/courses': true,
     '/api/courses/*/detail': true,
     '/api/courses/*/stats': true,
@@ -27,6 +31,18 @@ export function shouldUseReduxRead(endpoint) {
   if (!normalized) return false;
   const map = LMS_REDUX_FLAGS.endpointReads;
   if (map[normalized]) return true;
+  if (/^\/api\/programs(\?.*)?$/.test(normalized)) {
+    return Boolean(map['/api/programs']);
+  }
+  if (/^\/api\/instructors(\?.*)?$/.test(normalized)) {
+    return Boolean(map['/api/instructors']);
+  }
+  if (/^\/api\/students(\?.*)?$/.test(normalized)) {
+    return Boolean(map['/api/students']);
+  }
+  if (/^\/api\/enrollments(\?.*)?$/.test(normalized)) {
+    return Boolean(map['/api/enrollments']);
+  }
   if (normalized.startsWith('/api/programs/') && normalized.endsWith('/stats')) {
     return Boolean(map['/api/programs/*/stats']);
   }

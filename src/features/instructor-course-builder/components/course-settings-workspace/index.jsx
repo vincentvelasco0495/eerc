@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -6,7 +6,7 @@ import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 
-import { useLmsActions, useLmsPrograms } from 'src/hooks/use-lms';
+import { useLmsActions, useLmsPrograms, useLmsInstructors } from 'src/hooks/use-lms';
 
 import { toast } from 'src/components/snackbar';
 
@@ -45,7 +45,50 @@ export function CourseSettingsWorkspace({
   const hasCourseRow = tiedCourse?.id != null;
   const canPersistToLms = hasCourseRow || typeof onEnsureCourse === 'function';
   const { programs } = useLmsPrograms();
+  const { instructors: instructorCatalog } = useLmsInstructors();
   const { runCommand } = useLmsActions();
+
+  const [selectedInstructorIds, setSelectedInstructorIds] = useState([]);
+
+  const activeInstructors = useMemo(() => {
+    const list = Array.isArray(instructorCatalog) ? instructorCatalog : [];
+    return list.filter((row) => String(row?.status ?? 'active').toLowerCase() === 'active');
+  }, [instructorCatalog]);
+
+  const instructorOptions = useMemo(() => {
+    const activeOpts = activeInstructors.map((row) => ({
+      value: row.id,
+      label: String(row.name ?? '').trim() || String(row.id),
+    }));
+    const catalog = Array.isArray(instructorCatalog) ? instructorCatalog : [];
+    const extras = selectedInstructorIds
+      .filter((id) => !activeOpts.some((o) => String(o.value) === String(id)))
+      .map((id) => catalog.find((r) => String(r?.id) === String(id)))
+      .filter(Boolean)
+      .map((row) => ({
+        value: row.id,
+        label: String(row.name ?? '').trim() || String(row.id),
+      }));
+    const seen = new Set(activeOpts.map((o) => String(o.value)));
+    const merged = [...activeOpts];
+    extras.forEach((o) => {
+      if (!seen.has(String(o.value))) {
+        merged.push(o);
+        seen.add(String(o.value));
+      }
+    });
+    return merged;
+  }, [activeInstructors, instructorCatalog, selectedInstructorIds]);
+
+  const instructorNameById = useMemo(() => {
+    const m = new Map();
+    (Array.isArray(instructorCatalog) ? instructorCatalog : []).forEach((row) => {
+      if (row?.id) {
+        m.set(String(row.id), String(row.name ?? '').trim());
+      }
+    });
+    return m;
+  }, [instructorCatalog]);
 
   const [courseName, setCourseName] = useState(curriculumBuilderCourse.title);
   const [slug, setSlug] = useState('how-to-design-components-right');
@@ -53,7 +96,6 @@ export function CourseSettingsWorkspace({
   const [bannerUrl, setBannerUrl] = useState('');
   const [bannerImageFile, setBannerImageFile] = useState(null);
   const [bannerPreviewUrl, setBannerPreviewUrl] = useState('');
-  const [instructor, setInstructor] = useState('Instructor');
   const [courseDuration, setCourseDuration] = useState('9 hours');
   const [videoDuration, setVideoDuration] = useState('5 hours');
   const [descriptionHtml, setDescriptionHtml] = useState(
@@ -100,7 +142,7 @@ export function CourseSettingsWorkspace({
     setBannerUrl('');
     setBannerImageFile(null);
     setBannerPreviewUrl('');
-    setInstructor('Instructor');
+    setSelectedInstructorIds([]);
     setCourseDuration('9 hours');
     setVideoDuration('5 hours');
     setDescriptionHtml(canPersistToLms ? '' : courseMainDescriptionSeedHtml);
@@ -124,7 +166,6 @@ export function CourseSettingsWorkspace({
     setCourseName(String(tiedCourse.title ?? '').trim() || curriculumBuilderCourse.title);
     setSlug(String(tiedCourse.slug ?? '').trim());
     setProgramId(String(tiedCourse.programId ?? '').trim());
-    setInstructor(String(tiedCourse.mentor ?? '').trim() || 'Instructor');
     setBannerUrl(typeof m.bannerImageUrl === 'string' ? m.bannerImageUrl.trim() : '');
     setBannerImageFile(null);
     setBannerPreviewUrl('');
@@ -141,9 +182,82 @@ export function CourseSettingsWorkspace({
     setLearnHtml(learningOutcomesToHtml(m.learningOutcomes ?? []) || '');
     setFeaturedCourse(Boolean(m.featuredCourse));
     setLockLessonsInOrder(Boolean(m.lockLessonsInOrder));
-    // no-op: instructor value is stored on the course row
     // eslint-disable-next-line react-hooks/exhaustive-deps -- seed when switching authoring target only
   }, [tiedCourse?.id]);
+
+  const coInstructorsSerialized = useMemo(
+    () =>
+      JSON.stringify(
+        Array.isArray(tiedCourse?.marketing?.coInstructors) ? tiedCourse.marketing.coInstructors : []
+      ),
+    [tiedCourse?.marketing?.coInstructors]
+  );
+
+  /** Stable signature so Redux ref churn on `instructorCatalog` does not retrigger sync every render. */
+  const instructorCatalogSig = useMemo(
+    () =>
+      JSON.stringify(
+        (Array.isArray(instructorCatalog) ? instructorCatalog : []).map((r) => [
+          r?.id,
+          r?.name,
+          r?.status,
+        ])
+      ),
+    [instructorCatalog]
+  );
+
+  const lastSyncedInstructorPickRef = useRef({ courseId: null, courseSig: '', catalogSig: '', idsKey: '' });
+
+  useEffect(() => {
+    if (!tiedCourse?.id) {
+      return;
+    }
+    const m = tiedCourse.marketing ?? {};
+    const co = Array.isArray(m.coInstructors) ? m.coInstructors : [];
+    const mentorStr = String(tiedCourse.mentor ?? '').trim();
+    const nameList =
+      co.length > 0
+        ? co.map((s) => String(s ?? '').trim()).filter(Boolean)
+        : mentorStr
+          ? mentorStr.split(/\s*,\s*/).map((s) => s.trim()).filter(Boolean)
+          : [];
+
+    const catalog = Array.isArray(instructorCatalog) ? instructorCatalog : [];
+    const ids = nameList
+      .map((name) =>
+        catalog.find((r) => String(r?.name ?? '').trim().toLowerCase() === String(name).toLowerCase())
+      )
+      .filter(Boolean)
+      .map((r) => r.id);
+
+    const courseSig = `${tiedCourse?.id}|${String(tiedCourse?.mentor ?? '')}|${coInstructorsSerialized}`;
+    const idsKey = JSON.stringify(ids);
+    const prev = lastSyncedInstructorPickRef.current;
+    if (
+      prev.courseId === tiedCourse.id &&
+      prev.courseSig === courseSig &&
+      prev.catalogSig === instructorCatalogSig &&
+      prev.idsKey === idsKey
+    ) {
+      return;
+    }
+    lastSyncedInstructorPickRef.current = {
+      courseId: tiedCourse.id,
+      courseSig,
+      catalogSig: instructorCatalogSig,
+      idsKey,
+    };
+
+    setSelectedInstructorIds((prevIds) => {
+      if (
+        prevIds.length === ids.length &&
+        prevIds.every((id, i) => String(id) === String(ids[i]))
+      ) {
+        return prevIds;
+      }
+      return ids;
+    });
+  }, [tiedCourse?.id, tiedCourse?.mentor, coInstructorsSerialized, instructorCatalogSig]);
 
   const handlePersistLmsSettings = useCallback(async () => {
     let courseId = tiedCourse?.id;
@@ -164,12 +278,18 @@ export function CourseSettingsWorkspace({
       setSaveBusy(true);
       const description = htmlToParagraphTexts(descriptionHtml);
       const learningOutcomes = htmlToLearningOutcomeLines(learnHtml);
+      const instructorNames = selectedInstructorIds
+        .map((id) => instructorNameById.get(String(id)))
+        .filter(Boolean);
+      const mentorDisplay = instructorNames[0] ?? '';
+
       const marketingPayload = {
         ...(description.length ? { description } : {}),
         ...(learningOutcomes.length ? { learningOutcomes } : {}),
         bannerImageUrl: bannerUrl.trim() === '' ? null : bannerUrl.trim(),
         featuredCourse,
         lockLessonsInOrder,
+        ...(instructorNames.length ? { coInstructors: instructorNames } : {}),
       };
 
       if (bannerImageFile) {
@@ -178,7 +298,7 @@ export function CourseSettingsWorkspace({
         formData.append('slug', slug.trim());
         formData.append('programId', programId || '');
         formData.append('description', previewDescription.trim());
-        formData.append('mentor', instructor.trim());
+        formData.append('mentor', mentorDisplay);
         formData.append('hours', String(parseHoursLabel(courseDuration)));
         formData.append('videoHoursLabel', videoDuration.trim() === '' ? '' : videoDuration.trim());
         formData.append('marketingPayload', JSON.stringify(marketingPayload));
@@ -196,7 +316,7 @@ export function CourseSettingsWorkspace({
           slug: slug.trim(),
           programId: programId || null,
           description: previewDescription.trim(),
-          mentor: instructor.trim(),
+          mentor: mentorDisplay,
           hours: parseHoursLabel(courseDuration),
           videoHoursLabel: videoDuration.trim() === '' ? null : videoDuration.trim(),
           marketing: marketingPayload,
@@ -220,8 +340,9 @@ export function CourseSettingsWorkspace({
     courseDuration,
     courseName,
     descriptionHtml,
-    instructor,
+    instructorNameById,
     learnHtml,
+    selectedInstructorIds,
     lockLessonsInOrder,
     previewDescription,
     programId,
@@ -245,15 +366,9 @@ export function CourseSettingsWorkspace({
           programDisabled={false}
           onProgramIdChange={setProgramId}
           programOptions={programOptions}
-          ownerName={instructor}
-          instructor={instructor}
-          onInstructorChange={setInstructor}
-          instructorOptions={[
-            { value: 'Engr. Hannah Cruz', label: 'Engr. Hannah Cruz' },
-            { value: 'Engr. Miguel Santos', label: 'Engr. Miguel Santos' },
-            { value: 'Dr. Reese Navarro', label: 'Dr. Reese Navarro' },
-            { value: 'Demo Instructor', label: 'Demo Instructor' },
-          ]}
+          instructorIds={selectedInstructorIds}
+          onInstructorIdsChange={setSelectedInstructorIds}
+          instructorOptions={instructorOptions}
           onBannerImageFileChange={(file) => {
             setBannerImageFile(file);
             setBannerPreviewUrl(URL.createObjectURL(file));

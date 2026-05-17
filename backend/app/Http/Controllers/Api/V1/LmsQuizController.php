@@ -244,10 +244,15 @@ class LmsQuizController extends Controller
         }
     }
 
-    public function storeAttempt(Request $request, string $publicId): JsonResponse
+    public function storeAttempt(Request $request, string $publicId, LmsCatalogService $catalog): JsonResponse
     {
         $user = $this->lmsActor();
-        $quiz = Quiz::query()->where('public_id', $publicId)->withCount('questions')->firstOrFail();
+        $quiz = Quiz::query()->where('public_id', $publicId)->with(['course'])->withCount('questions')->firstOrFail();
+
+        if ($quiz->course !== null && $catalog->isCurriculumItemLockedForUser($user, $quiz->course, $quiz->public_id)) {
+            return response()->json(['message' => 'Complete earlier lessons before attempting this quiz.'], 403);
+        }
+
         $validated = $request->validate([
             'selections' => ['required', 'array'],
             'selections.*' => ['nullable', 'string', 'max:64'],

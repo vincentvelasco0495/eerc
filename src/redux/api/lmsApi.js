@@ -32,6 +32,22 @@ export function getLmsAxiosErrorMessage(error, fallback = 'Request failed.') {
   return fallback;
 }
 
+/** Laravel 422 `errors` bag → first message per field. */
+export function getLmsAxiosFieldErrors(error) {
+  const bag = error?.response?.data?.errors;
+  if (!bag || typeof bag !== 'object') {
+    return {};
+  }
+
+  return Object.entries(bag).reduce((acc, [key, messages]) => {
+    const first = Array.isArray(messages) ? messages[0] : messages;
+    if (typeof first === 'string' && first.trim()) {
+      acc[key] = first.trim();
+    }
+    return acc;
+  }, {});
+}
+
 export async function patchLmsCourse(publicId, payload) {
   const endpoint = `/api/courses/${encodeURIComponent(publicId)}`;
   const body = payload ?? {};
@@ -60,6 +76,48 @@ export async function patchLmsProgram(publicId, payload = {}) {
 }
 export async function deleteLmsProgram(publicId) {
   const { data } = await axios.delete(`/api/programs/${encodeURIComponent(publicId)}`);
+  return data;
+}
+export async function postLmsInstructor(payload = {}) {
+  const { data } = await axios.post('/api/instructors', payload ?? {});
+  return data;
+}
+export async function patchLmsInstructor(publicId, payload = {}) {
+  const endpoint = `/api/instructors/${encodeURIComponent(publicId)}`;
+  const body = payload ?? {};
+  if (typeof FormData !== 'undefined' && body instanceof FormData) {
+    if (!body.has('_method')) body.append('_method', 'PATCH');
+    const { data } = await axios.post(endpoint, body);
+    return data;
+  }
+  const { data } = await axios.patch(endpoint, body);
+  return data;
+}
+export async function deleteLmsInstructor(publicId) {
+  const { data } = await axios.delete(`/api/instructors/${encodeURIComponent(publicId)}`);
+  return data;
+}
+export async function postLmsStudent(payload = {}) {
+  const { data } = await axios.post('/api/students', payload ?? {});
+  return data;
+}
+export async function patchLmsStudent(publicId, payload = {}) {
+  const endpoint = `/api/students/${encodeURIComponent(publicId)}`;
+  const body = payload ?? {};
+  if (typeof FormData !== 'undefined' && body instanceof FormData) {
+    if (!body.has('_method')) body.append('_method', 'PATCH');
+    const { data } = await axios.post(endpoint, body);
+    return data;
+  }
+  const { data } = await axios.patch(endpoint, body);
+  return data;
+}
+export async function deleteLmsStudent(publicId) {
+  const { data } = await axios.delete(`/api/students/${encodeURIComponent(publicId)}`);
+  return data;
+}
+export async function patchLmsUser(payload = {}) {
+  const { data } = await axios.patch('/api/user', payload ?? {});
   return data;
 }
 export async function postLmsCourse(payload = {}) {
@@ -175,10 +233,10 @@ export async function fetchLessonMaterialBlob(publicId, options = {}) {
 }
 
 export const lmsApi = {
-  submitEnrollmentRequest: (courseId) =>
+  submitEnrollmentRequest: (programId) =>
     isLmsLiveApi()
-      ? postJson(`${apiRoot}/enrollments`, { course_id: courseId })
-      : mockSubmitEnrollment(courseId),
+      ? postJson(`${apiRoot}/enrollments`, { program_id: programId })
+      : mockSubmitEnrollment(programId),
 
   simulateQuizAttempt: (quizId) =>
     isLmsLiveApi()
@@ -231,6 +289,18 @@ export const lmsApi = {
         return patchLmsProgram(payload.publicId, payload.body ?? {});
       case 'program.delete':
         return deleteLmsProgram(payload.publicId);
+      case 'instructor.create':
+        return postLmsInstructor(payload);
+      case 'instructor.update':
+        return patchLmsInstructor(payload.publicId, payload.body ?? {});
+      case 'instructor.delete':
+        return deleteLmsInstructor(payload.publicId);
+      case 'student.create':
+        return postLmsStudent(payload);
+      case 'student.update':
+        return patchLmsStudent(payload.publicId, payload.body ?? {});
+      case 'student.delete':
+        return deleteLmsStudent(payload.publicId);
       case 'course.create':
         return postLmsCourse(payload.body ?? {});
       case 'course.update':

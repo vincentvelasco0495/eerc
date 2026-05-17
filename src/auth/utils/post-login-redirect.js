@@ -24,14 +24,14 @@ function pathnameOnly(hrefOrPath) {
  */
 export function getPostLoginRedirectPath(role) {
   if (typeof role === 'string' && role.trim().toLowerCase() === 'student') {
-    return paths.dashboard.studentProfile;
+    return paths.dashboard.enrolledCourses;
   }
   return paths.dashboard.instructorProfile;
 }
 
 /**
  * Applies `returnTo` only when it matches the signed-in role's allowed surface.
- * Avoids sending instructors to `/student-profile` (or students to `/instructor-profile`)
+ * Avoids sending instructors to `/enrolled-courses` (or students to `/instructor-profile`)
  * because AuthGuard previously stored the wrong `returnTo` in the query string.
  */
 export function resolvePostLoginUrl(role, returnToParam) {
@@ -42,7 +42,7 @@ export function resolvePostLoginUrl(role, returnToParam) {
   const candidate = safeReturnUrl(returnToParam, roleHome);
   const path = pathnameOnly(candidate);
 
-  const studentRoot = pathnameOnly(paths.dashboard.studentProfile);
+  const studentRoot = pathnameOnly(paths.dashboard.enrolledCourses);
   const instructorRoot = pathnameOnly(paths.dashboard.instructorProfile);
 
   const underStudent =

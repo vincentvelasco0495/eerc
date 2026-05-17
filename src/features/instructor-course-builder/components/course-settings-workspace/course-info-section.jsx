@@ -1,8 +1,8 @@
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
+import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 import Select from '@mui/material/Select';
-import Avatar from '@mui/material/Avatar';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -48,10 +48,9 @@ export function CourseInfoSection({
   programDisabled = false,
   programOptions = [],
   onBannerImageFileChange,
-  ownerName,
-  instructor = '',
+  instructorIds = [],
   instructorOptions = [],
-  onInstructorChange,
+  onInstructorIdsChange,
   courseCoverSrc,
   courseDuration,
   onCourseDurationChange,
@@ -134,42 +133,42 @@ export function CourseInfoSection({
         </FormControl>
       </Box>
 
-      <Grid container spacing={2.5} sx={{ mt: 0 }}>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Typography sx={css.fieldLabel}>Owner</Typography>
-          <Box sx={css.avatarWithName}>
-            <Avatar sx={{ bgcolor: 'primary.dark', fontWeight: 700, width: 44, height: 44 }}>
-              {ownerName
-                ?.trim()
-                .split(/\s/)
-                .map((w) => w[0])
-                .join('')
-                .slice(0, 2) || 'DI'}
-            </Avatar>
-            <Typography fontWeight={600} fontSize={15}>
-              {ownerName || 'Demo Instructor'}
-            </Typography>
-          </Box>
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Typography sx={css.fieldLabel}>Instructor</Typography>
-          <FormControl fullWidth size="small">
-            <Select
-              displayEmpty
-              value={instructor}
-              onChange={(e) => onInstructorChange?.(String(e.target.value))}
-              renderValue={(selected) => (selected ? String(selected) : 'Choose instructor')}
-              sx={{ borderRadius: '8px' }}
-            >
-              {instructorOptions.map((opt) => (
-                <MenuItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-      </Grid>
+      <Box sx={{ mt: 2.5 }}>
+        <Typography sx={css.fieldLabel}>Instructors</Typography>
+        <FormControl fullWidth size="small">
+          <Select
+            multiple
+            displayEmpty
+            value={instructorIds}
+            onChange={(e) => onInstructorIdsChange?.(e.target.value)}
+            renderValue={(selected) => {
+              if (!selected.length) {
+                return (
+                  <Typography component="span" variant="body2" color="text.secondary">
+                    Choose instructors
+                  </Typography>
+                );
+              }
+              return (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {selected.map((id) => {
+                    const label =
+                      instructorOptions.find((o) => String(o.value) === String(id))?.label ?? id;
+                    return <Chip key={String(id)} label={label} size="small" />;
+                  })}
+                </Box>
+              );
+            }}
+            sx={{ borderRadius: '8px' }}
+          >
+            {instructorOptions.map((opt) => (
+              <MenuItem key={String(opt.value)} value={opt.value}>
+                {opt.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
 
       <Box sx={{ mt: 2.5 }}>
         <Typography sx={css.fieldLabel}>Banner image</Typography>

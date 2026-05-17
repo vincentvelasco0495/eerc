@@ -50,6 +50,8 @@ export function Editor({
   ref: contentRef,
   value: initialContent = '',
   placeholder = 'Write something awesome...',
+  /** `0` fires `onChange` on every keystroke (needed for forms that submit immediately). Default `200` ms debounce. */
+  debounceMs = 200,
   /**
    * When this value changes (e.g. LMS save + refetch epoch), HTML is reapplied from `value`.
    * Avoids relying on TipTap’s one-shot `content` initializer so server snapshots repopulate the UI.
@@ -71,13 +73,20 @@ export function Editor({
 
   const lowlight = useMemo(() => createLowlight(common), []);
 
-  const debouncedOnChange = useMemo(
-    () =>
-      debounce((html) => {
-        onChange?.(html);
-      }, 200),
-    [onChange]
-  );
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  const debouncedEmit = useMemo(() => {
+    const ms = debounceMs ?? 200;
+    if (ms <= 0) {
+      return null;
+    }
+    return debounce((html) => {
+      onChangeRef.current?.(html);
+    }, ms);
+  }, [debounceMs]);
 
   const editor = useEditor({
     editable,
@@ -86,7 +95,12 @@ export function Editor({
     shouldRerenderOnTransaction: !!rerenderKey,
     onUpdate: (ctx) => {
       const html = ctx.editor.getHTML();
-      debouncedOnChange(html);
+      const ms = debounceMs ?? 200;
+      if (ms <= 0) {
+        onChangeRef.current?.(html);
+      } else if (debouncedEmit) {
+        debouncedEmit(html);
+      }
     },
     extensions: [
       StarterKitExtension.configure({

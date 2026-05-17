@@ -18,6 +18,16 @@ const sidebarGroups = [
     ],
   },
   {
+    title: 'Enrollment',
+    items: [
+      {
+        label: 'Enrollment',
+        icon: 'solar:user-plus-bold-duotone',
+        path: paths.dashboard.enrollment,
+      },
+    ],
+  },
+  {
     title: 'Communication',
     items: [
       {
@@ -55,6 +65,16 @@ const sidebarGroups = [
         label: 'Programs',
         icon: 'solar:layers-bold-duotone',
         path: paths.dashboard.programs,
+      },
+      {
+        label: 'Instructors',
+        icon: 'solar:users-group-rounded-bold-duotone',
+        path: paths.dashboard.instructors,
+      },
+      {
+        label: 'Students',
+        icon: 'solar:user-rounded-bold-duotone',
+        path: paths.dashboard.students,
       },
       { label: 'Log out', icon: 'solar:logout-3-bold-duotone', action: 'logout' },
     ],

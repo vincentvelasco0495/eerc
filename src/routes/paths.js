@@ -13,7 +13,7 @@ const ROOTS = {
 };
 
 /** Default authenticated landing (matches previous `/dashboard` index redirect). */
-const LMS_HOME = '/student-profile';
+const LMS_HOME = '/enrolled-courses';
 
 /**
  * First URL segment for routes rendered inside `DashboardLayout`.
@@ -23,6 +23,8 @@ const DASHBOARD_LAYOUT_FIRST_SEGMENTS = new Set([
   'courses',
   'course-details',
   'programs',
+  'instructors',
+  'students',
   'modules',
   'quizzes',
   'analytics',
@@ -36,7 +38,9 @@ const DASHBOARD_LAYOUT_FIRST_SEGMENTS = new Set([
   'instructor-assignments',
   'assignments',
   'settings',
+  'enrolled-courses',
   'student-profile',
+  'available-programs',
   'enrollment',
   'admin',
 ]);
@@ -166,8 +170,11 @@ export const paths = {
       `/instructor-course/${encodeURIComponent(String(slugOrPublicId ?? ''))}/edit`,
     instructorAssignments: `/instructor-assignments`,
     programs: `/programs`,
+    instructors: `/instructors`,
+    students: `/students`,
     studentAssignments: `/assignments`,
-    studentProfile: `/student-profile`,
+    enrolledCourses: `/enrolled-courses`,
+    availablePrograms: `/available-programs`,
     studentSettings: `/settings`,
     analyticsHub: `/analytics`,
     leaderboard: `/leaderboard`,

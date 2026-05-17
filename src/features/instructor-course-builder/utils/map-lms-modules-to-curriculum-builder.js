@@ -22,8 +22,12 @@ export function deriveLessonType(m) {
   if (m.streamingOnly) {
     return 'video';
   }
-  const hasVideo = Array.isArray(m.resources) && m.resources.includes('Video');
-  if (hasVideo) {
+  const coreResources = Array.isArray(m.coreResources)
+    ? m.coreResources
+    : Array.isArray(m.resources)
+      ? m.resources
+      : [];
+  if (coreResources.includes('Video')) {
     return 'video';
   }
   const step = typeof m.type === 'string' ? m.type.toLowerCase() : '';

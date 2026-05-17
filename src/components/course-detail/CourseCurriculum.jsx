@@ -4,6 +4,8 @@ import styled, { css } from 'styled-components';
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 
+import { useAuthContext } from 'src/auth/hooks';
+
 import { radii, space, colors } from './course-detail-tokens';
 
 const MODULE_ICON = {
@@ -213,6 +215,17 @@ const DoneBadge = styled.span`
   line-height: 1;
 `;
 
+const LockedBadge = styled.span`
+  font-size: 12px;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 999px;
+  padding: 4px 8px;
+  line-height: 1;
+`;
+
 const RightMetaRail = styled.div`
   flex-shrink: 0;
   width: 168px;
@@ -338,6 +351,9 @@ function LessonTypeIcon({ type }) {
 
 /** Collapsible modules + typed lesson rows (Curriculum tab). */
 export function CourseCurriculum({ modules, courseLookup }) {
+  const { authenticated } = useAuthContext();
+  const isGuest = !authenticated;
+
   const [moduleOpen, setModuleOpen] = useState(() => {
     const init = {};
     modules.forEach((m) => {
@@ -386,12 +402,20 @@ export function CourseCurriculum({ modules, courseLookup }) {
                         : courseLookup && lesson.type === 'quiz'
                           ? paths.dashboard.courseQuiz(courseLookup, lesson.id)
                           : null;
+                  const isLocked = Boolean(lesson.locked);
+                  const isQuiz = lesson.type === 'quiz';
+                  const allowsGuestPreview = Boolean(lesson.lessonPreview) && !isQuiz;
+                  const canNavigate = isGuest
+                    ? Boolean(lessonHref && allowsGuestPreview)
+                    : Boolean(lessonHref && !isLocked);
+                  const effectiveHref = canNavigate ? lessonHref : null;
+                  const guestPreviewBlocked = isGuest && lessonHref && !allowsGuestPreview;
 
                   return (
                     <LessonItem key={lesson.id}>
-                      {lessonHref ? (
+                      {effectiveHref ? (
                         <LessonRowOuter>
-                          <LessonRowLink href={lessonHref} aria-label={`Open lesson: ${lesson.title}`}>
+                          <LessonRowLink href={effectiveHref} aria-label={`Open lesson: ${lesson.title}`}>
                             <OrderNum>{lesson.order ?? idx + 1}</OrderNum>
                             <LessonTypeIcon type={lesson.type} />
                             <LessonMid>
@@ -404,6 +428,49 @@ export function CourseCurriculum({ modules, courseLookup }) {
                               <MetaText>{lesson.meta}</MetaText>
                             </RightMetaRail>
                           </LessonRowLink>
+                          <LessonChevronCell>
+                            {expandable ? (
+                              <RowChevronBtn
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  toggleLesson(lesson.id);
+                                }}
+                                aria-expanded={isOpen}
+                                aria-controls={`lesson-peek-${lesson.id}`}
+                                id={`lesson-toggle-${lesson.id}`}
+                              >
+                                <SrOnly>Expand lesson preview</SrOnly>
+                                <RowChevronIcon $open={isOpen} aria-hidden>
+                                  ▼
+                                </RowChevronIcon>
+                              </RowChevronBtn>
+                            ) : (
+                              <span style={{ width: 28 }} aria-hidden />
+                            )}
+                          </LessonChevronCell>
+                        </LessonRowOuter>
+                      ) : (lessonHref && isLocked) || guestPreviewBlocked ? (
+                        <LessonRowOuter
+                          title={
+                            guestPreviewBlocked
+                              ? 'Sign in or enable lesson preview to open this lesson'
+                              : 'Complete previous lessons to unlock'
+                          }
+                        >
+                          <LessonRow style={{ flex: 1, cursor: 'not-allowed', opacity: 0.72 }}>
+                            <OrderNum>{lesson.order ?? idx + 1}</OrderNum>
+                            <LessonTypeIcon type={lesson.type} />
+                            <LessonMid>
+                              <LessonTitleText>{lesson.title}</LessonTitleText>
+                            </LessonMid>
+                            <RightMetaRail>
+                              <DoneSlot>
+                                {guestPreviewBlocked ? null : <LockedBadge>Locked</LockedBadge>}
+                              </DoneSlot>
+                              <MetaText>{lesson.meta}</MetaText>
+                            </RightMetaRail>
+                          </LessonRow>
                           <LessonChevronCell>
                             {expandable ? (
                               <RowChevronBtn

@@ -6,7 +6,7 @@ import Typography from '@mui/material/Typography';
 
 import { styles, tabCountBadgeSx } from './styles';
 
-export function StudentProfileCourseTabs({ value, tabs, onChange }) {
+export function StudentProfileCourseTabs({ value, tabs, onChange, heading = 'Enrolled courses' }) {
   return (
     <Stack
       direction={{ xs: 'column', sm: 'row' }}
@@ -15,7 +15,7 @@ export function StudentProfileCourseTabs({ value, tabs, onChange }) {
       alignItems={{ xs: 'stretch', sm: 'center' }}
     >
       <Typography variant="h4" sx={styles.heading}>
-        Enrolled courses
+        {heading}
       </Typography>
 
       <Tabs

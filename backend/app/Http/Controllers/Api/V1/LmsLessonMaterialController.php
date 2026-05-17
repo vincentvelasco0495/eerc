@@ -97,7 +97,11 @@ class LmsLessonMaterialController extends Controller
      */
     public function download(Request $request, string $publicId): BinaryFileResponse|StreamedResponse|\Illuminate\Http\Response
     {
-        $this->lmsActor();
+        $actor = $this->lmsActor();
+
+        if ($actor->id <= 0 || strtolower((string) ($actor->role ?? '')) === 'guest') {
+            return response()->json(['message' => 'Sign in to download lesson materials.'], 403);
+        }
 
         $row = LessonMaterial::query()->where('public_id', $publicId)->first();
 

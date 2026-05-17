@@ -44,7 +44,7 @@ export function AdminPanelView() {
 
   const enrollmentColumns = useMemo(
     () => [
-      { field: 'courseTitle', headerName: 'Course', flex: 1.2 },
+      { field: 'programTitle', headerName: 'Program', flex: 1.2 },
       { field: 'submittedAt', headerName: 'Submitted', flex: 1 },
       { field: 'status', headerName: 'Status', flex: 1 },
     ],
@@ -54,7 +54,9 @@ export function AdminPanelView() {
     () =>
       enrollment.map((item) => ({
         ...item,
-        courseTitle: courses.find((course) => course.id === item.courseId)?.title ?? item.courseId,
+        programTitle:
+          courses.find((course) => course.programId === item.programId)?.programTitle ??
+          item.programId,
       })),
     [courses, enrollment]
   );

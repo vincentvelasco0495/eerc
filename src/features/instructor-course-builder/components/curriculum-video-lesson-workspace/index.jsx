@@ -28,6 +28,10 @@ import {
   dayjsFromClockString,
   normalizeVideoWorkspaceMeta,
 } from '../../utils/lesson-authoring-helpers';
+import {
+  buildLessonAuthoringTargetKey,
+  normalizeUploadedLessonMaterial,
+} from '../../utils/lesson-materials-cache';
 
 function normalizeAssetUrl(path) {
   const raw = typeof path === 'string' ? path.trim() : '';
@@ -45,7 +49,7 @@ export function CurriculumVideoLessonWorkspace({
   onLessonSave,
   saveLiveRichLesson,
   liveLessonAuthoring = null,
-  onLessonMaterialsInvalidate,
+  onLessonMaterialsChange,
 }) {
   const [workspaceTab, setWorkspaceTab] = useState(0);
   const [posterUploading, setPosterUploading] = useState(false);
@@ -118,21 +122,19 @@ export function CurriculumVideoLessonWorkspace({
     } catch {
       metaStable = String(meta);
     }
-    const matsKey = Array.isArray(liveLessonAuthoring.lessonMaterials)
-      ? liveLessonAuthoring.lessonMaterials
-          .map((x) => x?.id)
-          .filter(Boolean)
-          .sort()
-          .join(',')
-      : '';
     return [
       lite(excerpt),
       lite(body),
       metaStable,
-      matsKey,
       liveLessonAuthoring.isCoreLesson ? 'core' : 'standalone',
     ].join('|');
   }, [liveLessonAuthoring, saveLiveRichLesson]);
+
+  const authoringTargetKey = useMemo(
+    () => buildLessonAuthoringTargetKey(lesson, liveLessonAuthoring),
+    [lesson, liveLessonAuthoring]
+  );
+  const hydratedAuthoringKeyRef = useRef('');
 
   const materialModulePublicId = useMemo(() => {
     if (liveLessonAuthoring?.modulePublicId != null && String(liveLessonAuthoring.modulePublicId).trim() !== '') {
@@ -216,6 +218,7 @@ export function CurriculumVideoLessonWorkspace({
 
   useLayoutEffect(() => {
     if (!saveLiveRichLesson || !liveLessonAuthoring) {
+      hydratedAuthoringKeyRef.current = '';
       setSourceType('html-mp4');
       setVideoWidth('');
       setDuration('');
@@ -231,6 +234,11 @@ export function CurriculumVideoLessonWorkspace({
       assignVideoPreviewUrl(null);
       return;
     }
+
+    if (hydratedAuthoringKeyRef.current === authoringTargetKey) {
+      return;
+    }
+    hydratedAuthoringKeyRef.current = authoringTargetKey;
 
     const lm =
       liveLessonAuthoring.lessonMeta && typeof liveLessonAuthoring.lessonMeta === 'object'
@@ -278,11 +286,11 @@ export function CurriculumVideoLessonWorkspace({
     setShortDescriptionHtml(String(liveLessonAuthoring.excerptHtml ?? '').trim());
     setLessonContentHtml(String(liveLessonAuthoring.bodyHtml ?? '').trim());
   }, [
+    authoringTargetKey,
     lesson.id,
     lesson.type,
     saveLiveRichLesson,
     liveLessonAuthoring,
-    lessonAuthorFingerprint,
     assignPosterPreviewUrl,
     assignVideoPreviewUrl,
   ]);
@@ -518,7 +526,14 @@ export function CurriculumVideoLessonWorkspace({
           }
         }
 
-        void onLessonMaterialsInvalidate?.();
+        const uploadedMaterial = normalizeUploadedLessonMaterial(raw);
+        if (uploadedMaterial && materialModulePublicId) {
+          onLessonMaterialsChange?.({
+            modulePublicId: materialModulePublicId,
+            standaloneLessonPublicId: materialStandaloneLessonPublicId,
+            add: [uploadedMaterial],
+          });
+        }
 
         toast.success(linkField === 'poster' ? 'Poster uploaded and linked.' : 'Video uploaded and linked.');
       } catch (e) {
@@ -534,9 +549,11 @@ export function CurriculumVideoLessonWorkspace({
       duration,
       lesson.title,
       lessonContentHtml,
+      materialModulePublicId,
       materialModuleResourcePublicId,
+      materialStandaloneLessonPublicId,
       materialUploadTarget,
-      onLessonMaterialsInvalidate,
+      onLessonMaterialsChange,
       saveLiveRichLesson,
       shortDescriptionHtml,
       videoLessonMaterialPublicId,
@@ -596,7 +613,13 @@ export function CurriculumVideoLessonWorkspace({
       assignPosterPreviewUrl(null);
       setVideoPosterLessonMaterialPublicId(null);
       await deleteLessonMaterial(rawId);
-      await onLessonMaterialsInvalidate?.();
+      if (materialModulePublicId) {
+        onLessonMaterialsChange?.({
+          modulePublicId: materialModulePublicId,
+          standaloneLessonPublicId: materialStandaloneLessonPublicId,
+          removeIds: [rawId],
+        });
+      }
       toast.success('Poster removed.');
     } catch (e) {
       toast.error(getLmsAxiosErrorMessage(e, 'Could not remove poster.'));
@@ -609,7 +632,9 @@ export function CurriculumVideoLessonWorkspace({
     duration,
     lesson.title,
     lessonContentHtml,
-    onLessonMaterialsInvalidate,
+    materialModulePublicId,
+    materialStandaloneLessonPublicId,
+    onLessonMaterialsChange,
     saveLiveRichLesson,
     shortDescriptionHtml,
     videoPosterLessonMaterialPublicId,
@@ -649,7 +674,13 @@ export function CurriculumVideoLessonWorkspace({
       assignVideoPreviewUrl(null);
       setVideoLessonMaterialPublicId(null);
       await deleteLessonMaterial(rawId);
-      await onLessonMaterialsInvalidate?.();
+      if (materialModulePublicId) {
+        onLessonMaterialsChange?.({
+          modulePublicId: materialModulePublicId,
+          standaloneLessonPublicId: materialStandaloneLessonPublicId,
+          removeIds: [rawId],
+        });
+      }
       toast.success('Video removed.');
     } catch (e) {
       toast.error(getLmsAxiosErrorMessage(e, 'Could not remove video.'));
@@ -662,7 +693,9 @@ export function CurriculumVideoLessonWorkspace({
     duration,
     lesson.title,
     lessonContentHtml,
-    onLessonMaterialsInvalidate,
+    materialModulePublicId,
+    materialStandaloneLessonPublicId,
+    onLessonMaterialsChange,
     saveLiveRichLesson,
     shortDescriptionHtml,
     videoLessonMaterialPublicId,
@@ -789,8 +822,10 @@ export function CurriculumVideoLessonWorkspace({
             modulePublicId={materialModulePublicId}
             moduleResourcePublicId={materialModuleResourcePublicId}
             standaloneLessonPublicId={materialStandaloneLessonPublicId}
-            onAfterMaterialsChange={() => {
-              void onLessonMaterialsInvalidate?.();
+            onAfterMaterialsChange={onLessonMaterialsChange}
+            materialsTarget={{
+              modulePublicId: materialModulePublicId,
+              standaloneLessonPublicId: materialStandaloneLessonPublicId,
             }}
           />
         </Stack>

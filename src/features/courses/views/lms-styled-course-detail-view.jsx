@@ -8,13 +8,14 @@ import {
   useLmsCourseStats,
   useLmsCourseByLookup,
   useLmsModulesByCourse,
+  extractQuizzesFromModules,
 } from 'src/hooks/use-lms';
 
 import { CONFIG } from 'src/global-config';
 import { DashboardContent } from 'src/layouts/dashboard';
+import { useLmsCourseDetailShell } from 'src/features/courses/hooks/use-lms-course-detail-shell';
 
 import { CourseDetailLayout } from 'src/components/course-detail/CourseDetailLayout';
-import { mapLmsToStyledCourseDetail } from 'src/components/course-detail/map-lms-to-styled-shell';
 
 // ----------------------------------------------------------------------
 
@@ -24,20 +25,9 @@ export function LmsStyledCourseDetailView({ courseLookup }) {
   const { modules } = useLmsModulesByCourse(courseId);
   const { stats: courseStats } = useLmsCourseStats(courseId);
 
-  const shell = useMemo(() => {
-    if (!course) {
-      return null;
-    }
+  const quizzesForCourse = useMemo(() => extractQuizzesFromModules(modules), [modules]);
 
-    return mapLmsToStyledCourseDetail(
-      course,
-      modules,
-      [],
-      [],
-      [],
-      courseStats
-    );
-  }, [course, courseStats, modules]);
+  const { shell } = useLmsCourseDetailShell(course, modules, quizzesForCourse, courseStats);
 
   if (!courseLookup) {
     return (

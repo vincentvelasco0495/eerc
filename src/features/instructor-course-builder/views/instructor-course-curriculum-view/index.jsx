@@ -33,14 +33,18 @@ import { CourseNoticeWorkspace } from '../../components/course-notice-workspace'
 import { CourseSettingsWorkspace } from '../../components/course-settings-workspace';
 import { CurriculumBuilderTopBar } from '../../components/curriculum-builder-top-bar';
 import { CurriculumBuilderSidebar } from '../../components/curriculum-builder-sidebar';
+import { patchLessonMaterialsInModulesList } from '../../utils/lesson-materials-cache';
 import { CurriculumBuilderWorkspace } from '../../components/curriculum-builder-workspace';
 import { paragraphsToHtml, htmlToParagraphTexts } from '../../utils/course-marketing-html';
-import { mapLmsModulesToCurriculumBuilder } from '../../utils/map-lms-modules-to-curriculum-builder';
 import {
   curriculumBuilderCourse,
   curriculumNewLessonTitleByType,
 } from '../../instructor-course-curriculum-data';
 import { resolveCoreLessonMaterialResourcePublicId } from '../../utils/resolve-core-lesson-material-resource-public-id';
+import {
+  deriveLessonType,
+  mapLmsModulesToCurriculumBuilder,
+} from '../../utils/map-lms-modules-to-curriculum-builder';
 
 function addLessonToModuleState(prevModules, moduleId, lessonType) {
   const mod = prevModules.find((m) => m.id === moduleId);
@@ -50,19 +54,7 @@ function addLessonToModuleState(prevModules, moduleId, lessonType) {
     if (existingDraft.type === lessonType) {
       return { modules: prevModules, selectedLessonId: existingDraft.id };
     }
-    const title =
-      curriculumNewLessonTitleByType[lessonType] ?? curriculumNewLessonTitleByType.document;
-    const modulesNext = prevModules.map((m) =>
-      m.id !== moduleId
-        ? m
-        : {
-            ...m,
-            lessons: m.lessons.map((l) =>
-              l.id === existingDraft.id ? { ...l, type: lessonType, title } : l
-            ),
-          }
-    );
-    return { modules: modulesNext, selectedLessonId: existingDraft.id };
+    // Keep the in-progress draft as-is; add a separate row for the new lesson type.
   }
 
   const newLesson = {
@@ -156,6 +148,33 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
       );
     },
     [dispatch, modulesCacheKey, lmsModules]
+  );
+
+  const patchLessonMaterialsInCache = useCallback(
+    (patch) => {
+      if (!modulesCacheKey || !patch?.modulePublicId) {
+        return;
+      }
+      const list = Array.isArray(lmsModules) ? lmsModules : [];
+      const next = patchLessonMaterialsInModulesList(list, patch);
+      dispatch(
+        lmsResourceFetchSuccess({
+          key: modulesCacheKey,
+          data: { data: next },
+        })
+      );
+    },
+    [dispatch, lmsModules, modulesCacheKey]
+  );
+
+  const handleLessonMaterialsChange = useCallback(
+    (patch) => {
+      if (!patch?.modulePublicId) {
+        return;
+      }
+      patchLessonMaterialsInCache(patch);
+    },
+    [patchLessonMaterialsInCache]
   );
 
   const mergeReturnedQuizIntoLmsModulesCache = useCallback(
@@ -977,34 +996,27 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
     ) {
       return null;
     }
-    const t = selectedLesson?.type;
-    if (t !== 'document' && t !== 'video') {
-      return null;
-    }
     for (const m of lmsModules ?? []) {
       const rows = Array.isArray(m.standaloneLessons) ? m.standaloneLessons : [];
-      const row = rows.find((r) => r.id === selectedLessonId && r.kind === t);
-      if (row) {
+      const row = rows.find((r) => r.id === selectedLessonId);
+      if (row && (row.kind === 'document' || row.kind === 'video')) {
         return { modulePublicId: m.id, row };
       }
     }
     return null;
-  }, [isLive, lmsModules, selectedLesson?.type, selectedLessonId]);
+  }, [isLive, lmsModules, selectedLessonId]);
 
   const liveLessonAuthoring = useMemo(() => {
     if (!isLive) {
-      return null;
-    }
-    const t = selectedLesson?.type;
-    if (t !== 'document' && t !== 'video') {
       return null;
     }
 
     if (liveStandaloneLesson) {
       const row = liveStandaloneLesson.row;
       const mod = lmsModules?.find((m) => m.id === liveStandaloneLesson.modulePublicId);
+      const standaloneKind = row.kind === 'video' ? 'video' : 'document';
       return {
-        authoringKind: t,
+        authoringKind: standaloneKind,
         updatedAt: row.updatedAt ?? '',
         excerptHtml: row.excerptHtml ?? '',
         bodyHtml: row.bodyHtml ?? row.summary ?? '',
@@ -1022,13 +1034,16 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
       return null;
     }
 
+    const coreDerived = deriveLessonType(liveModuleRow);
+    const coreKind = coreDerived === 'video' ? 'video' : 'document';
+
     const resourceRowIds = new Set(
       (Array.isArray(liveModuleRow.resourceRows) ? liveModuleRow.resourceRows : [])
         .map((r) => r?.id)
         .filter(Boolean)
         .map((id) => String(id).trim())
     );
-    const rawResolved = resolveCoreLessonMaterialResourcePublicId(liveModuleRow, t);
+    const rawResolved = resolveCoreLessonMaterialResourcePublicId(liveModuleRow, coreKind);
     const trimmedResolved =
       rawResolved != null && String(rawResolved).trim() !== '' ? String(rawResolved).trim() : '';
     const moduleLessonResourcePublicId =
@@ -1046,7 +1061,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
         : rawModuleMaterials;
 
     return {
-      authoringKind: t,
+      authoringKind: coreKind,
       updatedAt: liveModuleRow.updatedAt ?? '',
       excerptHtml: liveModuleRow.excerptHtml ?? '',
       bodyHtml: liveModuleRow.bodyHtml ?? liveModuleRow.summary ?? '',
@@ -1068,13 +1083,15 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
     liveModuleRow,
     liveStandaloneLesson,
     lmsModules,
-    selectedLesson?.type,
   ]);
 
   const handleSaveLiveRichLesson = useCallback(
     async ({ title, durationLabel, shortDescriptionHtml, lessonContentHtml, lessonMeta }) => {
       const isVideoCore =
-        selectedLesson?.type === 'video' && Boolean(liveModulePublicId) && !liveStandaloneLesson;
+        Boolean(liveLessonAuthoring?.isCoreLesson) &&
+        liveLessonAuthoring?.authoringKind === 'video' &&
+        Boolean(liveModulePublicId) &&
+        !liveStandaloneLesson;
 
       let patchEnvelope = null;
       if (liveStandaloneLesson) {
@@ -1127,8 +1144,9 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
       lmsModules,
       mergeReturnedModuleIntoLmsModulesCache,
       patchLmsModule,
+      liveLessonAuthoring?.authoringKind,
+      liveLessonAuthoring?.isCoreLesson,
       patchLmsStandaloneLesson,
-      selectedLesson?.type,
     ]
   );
 
@@ -1313,7 +1331,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
               saveLiveQuizLesson={saveLiveQuizLesson}
               liveQuizAuthoring={liveQuizAuthoring}
               saveLiveQuizSettings={saveLiveQuizSettings}
-              onLessonMaterialsInvalidate={() => mutateLmsModules()}
+              onLessonMaterialsChange={handleLessonMaterialsChange}
             />
           </Stack>
         ) : (

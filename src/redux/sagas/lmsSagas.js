@@ -1,6 +1,7 @@
 import { all, put, call, takeEvery, takeLatest } from 'redux-saga/effects';
 
 import { lmsApi } from 'src/redux/api/lmsApi';
+import { lmsEndpoints } from 'src/redux/api/lmsEndpoints';
 import { apiErrorHandler } from 'src/redux/utils/apiErrorHandler';
 import {
   LMS_COMMAND_REQUEST,
@@ -22,6 +23,7 @@ import {
   uploadModuleFailure,
   lmsResourceFetchFailure,
   lmsResourceFetchSuccess,
+  lmsResourceFetchRequest,
   submitEnrollmentSuccess,
   submitEnrollmentFailure,
   fetchQuizQuestionSetSuccess,
@@ -34,8 +36,10 @@ import {
 
 function* submitEnrollmentSaga(action) {
   try {
-    const payload = yield call(lmsApi.submitEnrollmentRequest, action.payload.courseId);
+    const payload = yield call(lmsApi.submitEnrollmentRequest, action.payload.programId);
     yield put(submitEnrollmentSuccess(payload));
+    const enrollmentsEndpoint = lmsEndpoints.enrollments();
+    yield put(lmsResourceFetchRequest({ key: enrollmentsEndpoint, endpoint: enrollmentsEndpoint }));
     yield put(lmsFlashSet({ severity: 'success', message: 'Enrollment request submitted successfully.' }));
   } catch (error) {
     yield put(submitEnrollmentFailure(apiErrorHandler(error)));

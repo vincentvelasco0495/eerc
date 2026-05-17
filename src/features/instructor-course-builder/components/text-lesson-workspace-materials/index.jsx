@@ -20,6 +20,7 @@ import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
 
 import { styles } from './styles';
+import { normalizeUploadedLessonMaterial } from '../../utils/lesson-materials-cache';
 
 function formatBytes(bytes) {
   const n = Number(bytes);
@@ -54,11 +55,15 @@ export function TextLessonWorkspaceMaterials({
   /** When uploading into the core module lesson, tag against this `module_resources` row. */
   moduleResourcePublicId = null,
   standaloneLessonPublicId = null,
+  materialsTarget = null,
   onAfterMaterialsChange,
 }) {
   const [busy, setBusy] = useState(false);
 
-  const hasTarget = Boolean(modulePublicId || standaloneLessonPublicId);
+  const targetModulePublicId = materialsTarget?.modulePublicId ?? modulePublicId;
+  const targetStandaloneLessonPublicId =
+    materialsTarget?.standaloneLessonPublicId ?? standaloneLessonPublicId;
+  const hasTarget = Boolean(targetModulePublicId || targetStandaloneLessonPublicId);
 
   const uploadFiles = useCallback(
     async (acceptedFiles) => {
@@ -78,24 +83,39 @@ export function TextLessonWorkspaceMaterials({
 
       setBusy(true);
       try {
-        await Promise.all(
+        const responses = await Promise.all(
           acceptedFiles.map((file) =>
-            standaloneLessonPublicId
-              ? postLessonMaterialForStandaloneLesson(standaloneLessonPublicId, file)
-              : postLessonMaterialForModule(modulePublicId, file, {
+            targetStandaloneLessonPublicId
+              ? postLessonMaterialForStandaloneLesson(targetStandaloneLessonPublicId, file)
+              : postLessonMaterialForModule(targetModulePublicId, file, {
                   moduleResourcePublicId,
                 })
           )
         );
+        const added = responses
+          .map((payload) => normalizeUploadedLessonMaterial(payload))
+          .filter(Boolean);
+        if (added.length > 0 && targetModulePublicId) {
+          onAfterMaterialsChange?.({
+            modulePublicId: targetModulePublicId,
+            standaloneLessonPublicId: targetStandaloneLessonPublicId,
+            add: added,
+          });
+        }
         toast.success(`Uploaded ${acceptedFiles.length === 1 ? 'file' : `${acceptedFiles.length} files`}.`);
-        onAfterMaterialsChange?.();
       } catch (err) {
         toast.error(getLmsAxiosErrorMessage(err, 'Could not upload file(s).'));
       } finally {
         setBusy(false);
       }
     },
-    [hasTarget, modulePublicId, moduleResourcePublicId, onAfterMaterialsChange, standaloneLessonPublicId]
+    [
+      hasTarget,
+      moduleResourcePublicId,
+      onAfterMaterialsChange,
+      targetModulePublicId,
+      targetStandaloneLessonPublicId,
+    ]
   );
 
   const onDrop = useCallback(
@@ -141,7 +161,14 @@ export function TextLessonWorkspaceMaterials({
     setBusy(true);
     try {
       await deleteLessonMaterial(id);
-      onAfterMaterialsChange?.();
+      if (targetModulePublicId) {
+        onAfterMaterialsChange?.({
+          modulePublicId: targetModulePublicId,
+          standaloneLessonPublicId: targetStandaloneLessonPublicId,
+          removeIds: [id],
+        });
+      }
+      toast.success('File removed.');
     } catch (err) {
       toast.error(getLmsAxiosErrorMessage(err, 'Could not delete file.'));
     } finally {

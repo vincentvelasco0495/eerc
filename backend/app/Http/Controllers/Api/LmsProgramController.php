@@ -12,9 +12,25 @@ use Illuminate\Support\Str;
 
 class LmsProgramController extends Controller
 {
-    public function index(LmsCatalogService $catalog): JsonResponse
+    public function index(Request $request, LmsCatalogService $catalog): JsonResponse
     {
-        return response()->json(['data' => $catalog->programs()]);
+        if (! $request->filled('page')) {
+            return response()->json(['data' => $catalog->programs()]);
+        }
+
+        $validated = $request->validate([
+            'page' => ['required', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'in:5,10,20,50,100'],
+            'search' => ['sometimes', 'nullable', 'string', 'max:255'],
+        ]);
+
+        $perPage = (int) ($validated['per_page'] ?? 10);
+        $page = (int) $validated['page'];
+        $search = isset($validated['search']) ? (string) $validated['search'] : null;
+
+        $payload = $catalog->programsPaginated($page, $perPage, $search);
+
+        return response()->json($payload);
     }
 
     public function stats(string $programPublicId, LmsCatalogService $catalog): JsonResponse

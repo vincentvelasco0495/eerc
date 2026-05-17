@@ -1,15 +1,31 @@
 import styled from 'styled-components';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
+import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
+import Button from '@mui/material/Button';
+import Skeleton from '@mui/material/Skeleton';
 
-import { useLmsCourses, useLmsQuizzes, useLmsPrograms, useLmsProgramStats, useLmsModulesByCourse } from 'src/hooks/use-lms';
+import {
+  useEnrollment,
+  useLmsActions,
+  useLmsCourses,
+  useLmsQuizzes,
+  useLmsPrograms,
+  useLmsProgramStats,
+  useLmsModulesByCourse,
+} from 'src/hooks/use-lms';
 
-import { CONFIG } from 'src/global-config';
+import { resolveProgramBannerSrc } from 'src/utils/program-banner';
+
 import { InstructorCourseCard } from 'src/features/instructor-profile/components/instructor-course-card';
 import { InstructorProfileTabs } from 'src/features/instructor-profile/components/instructor-profile-tabs';
 import { mapLmsCatalogCourseToInstructorCard } from 'src/features/instructor-profile/map-lms-catalog-course-to-instructor-card';
+
+import { ConfirmDialog } from 'src/components/custom-dialog';
+
+import { useAuthContext } from 'src/auth/hooks';
 
 import { SidebarCard } from '../../components/course-detail/SidebarCard';
 import { space, colors } from '../../components/course-detail/course-detail-tokens';
@@ -136,9 +152,89 @@ const HeroImg = styled.img`
   background: #e8f4fc;
 `;
 
+const programHeroBannerFrameSx = {
+  position: 'relative',
+  width: '100%',
+  aspectRatio: '16 / 9',
+  borderRadius: '12px',
+  overflow: 'hidden',
+  bgcolor: 'grey.300',
+  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+};
+
+const EnrollNowBtn = styled.button`
+  width: 100%;
+  margin-top: ${space(2)};
+  padding: 14px ${space(2)};
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: ${colors.white};
+  background: ${colors.primary};
+  cursor: pointer;
+  transition:
+    filter 0.15s ease,
+    transform 0.15s ease;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.05);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #1d4ed8;
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+`;
+
+const EnrolledNotice = styled.p`
+  margin: ${space(2)} 0 0;
+  padding: 12px ${space(2)};
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+  color: ${colors.text};
+  background: #e8f4fc;
+  border: 1px solid #dbeafe;
+`;
+
+const RejectedNotice = styled.p`
+  margin: ${space(2)} 0 0;
+  padding: 12px ${space(2)};
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+`;
+
 const ProgramCoursesGridWrap = styled.section`
   margin-top: ${space(2.5)};
 `;
+
+/** Match enrollment to program by `programId`, or legacy `courseId` under this program. */
+function matchesProgramEnrollment(item, programId, programCourses) {
+  if (!programId || !item) {
+    return false;
+  }
+  if (item.programId === programId) {
+    return true;
+  }
+  if (typeof item.courseId === 'string') {
+    const course = programCourses.find((row) => row.id === item.courseId);
+    return course?.programId === programId;
+  }
+  return false;
+}
 
 const PROGRAM_COURSE_FILTERS = [
   { value: 'all', label: 'All' },
@@ -164,18 +260,14 @@ const PROGRAM_ALIAS_TO_ID = {
   mse: 'program-materials',
 };
 
-const resolveBannerSrc = (value) => {
-  const raw = String(value ?? '').trim();
-  if (!raw) return '';
-  if (/^https?:\/\//i.test(raw)) return raw;
-  if (raw.startsWith('/')) return `${CONFIG.serverUrl}${raw}`;
-  return `${CONFIG.serverUrl}/storage/${raw}`;
-};
-
 export default function ProgramCourseDetail() {
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [enrollConfirmOpen, setEnrollConfirmOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { authenticated, loading: authLoading } = useAuthContext();
+  const enrollment = useEnrollment(authenticated && !authLoading);
+  const { submitEnrollment } = useLmsActions();
   const requestedProgram = String(searchParams.get('program') ?? '').trim().toLowerCase();
   const { programs, isLoading: programsLoading, error: programsError } = useLmsPrograms();
   const { courses, isLoading: coursesLoading, error: coursesError } = useLmsCourses(1, 500, requestedProgram);
@@ -249,18 +341,51 @@ export default function ProgramCourseDetail() {
     [quizzes, selectedCourse?.id]
   );
 
+  const applyLessonLocks = authenticated && !authLoading;
+
   const shell = useMemo(
     () =>
       selectedCourse
-        ? mapLmsToStyledCourseDetail(selectedCourse, modules ?? [], quizzesForCourse)
+        ? mapLmsToStyledCourseDetail(selectedCourse, modules ?? [], quizzesForCourse, [], [], null, {
+            applyLessonLocks,
+          })
         : null,
-    [selectedCourse, modules, quizzesForCourse]
+    [selectedCourse, modules, quizzesForCourse, applyLessonLocks]
   );
 
   const programTitle = selectedProgram?.title || shell?.data?.title || 'Program';
   const programDescription = selectedProgram?.description || shell?.data?.shortDescription || '';
-  const programBannerUrl =
-    resolveBannerSrc(selectedProgram?.bannerPath) || shell?.heroImageUrl || '';
+  const programBannerSrc = resolveProgramBannerSrc(selectedProgram?.bannerPath);
+
+  const programEnrollment = useMemo(() => {
+    if (!selectedProgram?.id) {
+      return null;
+    }
+    return (
+      enrollment.find((item) => matchesProgramEnrollment(item, selectedProgram.id, programCourses)) ??
+      null
+    );
+  }, [enrollment, programCourses, selectedProgram?.id]);
+
+  const isEnrolledInProgram = Boolean(programEnrollment);
+  const isRejectedEnrollment = programEnrollment?.status === 'rejected';
+  const isActiveEnrollment = isEnrolledInProgram && !isRejectedEnrollment;
+
+  const handleEnrollConfirm = useCallback(() => {
+    setEnrollConfirmOpen(false);
+    if (selectedProgram?.id && (!isEnrolledInProgram || isRejectedEnrollment)) {
+      submitEnrollment(selectedProgram.id);
+    }
+  }, [isEnrolledInProgram, isRejectedEnrollment, selectedProgram?.id, submitEnrollment]);
+
+  const enrollmentStatusLabel =
+    programEnrollment?.status === 'approved'
+      ? 'Approved'
+      : programEnrollment?.status === 'rejected'
+        ? 'Not approved'
+        : 'Pending review';
+
+  const showEnrollNow = authenticated && !authLoading;
 
   if (programsLoading || coursesLoading) {
     return (
@@ -334,6 +459,7 @@ export default function ProgramCourseDetail() {
   ];
 
   return (
+    <>
     <PageBg>
       <PageInner>
         <PageMain>
@@ -358,15 +484,62 @@ export default function ProgramCourseDetail() {
           <AsideColumn aria-label="Course summary sidebar">
             <SidebarCard $variant="muted">
               <CourseDetailsCard rows={programDetailsRows} heading="Program details" />
+              {showEnrollNow ? (
+                isRejectedEnrollment ? (
+                  <>
+                    <RejectedNotice>
+                      Your enrollment application for this program was{' '}
+                      <strong>not approved</strong>.
+                    </RejectedNotice>
+                    <EnrollNowBtn
+                      type="button"
+                      onClick={() => setEnrollConfirmOpen(true)}
+                      disabled={!selectedProgram?.id}
+                    >
+                      Enroll again
+                    </EnrollNowBtn>
+                  </>
+                ) : isActiveEnrollment ? (
+                  <EnrolledNotice>
+                    You already have an enrollment application for this program (
+                    <strong>{enrollmentStatusLabel}</strong>).
+                  </EnrolledNotice>
+                ) : (
+                  <EnrollNowBtn
+                    type="button"
+                    onClick={() => setEnrollConfirmOpen(true)}
+                    disabled={!selectedProgram?.id}
+                  >
+                    Enroll Now
+                  </EnrollNowBtn>
+                )
+              ) : null}
             </SidebarCard>
           </AsideColumn>
 
           <MainColumn aria-label="Lesson content">
-            {programBannerUrl ? (
+            {programBannerSrc ? (
               <HeroFigure role="presentation">
-                <HeroImg src={programBannerUrl} alt={`${programTitle} banner`} />
+                <HeroImg src={programBannerSrc} alt="" />
               </HeroFigure>
-            ) : null}
+            ) : (
+              <HeroFigure role="presentation">
+                <Box sx={programHeroBannerFrameSx}>
+                  <Skeleton
+                    variant="rectangular"
+                    animation="wave"
+                    aria-hidden
+                    sx={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: 1,
+                      height: 1,
+                      transform: 'none',
+                    }}
+                  />
+                </Box>
+              </HeroFigure>
+            )}
             <ProgramCoursesGridWrap>
               <InstructorProfileTabs
                 value={selectedFilter}
@@ -386,5 +559,27 @@ export default function ProgramCourseDetail() {
         </PageMain>
       </PageInner>
     </PageBg>
+
+    <ConfirmDialog
+      open={enrollConfirmOpen}
+      onClose={() => setEnrollConfirmOpen(false)}
+      title={isRejectedEnrollment ? 'Enroll again' : 'Enroll in program'}
+      content={
+        <>
+          {isRejectedEnrollment ? (
+            <>Submit a new enrollment application for </>
+          ) : (
+            <>Submit an enrollment application for </>
+          )}
+          <strong>{programTitle}</strong>? You can review approval status after submitting.
+        </>
+      }
+      action={
+        <Button variant="contained" color="primary" onClick={handleEnrollConfirm}>
+          {isRejectedEnrollment ? 'Confirm re-enrollment' : 'Confirm enrollment'}
+        </Button>
+      }
+    />
+    </>
   );
 }

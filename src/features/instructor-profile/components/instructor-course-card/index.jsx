@@ -10,6 +10,7 @@ import Rating from '@mui/material/Rating';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import MenuItem from '@mui/material/MenuItem';
+import Skeleton from '@mui/material/Skeleton';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import CardContent from '@mui/material/CardContent';
@@ -19,7 +20,6 @@ import ListItemText from '@mui/material/ListItemText';
 import { paths } from 'src/routes/paths';
 
 import { CONFIG } from 'src/global-config';
-import { courseArtSx } from 'src/features/courses/views/course-details-view/styles';
 import { patchLmsCourse, getLmsAxiosErrorMessage } from 'src/lib/lms-instructor-api';
 
 import { toast } from 'src/components/snackbar';
@@ -201,65 +201,35 @@ export function InstructorCourseCard({
                   overflow: 'hidden',
                   borderRadius: 3,
                   bgcolor: 'grey.300',
-                  color: 'common.white',
-                  p: 1.25,
                 }}
               >
                 {course.bannerImageUrl ? (
-                  <>
-                    <Box
-                      component="img"
-                      src={course.bannerImageUrl}
-                      alt=""
-                      sx={{
-                        position: 'absolute',
-                        inset: 0,
-                        width: 1,
-                        height: 1,
-                        objectFit: 'cover',
-                      }}
-                    />
-                    <Box
-                      aria-hidden
-                      sx={{
-                        position: 'absolute',
-                        inset: 0,
-                        background:
-                          'linear-gradient(180deg, rgba(15,23,42,0.78) 0%, rgba(15,23,42,0.16) 36%, rgba(15,23,42,0.48) 100%)',
-                        pointerEvents: 'none',
-                      }}
-                    />
-                  </>
-                ) : (
                   <Box
+                    component="img"
+                    src={course.bannerImageUrl}
+                    alt=""
                     sx={{
                       position: 'absolute',
                       inset: 0,
-                      ...courseArtSx(course.id, false),
-                      minHeight: 'auto',
+                      width: 1,
+                      height: 1,
+                      objectFit: 'cover',
+                    }}
+                  />
+                ) : (
+                  <Skeleton
+                    variant="rectangular"
+                    animation="wave"
+                    aria-hidden
+                    sx={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: 1,
+                      height: 1,
+                      transform: 'none',
                     }}
                   />
                 )}
-
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="flex-start"
-                  gap={0.75}
-                  sx={{ position: 'relative', zIndex: 1 }}
-                >
-                  <Typography variant="caption" sx={styles.bannerCategoryLabel}>
-                    {course.category}
-                  </Typography>
-
-                  {course.badge ? (
-                    <Chip label={course.badge} size="small" sx={styles.bannerBadgeChip} />
-                  ) : null}
-                </Stack>
-
-                <Stack sx={{ ...styles.bannerIconBox, position: 'relative', zIndex: 1 }}>
-                  <Iconify icon={course.icon} width={28} sx={{ color: 'common.white', opacity: 1 }} />
-                </Stack>
               </Box>
 
               <Stack spacing={0.6}>

@@ -69,29 +69,8 @@ function SidebarDetailRow({ icon, label, value }) {
   );
 }
 
-/** Subject on the left, primary tag on the right when both exist — matches catalog cards. */
-function resolveThumbChipLabels(course, copy) {
-  const subj = typeof course?.subjects?.[0] === 'string' ? course.subjects[0].trim() : '';
-  const tag0 = typeof course?.tags?.[0] === 'string' ? course.tags[0].trim() : '';
-  const badge = typeof copy?.badge === 'string' ? copy.badge.trim() : '';
-
-  if (subj && tag0 && tag0 !== subj) {
-    return { left: subj, right: tag0 };
-  }
-  if (subj) {
-    return { left: subj, right: '' };
-  }
-  if (tag0) {
-    return { left: tag0, right: '' };
-  }
-  return { left: badge, right: '' };
-}
-
 function PopularCourseItem({ course }) {
   const copy = getCourseCopy(course);
-  const { left: thumbLeft, right: thumbRight } = resolveThumbChipLabels(course, copy);
-  /** Sidebar thumb is narrow (~72px); show subject, else tag / badge. */
-  const thumbSingle = thumbLeft || thumbRight;
   const itemRating =
     copy.reviews.length > 0
       ? copy.reviews.reduce((sum, review) => sum + review.rating, 0) / copy.reviews.length
@@ -103,15 +82,7 @@ function PopularCourseItem({ course }) {
       href={paths.dashboard.courseDetails(course.slug)}
       sx={styles.popularCourseLink}
     >
-      <Box sx={{ position: 'relative', ...styles.popularCourseThumb, ...courseArtSx(course.id, true) }}>
-        {thumbSingle ? (
-          <Chip
-            label={thumbSingle}
-            size="small"
-            sx={{ ...styles.thumbOverlayChip, ...styles.thumbOverlayChipPopular }}
-          />
-        ) : null}
-      </Box>
+      <Box sx={{ position: 'relative', ...styles.popularCourseThumb, ...courseArtSx(course.id, true) }} />
       <Stack spacing={0.35} sx={styles.popularCourseStack}>
         <Typography variant="subtitle2" sx={styles.popularCourseTitle}>
           {course.title}
@@ -135,7 +106,6 @@ function PopularCourseItem({ course }) {
 
 function RelatedCourseCard({ course: related }) {
   const rcopy = getCourseCopy(related);
-  const { left: thumbLeft, right: thumbRight } = resolveThumbChipLabels(related, rcopy);
   const itemRating =
     rcopy.reviews.length > 0
       ? rcopy.reviews.reduce((sum, review) => sum + review.rating, 0) / rcopy.reviews.length
@@ -154,22 +124,7 @@ function RelatedCourseCard({ course: related }) {
           borderRadius: 0,
           ...courseArtSx(related.id, true),
         }}
-      >
-        {thumbLeft ? (
-          <Chip
-            label={thumbLeft}
-            size="small"
-            sx={{ ...styles.thumbOverlayChip, ...styles.thumbOverlayChipRelated }}
-          />
-        ) : null}
-        {thumbRight ? (
-          <Chip
-            label={thumbRight}
-            size="small"
-            sx={{ ...styles.thumbOverlayChip, ...styles.thumbOverlayChipRelatedRight }}
-          />
-        ) : null}
-      </Box>
+      />
       <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', pt: 2, pb: 2.5 }}>
         <Typography variant="subtitle2" sx={{ lineHeight: 1.35, mb: 0.5 }}>
           {related.title}

@@ -8,10 +8,16 @@ export function getStudentWorkspaceNavGroups(pathname) {
       title: 'Main',
       items: [
         {
+          label: 'Available Programs',
+          icon: 'solar:layers-minimalistic-bold-duotone',
+          path: paths.dashboard.availablePrograms,
+          active: pathname === paths.dashboard.availablePrograms,
+        },
+        {
           label: 'Enrolled Courses',
           icon: 'solar:book-bookmark-bold-duotone',
-          path: paths.dashboard.studentProfile,
-          active: pathname === paths.dashboard.studentProfile,
+          path: paths.dashboard.enrolledCourses,
+          active: pathname === paths.dashboard.enrolledCourses,
         },
         {
           label: 'My Assignments',
@@ -48,95 +54,18 @@ export function getStudentWorkspaceNavGroups(pathname) {
   ];
 }
 
-const supplementalCourseTemplates = [
-  {
-    id: 'supplemental-structural-drill',
-    courseId: 'course-ce-review',
-    courseSlug: 'ce-board-review',
-    category: 'Continuing Education',
-    title: 'Structural Design Drill Pack',
-    lessons: 6,
-    durationHours: 11,
-    rating: 4.3,
-    status: 'in-progress',
-    startedAt: 'April 18, 2026',
-    variant: 'cobalt',
-  },
-  {
-    id: 'supplemental-code-clinic',
-    courseId: 'course-plumbing-mastery',
-    courseSlug: 'master-plumbing-fast-track',
-    category: 'Master Plumbing',
-    title: 'Code Compliance Clinic',
-    lessons: 5,
-    durationHours: 8,
-    rating: 4.8,
-    status: 'completed',
-    startedAt: 'April 15, 2026',
-    variant: 'linen',
-  },
-  {
-    id: 'supplemental-metallurgy-lab',
-    courseId: 'course-materials-intensive',
-    courseSlug: 'materials-engineering-intensive',
-    category: 'Materials Engineering',
-    title: 'Metallurgy Failure Analysis Lab',
-    lessons: 6,
-    durationHours: 10,
-    rating: 3.9,
-    status: 'failed',
-    startedAt: 'April 12, 2026',
-    variant: 'slate',
-    badge: 'Needs Review',
-  },
-  {
-    id: 'supplemental-hydraulics-workshop',
-    courseId: 'course-ce-review',
-    courseSlug: 'ce-board-review',
-    category: 'Continuing Education',
-    title: 'Hydraulics Formula Workshop',
-    lessons: 4,
-    durationHours: 6,
-    rating: 4.6,
-    status: 'in-progress',
-    startedAt: 'April 11, 2026',
-    variant: 'studio',
-  },
-  {
-    id: 'supplemental-vent-design',
-    courseId: 'course-plumbing-mastery',
-    courseSlug: 'master-plumbing-fast-track',
-    category: 'Master Plumbing',
-    title: 'Sanitary Vent Design Sprint',
-    lessons: 7,
-    durationHours: 12,
-    rating: 4.5,
-    status: 'in-progress',
-    startedAt: 'April 9, 2026',
-    variant: 'graphite',
-  },
-  {
-    id: 'supplemental-heat-treatment',
-    courseId: 'course-materials-intensive',
-    courseSlug: 'materials-engineering-intensive',
-    category: 'Materials Engineering',
-    title: 'Heat Treatment Intensive',
-    lessons: 8,
-    durationHours: 14,
-    rating: 4.7,
-    status: 'in-progress',
-    startedAt: 'April 7, 2026',
-    variant: 'ember',
-    badge: 'New',
-  },
-];
-
 const derivedCourseConfig = {
   'course-ce-review': {
     rating: 4.7,
     status: 'in-progress',
     startedAt: DEFAULT_STARTED_AT,
     variant: 'stage',
+  },
+  'course-ce-structures': {
+    rating: 4.6,
+    status: 'in-progress',
+    startedAt: 'April 20, 2026',
+    variant: 'cobalt',
   },
   'course-plumbing-mastery': {
     rating: 4.5,
@@ -152,34 +81,119 @@ const derivedCourseConfig = {
   },
 };
 
-export function buildStudentProfileCourses(courses, programs) {
-  const programMap = new Map(programs.map((program) => [program.id, program.title]));
+/** Program ids with an approved enrollment for the signed-in learner. */
+export function getApprovedProgramIds(enrollments = [], courses = []) {
+  const approved = new Set();
 
-  const primaryCourses = courses.map((course) => {
-    const config = derivedCourseConfig[course.id] ?? {
-      rating: 4.5,
-      status: 'in-progress',
-      startedAt: DEFAULT_STARTED_AT,
-      variant: 'cobalt',
-    };
+  for (const item of enrollments) {
+    if (item?.status !== 'approved') {
+      continue;
+    }
 
-    return {
-      id: course.id,
-      courseId: course.id,
-      courseSlug: course.slug,
-      category: programMap.get(course.programId) ?? course.subjects[0] ?? 'Learning Track',
-      title: course.title,
-      lessons: course.totalModules,
-      durationHours: course.hours,
-      rating: config.rating,
-      status: config.status,
-      startedAt: config.startedAt,
-      variant: config.variant,
-      badge: course.completedModules === course.totalModules ? 'Completed' : null,
-    };
-  });
+    if (item.programId) {
+      approved.add(item.programId);
+    }
 
-  return [...primaryCourses, ...supplementalCourseTemplates];
+    if (item.courseId && courses.length > 0) {
+      const legacyCourse = courses.find((course) => course.id === item.courseId);
+      if (legacyCourse?.programId) {
+        approved.add(legacyCourse.programId);
+      }
+    }
+  }
+
+  return approved;
+}
+
+export function buildStudentProfileCourses(courses, programs, enrollments = []) {
+  const programMap = new Map((programs ?? []).map((program) => [program.id, program.title]));
+  const approvedProgramIds = getApprovedProgramIds(enrollments, courses);
+
+  if (approvedProgramIds.size === 0) {
+    return [];
+  }
+
+  return (courses ?? [])
+    .filter(
+      (course) =>
+        isPublishedCatalogCourse(course) && approvedProgramIds.has(course.programId)
+    )
+    .map((course) => {
+      const config = derivedCourseConfig[course.id] ?? {
+        rating: 4.5,
+        status: 'in-progress',
+        startedAt: DEFAULT_STARTED_AT,
+        variant: 'cobalt',
+      };
+
+      const isCompleted =
+        Number(course.totalModules) > 0 &&
+        Number(course.completedModules) >= Number(course.totalModules);
+
+      return {
+        id: course.id,
+        courseId: course.id,
+        courseSlug: course.slug,
+        category: programMap.get(course.programId) ?? course.subjects?.[0] ?? 'Learning Track',
+        title: course.title,
+        lessons: course.totalModules,
+        durationHours: course.hours,
+        rating: config.rating,
+        status: isCompleted ? 'completed' : config.status,
+        startedAt: config.startedAt,
+        variant: config.variant,
+        badge: isCompleted ? 'Completed' : null,
+      };
+    });
+}
+
+function isPublishedCatalogCourse(course) {
+  if (course?.isPublished === false) {
+    return false;
+  }
+  if (typeof course?.status === 'string' && course.status.toLowerCase() === 'draft') {
+    return false;
+  }
+  return true;
+}
+
+/** Active `programs` rows for the Available programs grid (`title` + `description` from DB). */
+export function buildAvailableProgramCards(programs, courses) {
+  const publishedCourses = (courses ?? []).filter(isPublishedCatalogCourse);
+
+  return (programs ?? [])
+    .filter((program) => String(program?.status ?? 'active').toLowerCase() === 'active')
+    .map((program) => {
+      const programCourses = publishedCourses.filter((course) => course.programId === program.id);
+      const totalLectures = programCourses.reduce(
+        (sum, course) => sum + (Number(course.totalModules) || 0),
+        0
+      );
+      const totalHours = programCourses.reduce((sum, course) => sum + (Number(course.hours) || 0), 0);
+      const programSlug =
+        String(program?.slug ?? '').trim() ||
+        String(program?.code ?? '')
+          .trim()
+          .toLowerCase();
+
+      return {
+        id: program.id,
+        category: String(program?.code ?? '').trim() || 'Program',
+        title: String(program?.title ?? '').trim() || 'Program',
+        description: String(program?.description ?? '').trim(),
+        lessons: programCourses.length,
+        lessonsMetaLabel: 'Courses',
+        durationHours: totalHours,
+        lectureCount: totalLectures,
+        rating: null,
+        status: 'in-progress',
+        startedAt: null,
+        bannerPath: program?.bannerPath ?? '',
+        programSlug,
+        actionLabel: 'Browse program',
+        badge: null,
+      };
+    });
 }
 
 export const studentAssignments = [

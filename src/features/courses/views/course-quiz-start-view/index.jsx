@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { useParams } from 'react-router';
+import { useMemo, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -14,12 +14,14 @@ import { RouterLink } from 'src/routes/components';
 import {
   useLmsCourse,
   useLmsCourses,
-  useLmsCourseQuizzes,
+  useLmsModulesByCourse,
+  extractQuizzesFromModules,
   useResolvedCourseIdFromLookup,
 } from 'src/hooks/use-lms';
 
 import { CONFIG } from 'src/global-config';
 import { DashboardContent } from 'src/layouts/dashboard';
+import { useLmsCourseDetailShell } from 'src/features/courses/hooks/use-lms-course-detail-shell';
 
 import { Iconify } from 'src/components/iconify';
 import { CourseDetailBackArrowSvg } from 'src/components/course-detail/course-detail-back-arrow';
@@ -45,21 +47,34 @@ function formatTimeLimitMinutes(minutes) {
 
 export function CourseQuizStartView() {
   const theme = useTheme();
+  const navigate = useNavigate();
   const { slug = '', courseId = '', quizId = '' } = useParams();
   const courseLookup = slug || courseId;
 
   const { isLoading: coursesLoading } = useLmsCourses(1, 500);
   const resolvedCourseId = useResolvedCourseIdFromLookup(courseLookup);
   const course = useLmsCourse(resolvedCourseId);
-  const { quizzes } = useLmsCourseQuizzes(resolvedCourseId);
+  const { modules, isLoading: modulesLoading } = useLmsModulesByCourse(resolvedCourseId);
+  const quizzesForCourse = useMemo(() => extractQuizzesFromModules(modules), [modules]);
   const quiz = useMemo(
-    () => quizzes.find((item) => item.id === quizId) ?? null,
-    [quizzes, quizId]
+    () => quizzesForCourse.find((item) => item.id === quizId) ?? null,
+    [quizzesForCourse, quizId]
   );
+
+  const { isLessonLocked } = useLmsCourseDetailShell(course, modules, quizzesForCourse);
 
   const courseLinkHref = paths.dashboard.courseDetails(
     typeof course?.slug === 'string' && course.slug.trim() ? course.slug.trim() : courseLookup
   );
+
+  useEffect(() => {
+    if (!quizId || !resolvedCourseId || modulesLoading || !course) {
+      return;
+    }
+    if (isLessonLocked(quizId)) {
+      navigate(`${courseLinkHref}#curriculum`, { replace: true });
+    }
+  }, [quizId, resolvedCourseId, modulesLoading, course, isLessonLocked, navigate, courseLinkHref]);
 
   /** `new=1` clears a finished in-browser session so the take view can start a fresh attempt. */
   const takeHref = `${paths.dashboard.courseQuizTake(courseLookup, quizId)}?new=1`;
@@ -85,7 +100,10 @@ export function CourseQuizStartView() {
     limitedRetakeAttempts && attemptsAllowed > 0 && attemptsUsed >= attemptsAllowed;
 
   const loading = Boolean(
-    courseLookup && (coursesLoading || (resolvedCourseId && !course && !coursesLoading))
+    courseLookup &&
+      (coursesLoading ||
+        modulesLoading ||
+        (resolvedCourseId && !course && !coursesLoading))
   );
 
   if (!CONFIG.serverUrl?.trim()) {

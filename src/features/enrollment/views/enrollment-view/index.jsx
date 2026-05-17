@@ -11,7 +11,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import CardContent from '@mui/material/CardContent';
 
-import { useEnrollment, useLmsActions, useLmsCourses } from 'src/hooks/use-lms';
+import { useEnrollment, useLmsActions, useLmsPrograms } from 'src/hooks/use-lms';
 
 import { LMS_PROGRAM_SELECT_OPTIONS } from 'src/constants/lms';
 
@@ -20,38 +20,43 @@ import { LmsPageShell } from 'src/components/layout/lms-page-shell';
 
 import { styles } from './styles';
 
+const programLabelById = Object.fromEntries(
+  LMS_PROGRAM_SELECT_OPTIONS.map((option) => [option.id, option.label])
+);
+
 export function EnrollmentView() {
-  const { courses } = useLmsCourses(1, 200);
+  const { programs } = useLmsPrograms();
   const enrollment = useEnrollment();
   const { submitEnrollment } = useLmsActions();
   const [selectedProgramId, setSelectedProgramId] = useState('');
 
   const defaultProgramId = useMemo(() => {
     for (const option of LMS_PROGRAM_SELECT_OPTIONS) {
-      const open = courses.some(
-        (course) =>
-          course.programId === option.id &&
-          !enrollment.some((item) => item.courseId === course.id)
-      );
-      if (open) return option.id;
+      const open = !enrollment.some((item) => item.programId === option.id);
+      if (open) {
+        return option.id;
+      }
     }
     return LMS_PROGRAM_SELECT_OPTIONS[0]?.id ?? '';
-  }, [courses, enrollment]);
+  }, [enrollment]);
 
-  const selectedCourse = useMemo(() => {
-    if (!selectedProgramId) return undefined;
-    const inProgram = courses.filter((course) => course.programId === selectedProgramId);
-    return (
-      inProgram.find((course) => !enrollment.some((item) => item.courseId === course.id)) ??
-      inProgram[0]
-    );
-  }, [courses, enrollment, selectedProgramId]);
+  const canSubmitProgram = useMemo(() => {
+    if (!selectedProgramId) {
+      return false;
+    }
+    return !enrollment.some((item) => item.programId === selectedProgramId);
+  }, [enrollment, selectedProgramId]);
 
   useEffect(() => {
     if (!selectedProgramId && defaultProgramId) {
       setSelectedProgramId(defaultProgramId);
     }
   }, [defaultProgramId, selectedProgramId]);
+
+  const resolveProgramTitle = (programId) => {
+    const fromApi = programs.find((program) => program.id === programId)?.title;
+    return fromApi ?? programLabelById[programId] ?? programId;
+  };
 
   return (
     <LmsPageShell
@@ -93,7 +98,7 @@ export function EnrollmentView() {
           <Card sx={styles.cardBorderVars}>
             <CardContent>
               <Stack spacing={2.5}>
-                <Typography variant="h6">Apply for a course</Typography>
+                <Typography variant="h6">Apply for a program</Typography>
                 <Typography variant="body2" sx={styles.applyDescription}>
                   Choose a program and submit a learner application.
                 </Typography>
@@ -111,8 +116,8 @@ export function EnrollmentView() {
                   ))}
                 </TextField>
                 <Button
-                  disabled={!selectedCourse}
-                  onClick={() => selectedCourse && submitEnrollment(selectedCourse.id)}
+                  disabled={!canSubmitProgram}
+                  onClick={() => selectedProgramId && submitEnrollment(selectedProgramId)}
                   variant="contained"
                 >
                   Submit application
@@ -137,7 +142,7 @@ export function EnrollmentView() {
                     >
                       <Stack spacing={0.5}>
                         <Typography variant="subtitle2">
-                          {courses.find((course) => course.id === item.courseId)?.title ?? item.courseId}
+                          {resolveProgramTitle(item.programId)}
                         </Typography>
                         <Typography variant="caption" sx={styles.submittedCaption}>
                           Submitted on {item.submittedAt}

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\LmsUserProfile;
+use App\Models\Student;
 use App\Models\User;
 use App\Services\LmsCatalogService;
 use Illuminate\Http\JsonResponse;
@@ -37,8 +38,10 @@ class AuthController extends Controller
             'joined_at' => now()->toDateString(),
         ]);
 
+        Student::query()->create(['user_id' => $user->id]);
+
         $user->refresh();
-        $user->load(['lmsProfile.program', 'badges']);
+        $user->load(['lmsProfile.program', 'badges', 'studentProfile']);
 
         $token = $user->createToken('spa')->plainTextToken;
 
@@ -64,7 +67,7 @@ class AuthController extends Controller
             ]);
         }
 
-        $user->load(['lmsProfile.program', 'badges']);
+        $user->load(['lmsProfile.program', 'badges', 'studentProfile']);
 
         // Single active session: revoke tokens from other devices before issuing a new one.
         $user->tokens()->delete();

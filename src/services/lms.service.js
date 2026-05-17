@@ -12,15 +12,20 @@ const delay = (ms = 250) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const user = {
   id: 'learner-01',
-  displayName: 'Alex E. Rivera',
-  email: 'alex.rivera@eerc.edu',
-  role: 'admin',
+  displayName: 'Hello Friend',
+  email: 'hello.friend@eerc.edu',
+  role: 'student',
+  isStudent: true,
+  status: 'active',
   activeProgram: LMS_PROGRAMS[0],
   joinedAt: '2026-01-12',
   streak: 14,
   badges: [BADGE_VARIANTS.top10, BADGE_VARIANTS.consistency],
-  watermarkName: 'Alex E. Rivera',
+  watermarkName: 'Hello Friend',
   sessionWarning: true,
+  phoneNumber: '',
+  birthday: '',
+  schoolHeld: '',
 };
 
 const programs = [
@@ -50,6 +55,111 @@ const programs = [
   },
 ];
 
+const instructorsMock = [
+  {
+    id: 'learner-01',
+    name: 'Alex E. Rivera',
+    email: 'alex.rivera@eerc.edu',
+    role: 'admin',
+    status: 'active',
+    achievements: '',
+    profilePath: '',
+  },
+  {
+    id: 'inst-user-hannah',
+    name: 'Hannah Cruz',
+    email: 'hannah.cruz@eerc.edu',
+    role: 'instructor',
+    status: 'active',
+    achievements: '<p>Lead CE coordinator.</p>',
+    profilePath: '',
+  },
+  {
+    id: 'inst-user-miguel',
+    name: 'Miguel Santos',
+    email: 'miguel.santos@eerc.edu',
+    role: 'instructor',
+    status: 'active',
+    achievements: '',
+    profilePath: '',
+  },
+  {
+    id: 'inst-user-priya',
+    name: 'Priya Nandakumar',
+    email: 'priya.n@eerc.edu',
+    role: 'instructor',
+    status: 'active',
+    achievements: '',
+    profilePath: '',
+  },
+  {
+    id: 'inst-user-jordan',
+    name: 'Jordan Lee',
+    email: 'jordan.lee@eerc.edu',
+    role: 'instructor',
+    status: 'inactive',
+    achievements: '<p>On sabbatical.</p>',
+    profilePath: '',
+  },
+  {
+    id: 'inst-user-sam',
+    name: 'Sam Okonkwo',
+    email: 'sam.okonkwo@eerc.edu',
+    role: 'instructor',
+    status: 'active',
+    achievements: '',
+    profilePath: '',
+  },
+];
+
+const studentsMock = [
+  {
+    id: 'eerc-demo-student-user',
+    name: 'Mina Santos',
+    email: 'mina@demo.edu',
+    role: 'student',
+    status: 'active',
+    notes: '<p>Prefers evening cohort sessions.</p>',
+    profilePath: '',
+  },
+  {
+    id: 'learner-01',
+    name: 'Alex E. Rivera',
+    email: 'alex.rivera@eerc.edu',
+    role: 'admin',
+    status: 'active',
+    notes: '',
+    profilePath: '',
+  },
+  {
+    id: 'stud-user-aria',
+    name: 'Aria Mendoza',
+    email: 'aria.mendoza@eerc.edu',
+    role: 'student',
+    status: 'active',
+    notes: '',
+    profilePath: '',
+  },
+  {
+    id: 'stud-user-chen',
+    name: 'Wei Chen',
+    email: 'wei.chen@eerc.edu',
+    role: 'student',
+    status: 'active',
+    notes: '<p>Scholarship track.</p>',
+    profilePath: '',
+  },
+  {
+    id: 'stud-user-sofia',
+    name: 'Sofia Reyes',
+    email: 'sofia.reyes@eerc.edu',
+    role: 'student',
+    status: 'inactive',
+    notes: '',
+    profilePath: '',
+  },
+];
+
 const courses = [
   {
     id: 'course-ce-review',
@@ -68,6 +178,25 @@ const courses = [
     subjects: ['Hydraulics', 'Structures', 'Environmental Engineering'],
     marketing: {
       bannerImageUrl: 'https://picsum.photos/seed/eerc-banner-course-ce-review/1200/675',
+    },
+  },
+  {
+    id: 'course-ce-structures',
+    slug: 'ce-structures-workshop',
+    title: 'CE Structures Workshop',
+    programId: 'program-ce',
+    mentor: 'Engr. Hannah Cruz',
+    description: 'Focused structural analysis drills and load-path review for board candidates.',
+    level: 'Advanced',
+    totalModules: 6,
+    completedModules: 2,
+    hours: 24,
+    learners: 640,
+    nextModuleId: 'module-hydraulics-review',
+    tags: ['Practice heavy'],
+    subjects: ['Structures'],
+    marketing: {
+      bannerImageUrl: 'https://picsum.photos/seed/eerc-banner-course-ce-structures/1200/675',
     },
   },
   {
@@ -422,13 +551,23 @@ const leaderboard = {
 const enrollments = [
   {
     id: 'enrollment-001',
-    courseId: 'course-ce-review',
+    programId: 'program-ce',
+    programTitle: 'Continuing Education',
+    userName: 'Alex E. Rivera',
+    userEmail: 'alex@example.com',
+    phoneNumber: '+1 (555) 010-2001',
+    schoolHeld: 'Metro State University',
     submittedAt: '2026-04-10',
     status: ENROLLMENT_STATUSES[1],
   },
   {
     id: 'enrollment-002',
-    courseId: 'course-materials-intensive',
+    programId: 'program-materials',
+    programTitle: 'Materials Engineering',
+    userName: 'Alex E. Rivera',
+    userEmail: 'alex@example.com',
+    phoneNumber: '+1 (555) 010-2001',
+    schoolHeld: 'Metro State University',
     submittedAt: '2026-04-21',
     status: ENROLLMENT_STATUSES[0],
   },
@@ -499,21 +638,248 @@ export async function mockResponseForKey(key) {
   }
 
   if (path === '/api/programs') {
-    return { data: programs };
+    if (!params.get('page')) {
+      return { data: programs };
+    }
+
+    const pageNum = Math.max(1, parseInt(params.get('page') || '1', 10));
+    let perPageNum = parseInt(params.get('per_page') || '10', 10);
+    if (![5, 10, 20, 50, 100].includes(perPageNum)) {
+      perPageNum = 10;
+    }
+    const searchRaw = (params.get('search') || '').trim().toLowerCase();
+    let list = programs.map((p) => ({
+      ...p,
+      slug: p.slug ?? '',
+      status: p.status ?? 'active',
+      bannerPath: p.bannerPath ?? '',
+    }));
+    if (searchRaw) {
+      list = list.filter(
+        (p) =>
+          String(p.title || '')
+            .toLowerCase()
+            .includes(searchRaw) ||
+          String(p.code || '')
+            .toLowerCase()
+            .includes(searchRaw) ||
+          String(p.slug || '')
+            .toLowerCase()
+            .includes(searchRaw)
+      );
+    }
+    const total = list.length;
+    const lastPage = Math.max(1, Math.ceil(total / perPageNum));
+    const currentPage = Math.min(pageNum, lastPage);
+    const start = (currentPage - 1) * perPageNum;
+    const slice = list.slice(start, start + perPageNum);
+
+    return {
+      data: slice,
+      meta: {
+        current_page: currentPage,
+        last_page: lastPage,
+        per_page: perPageNum,
+        total,
+        from: total === 0 ? 0 : start + 1,
+        to: total === 0 ? 0 : Math.min(start + perPageNum, total),
+      },
+    };
+  }
+
+  if (path === '/api/instructors/linkable-users') {
+    const assigned = new Set(instructorsMock.map((r) => r.id));
+    const pool = [
+      {
+        publicUid: 'eerc-demo-student-user',
+        name: 'Mina Santos',
+        email: 'mina@demo.edu',
+        role: 'student',
+      },
+      {
+        publicUid: 'eerc-demo-instructor-user',
+        name: 'Dr. Reese Navarro',
+        email: 'reese@demo.edu',
+        role: 'instructor',
+      },
+    ];
+    return { data: pool.filter((u) => !assigned.has(u.publicUid)) };
+  }
+
+  if (path === '/api/students/linkable-users') {
+    const assigned = new Set(studentsMock.map((r) => r.id));
+    const pool = [
+      {
+        publicUid: 'eerc-demo-instructor-user',
+        name: 'Dr. Reese Navarro',
+        email: 'reese@demo.edu',
+        role: 'instructor',
+      },
+      {
+        publicUid: 'inst-user-hannah',
+        name: 'Hannah Cruz',
+        email: 'hannah.cruz@eerc.edu',
+        role: 'instructor',
+      },
+    ];
+    return { data: pool.filter((u) => !assigned.has(u.publicUid)) };
+  }
+
+  if (path === '/api/instructors') {
+    if (!params.get('page')) {
+      return { data: instructorsMock };
+    }
+
+    const pageNum = Math.max(1, parseInt(params.get('page') || '1', 10));
+    let perPageNum = parseInt(params.get('per_page') || '10', 10);
+    if (![5, 10, 20, 50, 100].includes(perPageNum)) {
+      perPageNum = 10;
+    }
+    const searchRaw = (params.get('search') || '').trim().toLowerCase();
+    let list = instructorsMock.map((row) => ({
+      ...row,
+      status: row.status ?? 'active',
+      achievements: row.achievements ?? '',
+      profilePath: row.profilePath ?? '',
+    }));
+    if (searchRaw) {
+      list = list.filter((row) => {
+        const plain = String(row.achievements || '').replace(/<[^>]+>/g, ' ');
+        const hay = `${row.name || ''} ${row.email || ''} ${plain}`.toLowerCase();
+        return hay.includes(searchRaw);
+      });
+    }
+    const total = list.length;
+    const lastPage = Math.max(1, Math.ceil(total / perPageNum));
+    const currentPage = Math.min(pageNum, lastPage);
+    const start = (currentPage - 1) * perPageNum;
+    const slice = list.slice(start, start + perPageNum);
+
+    return {
+      data: slice,
+      meta: {
+        current_page: currentPage,
+        last_page: lastPage,
+        per_page: perPageNum,
+        total,
+        from: total === 0 ? 0 : start + 1,
+        to: total === 0 ? 0 : Math.min(start + perPageNum, total),
+      },
+    };
+  }
+
+  if (path === '/api/students') {
+    if (!params.get('page')) {
+      return { data: studentsMock };
+    }
+
+    const pageNum = Math.max(1, parseInt(params.get('page') || '1', 10));
+    let perPageNum = parseInt(params.get('per_page') || '10', 10);
+    if (![5, 10, 20, 50, 100].includes(perPageNum)) {
+      perPageNum = 10;
+    }
+    const searchRaw = (params.get('search') || '').trim().toLowerCase();
+    let list = studentsMock.map((row) => ({
+      ...row,
+      status: row.status ?? 'active',
+      notes: row.notes ?? '',
+      profilePath: row.profilePath ?? '',
+    }));
+    if (searchRaw) {
+      list = list.filter((row) => {
+        const plain = String(row.notes || '').replace(/<[^>]+>/g, ' ');
+        const hay = `${row.name || ''} ${row.email || ''} ${plain}`.toLowerCase();
+        return hay.includes(searchRaw);
+      });
+    }
+    const total = list.length;
+    const lastPage = Math.max(1, Math.ceil(total / perPageNum));
+    const currentPage = Math.min(pageNum, lastPage);
+    const start = (currentPage - 1) * perPageNum;
+    const slice = list.slice(start, start + perPageNum);
+
+    return {
+      data: slice,
+      meta: {
+        current_page: currentPage,
+        last_page: lastPage,
+        per_page: perPageNum,
+        total,
+        from: total === 0 ? 0 : start + 1,
+        to: total === 0 ? 0 : Math.min(start + perPageNum, total),
+      },
+    };
   }
 
   if (path === '/api/courses') {
     const page = Math.max(1, parseInt(params.get('page') || '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(params.get('limit') || '100', 10)));
-    const start = (page - 1) * limit;
-    const slice = courses.slice(start, start + limit).map(courseWithProgramTitle);
-    const lastPage = Math.max(1, Math.ceil(courses.length / limit));
+    const limit = Math.min(500, Math.max(1, parseInt(params.get('limit') || '100', 10)));
+    const programRaw = (params.get('program') || '').trim();
+    const programNorm = programRaw.toLowerCase();
 
-    return { data: slice, meta: { page, limit, total: courses.length, lastPage } };
+    let list = courses;
+    if (programRaw) {
+      list = courses.filter((course) => {
+        const programId = String(course.programId ?? '');
+        if (programId === programRaw) {
+          return true;
+        }
+        const programRow = programs.find((p) => p.id === programId);
+        if (!programRow) {
+          return false;
+        }
+        const code = String(programRow.code ?? '').trim().toLowerCase();
+        const title = String(programRow.title ?? '').trim().toLowerCase();
+        return (
+          programId.toLowerCase() === programNorm ||
+          code === programNorm ||
+          title === programNorm.replace(/-/g, ' ')
+        );
+      });
+    }
+
+    const start = (page - 1) * limit;
+    const slice = list.slice(start, start + limit).map(courseWithProgramTitle);
+    const lastPage = Math.max(1, Math.ceil(list.length / limit));
+
+    return { data: slice, meta: { page, limit, total: list.length, lastPage } };
   }
 
   if (path === '/api/enrollments') {
-    return { data: enrollments };
+    if (!params.get('page')) {
+      return { data: enrollments };
+    }
+
+    const pageNum = Math.max(1, parseInt(params.get('page') || '1', 10));
+    let perPageNum = parseInt(params.get('per_page') || '10', 10);
+    if (![5, 10, 20, 50, 100].includes(perPageNum)) {
+      perPageNum = 10;
+    }
+    const searchRaw = (params.get('search') || '').trim().toLowerCase();
+    let list = [...enrollments];
+    if (searchRaw) {
+      list = list.filter((row) => {
+        const hay = `${row.id} ${row.programId} ${row.programTitle} ${row.userName} ${row.userEmail} ${row.phoneNumber ?? ''} ${row.schoolHeld ?? ''} ${row.status}`.toLowerCase();
+        return hay.includes(searchRaw);
+      });
+    }
+    const total = list.length;
+    const lastPage = Math.max(1, Math.ceil(total / perPageNum));
+    const currentPage = Math.min(pageNum, lastPage);
+    const start = (currentPage - 1) * perPageNum;
+    const slice = list.slice(start, start + perPageNum);
+
+    return {
+      data: slice,
+      meta: {
+        current_page: currentPage,
+        last_page: lastPage,
+        per_page: perPageNum,
+        total,
+        from: total === 0 ? 0 : start + 1,
+        to: total === 0 ? 0 : Math.min(start + perPageNum, total),
+      },
+    };
   }
 
   if (path === '/api/modules') {
@@ -558,15 +924,41 @@ export async function mockResponseForKey(key) {
   return null;
 }
 
-export async function submitEnrollmentRequest(courseId) {
+export async function submitEnrollmentRequest(programId) {
   await delay(180);
 
-  return {
+  const rejected = enrollments.find(
+    (row) => row.programId === programId && row.status === ENROLLMENT_STATUSES[2]
+  );
+  if (rejected) {
+    rejected.status = ENROLLMENT_STATUSES[0];
+    rejected.submittedAt = new Date().toISOString().slice(0, 10);
+    return { ...rejected };
+  }
+
+  const hasActive = enrollments.some(
+    (row) =>
+      row.programId === programId &&
+      (row.status === ENROLLMENT_STATUSES[0] || row.status === ENROLLMENT_STATUSES[1])
+  );
+  if (hasActive) {
+    throw new Error('You already have an enrollment application for this program.');
+  }
+
+  const created = {
     id: `enrollment-${Date.now()}`,
-    courseId,
+    programId,
+    programTitle: programs.find((p) => p.id === programId)?.title ?? '',
+    userName: user.displayName,
+    userEmail: user.email,
+    phoneNumber: user.phoneNumber ?? '',
+    schoolHeld: user.schoolHeld ?? '',
     submittedAt: new Date().toISOString().slice(0, 10),
-    status: 'pending',
+    status: ENROLLMENT_STATUSES[0],
   };
+  enrollments.unshift(created);
+
+  return created;
 }
 
 export async function simulateQuizAttempt(quizId) {

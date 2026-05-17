@@ -13,7 +13,7 @@ export default function OverviewAppPage() {
     <>
       <title>{metadata.title}</title>
 
-      <Navigate to={paths.dashboard.studentProfile} replace />
+      <Navigate to={paths.dashboard.enrolledCourses} replace />
     </>
   );
 }

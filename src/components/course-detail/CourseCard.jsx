@@ -4,25 +4,6 @@ import { RouterLink } from 'src/routes/components';
 
 import { colors } from './course-detail-tokens';
 
-const Badge = styled.span`
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  left: auto;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #fff;
-  background: ${(props) => {
-    if (props.$tone === 'hot') return '#ef4444';
-    if (props.$tone === 'special') return '#22c55e';
-    return '#22c55e';
-  }};
-`;
-
 const Media = styled.div`
   position: relative;
   aspect-ratio: 16 / 9;
@@ -116,8 +97,6 @@ const CardLink = styled(RouterLink)`
 
 /** Grid card — related courses strip */
 export function CourseCard({
-  badge,
-  badgeTone,
   imageUrl,
   title,
   priceLabel,
@@ -133,7 +112,6 @@ export function CourseCard({
     <Root style={href ? { height: '100%' } : undefined}>
       <Media>
         <MediaImg src={imageUrl} alt="" loading="lazy" />
-        {badge ? <Badge $tone={badgeTone}>{badge}</Badge> : null}
       </Media>
       <Lower>
         <Title>{title}</Title>

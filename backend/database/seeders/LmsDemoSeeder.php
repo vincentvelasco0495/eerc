@@ -195,6 +195,7 @@ class LmsDemoSeeder extends Seeder
             'email' => 'alex.rivera@eerc.edu',
             'password' => Hash::make('password'),
             'role' => 'admin',
+            'status' => 'active',
         ]);
 
         $u2 = User::query()->create([
@@ -203,6 +204,7 @@ class LmsDemoSeeder extends Seeder
             'email' => 'mina@demo.edu',
             'password' => Hash::make('password'),
             'role' => 'student',
+            'status' => 'active',
         ]);
 
         $u3 = User::query()->create([
@@ -211,6 +213,7 @@ class LmsDemoSeeder extends Seeder
             'email' => 'reese@demo.edu',
             'password' => Hash::make('password'),
             'role' => 'instructor',
+            'status' => 'active',
         ]);
 
         LmsUserProfile::query()->create([
@@ -294,14 +297,14 @@ class LmsDemoSeeder extends Seeder
         Enrollment::query()->create([
             'public_id' => 'enrollment-001',
             'user_id' => $u1->id,
-            'course_id' => Course::query()->where('public_id', 'course-ce-review')->value('id'),
+            'program_id' => Program::query()->where('public_id', 'program-ce')->value('id'),
             'status' => 'approved',
             'submitted_at' => '2026-04-10',
         ]);
         Enrollment::query()->create([
             'public_id' => 'enrollment-002',
             'user_id' => $u1->id,
-            'course_id' => Course::query()->where('public_id', 'course-materials-intensive')->value('id'),
+            'program_id' => Program::query()->where('public_id', 'program-materials')->value('id'),
             'status' => 'pending',
             'submitted_at' => '2026-04-21',
         ]);
@@ -328,5 +331,8 @@ class LmsDemoSeeder extends Seeder
             'asset_type' => 'PDF',
             'status' => 'Published',
         ]);
+
+        $this->call(InstructorSeeder::class);
+        $this->call(StudentSeeder::class);
     }
 }

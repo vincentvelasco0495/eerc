@@ -13,6 +13,8 @@ import { _notifications } from 'src/_mock';
 import { Logo } from 'src/components/logo';
 import { useSettingsContext } from 'src/components/settings';
 
+import { useAuthContext } from 'src/auth/hooks';
+
 import { _account } from '../nav-config-account';
 import { AccountDrawer } from '../components/account-drawer';
 import { SettingsButton } from '../components/settings-button';
@@ -25,6 +27,7 @@ import { NotificationsDrawer } from '../components/notifications-drawer';
 export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery = 'lg' }) {
   const theme = useTheme();
   const pathname = usePathname();
+  const { authenticated } = useAuthContext();
 
   const settings = useSettingsContext();
 
@@ -37,19 +40,27 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
     paths.dashboard.instructorGradebook,
     paths.dashboard.instructorCourseCurriculum,
     paths.dashboard.instructorAssignments,
-    paths.dashboard.studentProfile,
+    paths.dashboard.instructors,
+    paths.dashboard.enrollment,
+    paths.dashboard.programs,
+    paths.dashboard.students,
+    paths.dashboard.enrolledCourses,
+    paths.dashboard.availablePrograms,
     paths.dashboard.studentAssignments,
     paths.dashboard.quizzes.root,
     paths.dashboard.studentSettings,
   ].includes(pathname);
 
+  const isCourseDetailsLanding =
+    /^\/course-details\/[^/]+\/?$/.test(pathname ?? '') ||
+    /^\/courses\/[^/]+\/?$/.test(pathname ?? '');
+
   const hideDashboardHeader =
     pathname === paths.dashboard.instructorCourseCurriculum ||
     /^\/program-course-detail(\/.*)?$/.test(pathname ?? '') ||
-    /^\/instructor-course\/[^/]+\/edit\/?$/.test(pathname ?? '');
-  const hideHeaderLogo =
-    /^\/course-details\/[^/]+\/?$/.test(pathname ?? '') ||
-    /^\/courses\/[^/]+\/?$/.test(pathname ?? '');
+    /^\/instructor-course\/[^/]+\/edit\/?$/.test(pathname ?? '') ||
+    (isCourseDetailsLanding && !authenticated);
+  const hideHeaderLogo = isCourseDetailsLanding;
 
   const isNavMini = settings.state.navLayout === 'mini';
   const isNavHorizontal = settings.state.navLayout === 'horizontal';

@@ -1,12 +1,8 @@
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
-import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
-import Typography from '@mui/material/Typography';
 
-import { styles } from './styles';
-
-export function StudentSettingsProfileFields({ values, displayOptions, onChange }) {
+export function StudentSettingsProfileFields({ values, errors = {}, onChange, maxBirthday }) {
   return (
     <Stack spacing={3}>
       <Grid container spacing={3}>
@@ -31,27 +27,47 @@ export function StudentSettingsProfileFields({ values, displayOptions, onChange 
         </Grid>
       </Grid>
 
-      <Stack spacing={1}>
-        <TextField
-          select
-          label="Display name publicly as:"
-          value={values.displayName}
-          onChange={(event) => onChange('displayName', event.target.value)}
-          sx={styles.displayNameField}
-          slotProps={{ inputLabel: { shrink: true } }}
-        >
-          {displayOptions.map((option) => (
-            <MenuItem key={option} value={option}>
-              {option}
-            </MenuItem>
-          ))}
-        </TextField>
+      <Grid container spacing={3}>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            fullWidth
+            required
+            label="Phone number"
+            value={values.phoneNumber}
+            onChange={(event) => onChange('phoneNumber', event.target.value)}
+            error={Boolean(errors.phoneNumber)}
+            helperText={errors.phoneNumber || '10–15 digits; spaces and + - ( ) allowed.'}
+            slotProps={{ inputLabel: { shrink: true } }}
+          />
+        </Grid>
 
-        <Typography variant="body2" sx={styles.hint}>
-          The display name is shown in all public fields, such as the author name, instructor
-          name, and student name.
-        </Typography>
-      </Stack>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            fullWidth
+            required
+            type="date"
+            label="Birthday"
+            value={values.birthday}
+            onChange={(event) => onChange('birthday', event.target.value)}
+            error={Boolean(errors.birthday)}
+            helperText={errors.birthday || 'You must be at least 18 years old.'}
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { max: maxBirthday },
+            }}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12 }}>
+          <TextField
+            fullWidth
+            label="School held"
+            value={values.schoolHeld}
+            onChange={(event) => onChange('schoolHeld', event.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+          />
+        </Grid>
+      </Grid>
     </Stack>
   );
 }

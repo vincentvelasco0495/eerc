@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Enrollment extends Model
 {
-    protected $fillable = ['public_id', 'user_id', 'course_id', 'status', 'submitted_at'];
+    protected $fillable = ['public_id', 'user_id', 'program_id', 'status', 'submitted_at'];
 
     protected function casts(): array
     {
@@ -21,8 +21,8 @@ class Enrollment extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function course(): BelongsTo
+    public function program(): BelongsTo
     {
-        return $this->belongsTo(Course::class, 'course_id');
+        return $this->belongsTo(Program::class, 'program_id');
     }
 }

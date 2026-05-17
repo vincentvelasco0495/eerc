@@ -36,8 +36,6 @@ export function RelatedCourses({ title = 'Related courses', items, omitOuterTopM
         {items.map((c) => (
           <CourseCard
             key={c.id}
-            badge={c.badge}
-            badgeTone={c.badgeTone}
             imageUrl={c.imageUrl}
             title={c.title}
             priceLabel={c.priceLabel}

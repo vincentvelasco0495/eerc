@@ -1,4 +1,4 @@
-import { useParams, useSearchParams } from 'react-router';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { useRef, useMemo, useState, useEffect, useCallback, useLayoutEffect } from 'react';
 
 import Box from '@mui/material/Box';
@@ -18,12 +18,14 @@ import {
   useLmsActions,
   useLmsCourses,
   useLmsQuizResults,
-  useLmsCourseQuizzes,
+  useLmsModulesByCourse,
+  extractQuizzesFromModules,
   useResolvedCourseIdFromLookup,
 } from 'src/hooks/use-lms';
 
 import { CONFIG } from 'src/global-config';
 import { DashboardContent } from 'src/layouts/dashboard';
+import { useLmsCourseDetailShell } from 'src/features/courses/hooks/use-lms-course-detail-shell';
 
 import { Iconify } from 'src/components/iconify';
 import { CourseDetailBackArrowSvg } from 'src/components/course-detail/course-detail-back-arrow';
@@ -179,6 +181,7 @@ function passBlockStorageKey(quizId) {
 
 export function CourseQuizTakeView() {
   const theme = useTheme();
+  const navigate = useNavigate();
   const { slug = '', courseId = '', quizId = '' } = useParams();
   const courseLookup = slug || courseId;
   const [searchParams, setSearchParams] = useSearchParams();
@@ -188,11 +191,28 @@ export function CourseQuizTakeView() {
   const { mutate: mutateQuizResults } = useLmsQuizResults();
   const resolvedCourseId = useResolvedCourseIdFromLookup(courseLookup);
   const course = useLmsCourse(resolvedCourseId);
-  const { quizzes, mutateModules } = useLmsCourseQuizzes(resolvedCourseId);
+  const { modules, mutate: mutateModules, isLoading: modulesLoading } =
+    useLmsModulesByCourse(resolvedCourseId);
+  const quizzesForCourse = useMemo(() => extractQuizzesFromModules(modules), [modules]);
   const quizMeta = useMemo(
-    () => quizzes.find((item) => item.id === quizId) ?? null,
-    [quizzes, quizId]
+    () => quizzesForCourse.find((item) => item.id === quizId) ?? null,
+    [quizzesForCourse, quizId]
   );
+
+  const { shell, isLessonLocked } = useLmsCourseDetailShell(course, modules, quizzesForCourse);
+
+  const courseLinkHref = paths.dashboard.courseDetails(
+    typeof course?.slug === 'string' && course.slug.trim() ? course.slug.trim() : courseLookup
+  );
+
+  useEffect(() => {
+    if (!quizId || !resolvedCourseId || modulesLoading || !course || !shell) {
+      return;
+    }
+    if (isLessonLocked(quizId)) {
+      navigate(`${courseLinkHref}#curriculum`, { replace: true });
+    }
+  }, [quizId, resolvedCourseId, modulesLoading, course, shell, isLessonLocked, navigate, courseLinkHref]);
 
   const [apiQuestions, setApiQuestions] = useState([]);
   /** Order / option shuffle applied when instructor toggles are ON (stable across refresh via session). */
@@ -540,10 +560,6 @@ export function CourseQuizTakeView() {
     return () => window.clearInterval(id);
   }, [phase, quizId, deadlineAtMs]);
 
-  const courseLinkHref = paths.dashboard.courseDetails(
-    typeof course?.slug === 'string' && course.slug.trim() ? course.slug.trim() : courseLookup
-  );
-
   const title = typeof quizMeta?.title === 'string' && quizMeta.title.trim() ? quizMeta.title.trim() : 'Quiz';
 
   const current = displayQuestions[step] ?? null;
@@ -614,7 +630,10 @@ export function CourseQuizTakeView() {
   };
 
   const loading = Boolean(
-    courseLookup && (coursesLoading || (resolvedCourseId && !course && !coursesLoading))
+    courseLookup &&
+      (coursesLoading ||
+        modulesLoading ||
+        (resolvedCourseId && !course && !coursesLoading))
   );
 
   if (!CONFIG.serverUrl?.trim()) {

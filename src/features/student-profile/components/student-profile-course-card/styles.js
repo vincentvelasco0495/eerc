@@ -40,7 +40,22 @@ export function cardArtSx(variant) {
   };
 }
 
+export const cardBannerFrameSx = {
+  position: 'relative',
+  minHeight: 180,
+  height: 180,
+  borderRadius: 2,
+  overflow: 'hidden',
+  bgcolor: 'background.neutral',
+};
+
 export const styles = {
+  bannerSkeleton: {
+    width: 1,
+    minHeight: 180,
+    height: 180,
+    borderRadius: 2,
+  },
   card: {
     width: 1,
     height: '100%',
@@ -50,9 +65,16 @@ export const styles = {
     boxShadow: 'none',
   },
   cardContent: { p: 2 },
-  badgeChip: { ml: 'auto', display: 'flex', width: 'fit-content' },
   categoryCaption: { color: 'text.secondary' },
   title: { minHeight: 58, lineHeight: 1.35 },
+  description: {
+    color: 'text.secondary',
+    lineHeight: 1.55,
+    display: '-webkit-box',
+    WebkitLineClamp: 3,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+  },
   courseMetaPill: {
     px: 1,
     py: 0.6,

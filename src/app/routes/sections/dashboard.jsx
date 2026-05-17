@@ -36,8 +36,11 @@ const InstructorCourseCurriculumPage = lazy(() =>
 const InstructorCourseEditPage = lazy(() => import('src/pages/dashboard/instructor-course-edit'));
 const InstructorAssignmentsPage = lazy(() => import('src/pages/dashboard/instructor-assignments'));
 const ProgramsPage = lazy(() => import('src/pages/dashboard/programs'));
+const InstructorsPage = lazy(() => import('src/pages/dashboard/instructors'));
+const StudentsPage = lazy(() => import('src/pages/dashboard/students'));
 const SettingsPage = lazy(() => import('src/pages/dashboard/settings'));
-const StudentProfilePage = lazy(() => import('src/pages/dashboard/student-profile'));
+const EnrolledCoursesPage = lazy(() => import('src/pages/dashboard/enrolled-courses/index.jsx'));
+const AvailableProgramsPage = lazy(() => import('src/pages/dashboard/available-programs/index.jsx'));
 
 function SuspenseOutlet() {
   const pathname = usePathname();
@@ -102,9 +105,16 @@ export const dashboardRoutes = [
       { path: 'instructor-course/:courseLookup/edit', element: <InstructorCourseEditPage /> },
       { path: 'instructor-assignments', element: <InstructorAssignmentsPage /> },
       { path: 'programs', element: <ProgramsPage /> },
+      { path: 'instructors', element: <InstructorsPage /> },
+      { path: 'students', element: <StudentsPage /> },
       { path: 'assignments', element: <AssignmentsPage /> },
       { path: 'settings', element: <SettingsPage /> },
-      { path: 'student-profile', element: <StudentProfilePage /> },
+      { path: 'enrolled-courses', element: <EnrolledCoursesPage /> },
+      {
+        path: 'student-profile',
+        element: <Navigate to={paths.dashboard.enrolledCourses} replace />,
+      },
+      { path: 'available-programs', element: <AvailableProgramsPage /> },
       { path: 'enrollment', element: <EnrollmentPage /> },
       { path: 'admin', element: <AdminPage /> },
       {

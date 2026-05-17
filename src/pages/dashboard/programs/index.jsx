@@ -1,34 +1,38 @@
-import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router';
+import { useRef, useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
-import Table from '@mui/material/Table';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
-import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableHead from '@mui/material/TableHead';
 import Typography from '@mui/material/Typography';
 import CardContent from '@mui/material/CardContent';
 
-import { useLmsUser, useLmsActions, useLmsPrograms } from 'src/hooks/use-lms';
+import {
+  useLmsUser,
+  useLmsActions,
+  useLmsProgramsPaginated,
+  useRefreshLmsProgramsCatalog,
+} from 'src/hooks/use-lms';
 
 import { CONFIG } from 'src/global-config';
 import {
   getLmsAxiosErrorMessage,
 } from 'src/lib/lms-instructor-api';
+import { normalizeProgramsPage, normalizeProgramsPerPage } from 'src/services/programService';
 import { StudentWorkspaceShell } from 'src/features/student-profile/components/student-workspace-shell';
 import { InstructorWorkspaceShell } from 'src/features/instructor-profile/components/instructor-workspace-shell';
 
 import { Editor } from 'src/components/editor';
 import { toast } from 'src/components/snackbar';
 import { ConfirmDialog } from 'src/components/custom-dialog';
+import { ProgramTable } from 'src/components/programs/ProgramTable';
+import { ProgramsPagination, ProgramsPerPageControl } from 'src/components/programs/Pagination';
 
 const DEFAULT_FORM = {
   code: '',
@@ -42,7 +46,42 @@ const DEFAULT_FORM = {
 };
 
 export default function ProgramsPage() {
-  const { programs, isLoading, error, mutate: mutatePrograms } = useLmsPrograms();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = normalizeProgramsPage(searchParams.get('page'));
+  const perPage = normalizeProgramsPerPage(searchParams.get('per_page'));
+
+  const [searchDraft, setSearchDraft] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const prevDebouncedSearch = useRef(debouncedSearch);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchDraft.trim()), 400);
+    return () => clearTimeout(t);
+  }, [searchDraft]);
+
+  useEffect(() => {
+    if (prevDebouncedSearch.current === debouncedSearch) {
+      return;
+    }
+    prevDebouncedSearch.current = debouncedSearch;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('page', '1');
+        return next;
+      },
+      { replace: true }
+    );
+  }, [debouncedSearch, setSearchParams]);
+
+  const {
+    programs,
+    meta,
+    isLoading: listLoading,
+    error: listError,
+    mutate: mutateProgramsPage,
+  } = useLmsProgramsPaginated(page, perPage, debouncedSearch);
+  const refreshProgramsCatalog = useRefreshLmsProgramsCatalog();
   const { runCommand } = useLmsActions();
   const { user } = useLmsUser();
   const [form, setForm] = useState(DEFAULT_FORM);
@@ -52,9 +91,73 @@ export default function ProgramsPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDeleteRow, setPendingDeleteRow] = useState(null);
 
-  const sortedPrograms = useMemo(
-    () => [...(programs ?? [])].sort((a, b) => String(a.title).localeCompare(String(b.title))),
-    [programs]
+  const currentPage = meta?.current_page ?? page;
+  const lastPage = meta?.last_page ?? 1;
+  const total = meta?.total ?? 0;
+  const rangeFrom = meta?.from ?? 0;
+  const rangeTo = meta?.to ?? 0;
+
+  const listErrorMessage =
+    typeof listError === 'string' ? listError : listError?.message ?? null;
+
+  useEffect(() => {
+    if (!listErrorMessage) {
+      return;
+    }
+    toast.error(listErrorMessage);
+  }, [listErrorMessage]);
+
+  useEffect(() => {
+    if (!meta?.last_page) {
+      return;
+    }
+    const lp = meta.last_page;
+    if (page > lp) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('page', String(lp));
+          return next;
+        },
+        { replace: true }
+      );
+    }
+  }, [meta, page, setSearchParams]);
+
+  const refetchProgramLists = useCallback(async () => {
+    await Promise.all([mutateProgramsPage(), refreshProgramsCatalog()]);
+  }, [mutateProgramsPage, refreshProgramsCatalog]);
+
+  const goToPage = useCallback(
+    (nextPage) => {
+      const lp = Math.max(1, lastPage);
+      const safe = Math.max(1, Math.min(lp, nextPage));
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('page', String(safe));
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [lastPage, setSearchParams]
+  );
+
+  const changePerPage = useCallback(
+    (nextPer) => {
+      const normalized = normalizeProgramsPerPage(nextPer);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('per_page', String(normalized));
+          next.set('page', '1');
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
   );
 
   const canSubmit = form.code.trim() !== '' && form.title.trim() !== '';
@@ -115,7 +218,7 @@ export default function ProgramsPage() {
         toast.success('Program created.');
       }
 
-      await mutatePrograms();
+      await refetchProgramLists();
       resetForm();
     } catch (err) {
       toast.error(getLmsAxiosErrorMessage(err, 'Could not save program.'));
@@ -149,7 +252,7 @@ export default function ProgramsPage() {
       toast.success('Program deleted.');
       setConfirmOpen(false);
       setPendingDeleteRow(null);
-      await mutatePrograms();
+      await refetchProgramLists();
     } catch (err) {
       toast.error(getLmsAxiosErrorMessage(err, 'Could not delete program.'));
     } finally {
@@ -274,76 +377,62 @@ export default function ProgramsPage() {
             </CardContent>
           </Card>
 
-          {error ? <Alert severity="error">{error?.message ?? 'Failed to load programs.'}</Alert> : null}
+          {listErrorMessage ? (
+            <Alert severity="error">{listErrorMessage}</Alert>
+          ) : null}
 
           <Card>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Program list
-              </Typography>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Code</TableCell>
-                    <TableCell>Slug</TableCell>
-                    <TableCell>Title</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Banner image</TableCell>
-                    <TableCell>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={6}>Loading...</TableCell>
-                    </TableRow>
-                  ) : sortedPrograms.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6}>No programs found.</TableCell>
-                    </TableRow>
-                  ) : (
-                    sortedPrograms.map((row) => (
-                      <TableRow key={row.id} hover>
-                        <TableCell>{row.code}</TableCell>
-                        <TableCell>{row.slug ?? '—'}</TableCell>
-                        <TableCell>{row.title}</TableCell>
-                        <TableCell>{row.status ?? 'active'}</TableCell>
-                        <TableCell>
-                          {row.bannerPath ? (
-                            <Box
-                              component="img"
-                              src={resolveBannerSrc(row.bannerPath)}
-                              alt={`${row.title} banner`}
-                              sx={{ width: 120, height: 56, objectFit: 'cover', borderRadius: 1 }}
-                            />
-                          ) : (
-                            '—'
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Stack direction="row" spacing={1}>
-                            <Button size="small" variant="text" onClick={() => handleEdit(row)}>
-                              Edit
-                            </Button>
-                            <Button
-                              size="small"
-                              color="error"
-                              variant="text"
-                              disabled={busyId === row.id}
-                              onClick={() => {
-                                setPendingDeleteRow(row);
-                                setConfirmOpen(true);
-                              }}
-                            >
-                              Delete
-                            </Button>
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              <Stack spacing={2}>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  flexWrap="wrap"
+                  columnGap={2}
+                  rowGap={1}
+                >
+                  <Typography variant="h6" sx={{ minWidth: 0 }}>
+                    Program list
+                  </Typography>
+                  <ProgramsPerPageControl
+                    perPage={perPage}
+                    onPerPageChange={changePerPage}
+                    disabled={listLoading}
+                  />
+                </Stack>
+                <TextField
+                  size="small"
+                  label="Search"
+                  placeholder="Filter by title, code, or slug…"
+                  value={searchDraft}
+                  onChange={(e) => setSearchDraft(e.target.value)}
+                  sx={{ maxWidth: { xs: '100%', sm: 360 } }}
+                />
+                <ProgramTable
+                  programs={programs}
+                  loading={listLoading}
+                  resolveBannerSrc={resolveBannerSrc}
+                  onEdit={handleEdit}
+                  onDelete={(row) => {
+                    setPendingDeleteRow(row);
+                    setConfirmOpen(true);
+                  }}
+                  busyId={busyId}
+                  emptyMessage={
+                    debouncedSearch ? 'No programs match your search.' : 'No programs found'
+                  }
+                />
+                <ProgramsPagination
+                  page={currentPage}
+                  lastPage={lastPage}
+                  total={total}
+                  from={rangeFrom}
+                  to={rangeTo}
+                  onPageChange={goToPage}
+                  disabled={listLoading}
+                />
+              </Stack>
             </CardContent>
           </Card>
         </Stack>

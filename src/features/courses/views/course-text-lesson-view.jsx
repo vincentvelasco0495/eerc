@@ -25,11 +25,14 @@ import {
 
 import { CONFIG } from 'src/global-config';
 import { DashboardContent } from 'src/layouts/dashboard';
+import { guestCanAccessLesson } from 'src/features/courses/utils/lesson-preview-access';
+import { useLmsCourseDetailShell } from 'src/features/courses/hooks/use-lms-course-detail-shell';
 
 import { Iconify } from 'src/components/iconify';
 import { CourseDetailBackArrowSvg } from 'src/components/course-detail/course-detail-back-arrow';
 import { colors as courseDetailColors } from 'src/components/course-detail/course-detail-tokens';
-import { mapLmsToStyledCourseDetail } from 'src/components/course-detail/map-lms-to-styled-shell';
+
+import { useAuthContext } from 'src/auth/hooks';
 
 import { resolveTextLessonFromModules } from '../utils/resolve-text-lesson-from-modules';
 
@@ -89,6 +92,8 @@ export function CourseTextLessonView() {
   const { slug = '', courseId = '', lessonId = '' } = useParams();
   const courseLookup = slug || courseId;
   const navigate = useNavigate();
+  const { authenticated } = useAuthContext();
+  const isGuest = !authenticated;
   const { runCommand } = useLmsActions();
   const sentLessonRef = useRef('');
 
@@ -102,13 +107,18 @@ export function CourseTextLessonView() {
     [modules]
   );
 
+  const { shell, isLessonLocked } = useLmsCourseDetailShell(course, modules, quizzesForCourse);
+
   const lessonPayload = useMemo(
     () => resolveTextLessonFromModules(lessonId, modules),
     [lessonId, modules]
   );
 
   useEffect(() => {
-    if (!resolvedCourseId || !lessonId || !lessonPayload) {
+    if (!resolvedCourseId || !lessonId || !lessonPayload || isGuest) {
+      return;
+    }
+    if (isLessonLocked(lessonId)) {
       return;
     }
     const k = `${resolvedCourseId}:${lessonId}`;
@@ -124,13 +134,42 @@ export function CourseTextLessonView() {
       .catch(() => {
         // Keep lesson UX uninterrupted if progress post fails.
       });
-  }, [resolvedCourseId, lessonId, lessonPayload, mutateModules, runCommand]);
+  }, [resolvedCourseId, lessonId, lessonPayload, mutateModules, runCommand, isLessonLocked, isGuest]);
+
+  const courseLinkHref = paths.dashboard.courseDetails(
+    typeof course?.slug === 'string' && course.slug.trim() ? course.slug.trim() : courseLookup
+  );
+
+  useEffect(() => {
+    if (!lessonId || courseLoading || modulesLoading) {
+      return;
+    }
+    if (isGuest && !guestCanAccessLesson(lessonId, modules)) {
+      navigate(`${courseLinkHref}#curriculum`, { replace: true });
+      return;
+    }
+    if (!shell) {
+      return;
+    }
+    if (isLessonLocked(lessonId)) {
+      navigate(`${courseLinkHref}#curriculum`, { replace: true });
+    }
+  }, [
+    lessonId,
+    courseLoading,
+    modulesLoading,
+    shell,
+    isLessonLocked,
+    isGuest,
+    modules,
+    navigate,
+    courseLinkHref,
+  ]);
 
   const navIds = useMemo(() => {
-    if (!course || !lessonId) {
+    if (!course || !lessonId || !shell) {
       return { prevId: null, nextId: null };
     }
-    const shell = mapLmsToStyledCourseDetail(course, modules, quizzesForCourse);
     const docLessons = [];
     shell.curriculumModules.forEach((mod) => {
       mod.lessons.forEach((les) => {
@@ -144,11 +183,7 @@ export function CourseTextLessonView() {
       prevId: idx > 0 ? docLessons[idx - 1] : null,
       nextId: idx >= 0 && idx < docLessons.length - 1 ? docLessons[idx + 1] : null,
     };
-  }, [course, modules, quizzesForCourse, lessonId]);
-
-  const courseLinkHref = paths.dashboard.courseDetails(
-    typeof course?.slug === 'string' && course.slug.trim() ? course.slug.trim() : courseLookup
-  );
+  }, [course, lessonId, shell]);
 
   const toLessonHref = useCallback(
     (id) => (id ? paths.dashboard.courseTextLesson(courseLookup, id) : null),
@@ -253,7 +288,7 @@ export function CourseTextLessonView() {
     );
   }
 
-  const materials = lessonPayload.lessonMaterials;
+  const materials = isGuest ? [] : lessonPayload.lessonMaterials;
   const courseTitle =
     typeof course?.title === 'string' && course.title.trim() ? course.title.trim() : 'Course';
 

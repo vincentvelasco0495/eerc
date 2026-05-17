@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\LmsAnalyticsController;
 use App\Http\Controllers\Api\LmsCourseController;
 use App\Http\Controllers\Api\LmsLeaderboardController;
 use App\Http\Controllers\Api\LmsMetaController;
+use App\Http\Controllers\Api\LmsInstructorController;
+use App\Http\Controllers\Api\LmsStudentController;
 use App\Http\Controllers\Api\LmsProgramController;
 use App\Http\Controllers\Api\LmsQuizResultController;
 use App\Http\Controllers\Api\LmsUserController;
@@ -46,9 +48,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('/user', [LmsUserController::class, 'show']);
+    Route::patch('/user', [LmsUserController::class, 'update']);
     Route::post('/programs', [LmsProgramController::class, 'store']);
     Route::patch('/programs/{programPublicId}', [LmsProgramController::class, 'update']);
     Route::delete('/programs/{programPublicId}', [LmsProgramController::class, 'destroy']);
+
+    Route::get('/instructors/linkable-users', [LmsInstructorController::class, 'linkableUsers']);
+    Route::get('/instructors', [LmsInstructorController::class, 'index']);
+    Route::post('/instructors', [LmsInstructorController::class, 'store']);
+    Route::patch('/instructors/{userPublicUid}', [LmsInstructorController::class, 'update']);
+    Route::delete('/instructors/{userPublicUid}', [LmsInstructorController::class, 'destroy']);
+
+    Route::get('/students/linkable-users', [LmsStudentController::class, 'linkableUsers']);
+    Route::get('/students', [LmsStudentController::class, 'index']);
+    Route::post('/students', [LmsStudentController::class, 'store']);
+    Route::patch('/students/{userPublicUid}', [LmsStudentController::class, 'update']);
+    Route::delete('/students/{userPublicUid}', [LmsStudentController::class, 'destroy']);
     Route::post('/courses', [LmsCourseController::class, 'store']);
     Route::post('/courses/{coursePublicId}/modules', [LmsModuleController::class, 'store']);
     Route::patch('/courses/{coursePublicId}/modules/reorder', [LmsModuleController::class, 'reorder']);

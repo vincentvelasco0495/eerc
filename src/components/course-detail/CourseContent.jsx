@@ -1,5 +1,8 @@
 import styled from 'styled-components';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
+
+import Box from '@mui/material/Box';
+import Skeleton from '@mui/material/Skeleton';
 
 import { CourseFaq } from './CourseFaq';
 import { CourseTabs } from './CourseTabs';
@@ -11,6 +14,16 @@ import { radii, space, colors } from './course-detail-tokens';
 const HeroFigure = styled.figure`
   margin: 0 0 ${space(2)};
 `;
+
+const heroBannerFrameStyle = {
+  position: 'relative',
+  width: '100%',
+  aspectRatio: '16 / 9',
+  borderRadius: radii.card,
+  overflow: 'hidden',
+  bgcolor: 'grey.300',
+  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+};
 
 const HeroImg = styled.img`
   display: block;
@@ -150,10 +163,39 @@ export function CourseContent({
 
   const { paragraphs, learningOutcomes, audience } = data;
 
+  const [bannerLoadFailed, setBannerLoadFailed] = useState(false);
+
+  useEffect(() => {
+    setBannerLoadFailed(false);
+  }, [heroImageUrl]);
+
+  const handleBannerError = useCallback(() => {
+    setBannerLoadFailed(true);
+  }, []);
+
+  const showBannerImage = Boolean(heroImageUrl) && !bannerLoadFailed;
+
   return (
     <ContentRoot>
       <HeroFigure role="presentation">
-        <HeroImg src={heroImageUrl} alt="Course visualization with wireframes and collaboration" />
+        {showBannerImage ? (
+          <HeroImg src={heroImageUrl} alt="" onError={handleBannerError} />
+        ) : (
+          <Box sx={heroBannerFrameStyle}>
+            <Skeleton
+              variant="rectangular"
+              animation="wave"
+              aria-hidden
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                width: 1,
+                height: 1,
+                transform: 'none',
+              }}
+            />
+          </Box>
+        )}
       </HeroFigure>
 
       {Array.isArray(programCourses) && programCourses.length > 0 ? (

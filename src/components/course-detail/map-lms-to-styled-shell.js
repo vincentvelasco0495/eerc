@@ -1,7 +1,8 @@
 import { paths } from 'src/routes/paths';
 
-import { resolveCourseHeroImageUrl } from 'src/utils/course-hero-image';
+import { resolveCourseMarketingBannerUrl } from 'src/utils/course-hero-image';
 
+import { isLessonPreviewEnabled } from 'src/features/courses/utils/lesson-preview-access';
 import { mergeTabsContentFromCourseApi } from 'src/features/courses/utils/merge-course-tabs-from-api';
 import {
   deriveLessonType,
@@ -27,6 +28,55 @@ function plainTextFromRichLessonFields(row) {
     return sum.trim();
   }
   return '';
+}
+
+/**
+ * When `lockLessonsInOrder` is true, sets each lesson row `locked` if any earlier row
+ * in global curriculum order is incomplete (the first lesson is never locked).
+ *
+ * @param {object[]} curriculumModules
+ * @param {boolean} lockLessonsInOrder
+ */
+export function applySequentialLessonLocks(curriculumModules, lockLessonsInOrder) {
+  if (!Array.isArray(curriculumModules)) {
+    return curriculumModules;
+  }
+  if (!lockLessonsInOrder) {
+    return curriculumModules.map((mod) => ({
+      ...mod,
+      lessons: (mod.lessons ?? []).map((l) => ({ ...l, locked: false })),
+    }));
+  }
+  let prevChainComplete = true;
+  return curriculumModules.map((mod) => ({
+    ...mod,
+    lessons: (mod.lessons ?? []).map((lesson) => {
+      const locked = !prevChainComplete;
+      prevChainComplete = prevChainComplete && Boolean(lesson.completed);
+      return { ...lesson, locked };
+    }),
+  }));
+}
+
+/** True when `/api/modules` rows include server-computed lock flags. */
+function modulesExposeBackendLocks(modules) {
+  return (modules ?? []).some((m) => typeof m?.coreLocked === 'boolean');
+}
+
+/** @param {object[]} curriculumModules output from `{@link applySequentialLessonLocks}` */
+export function isLessonLockedInCurriculum(curriculumModules, lessonId) {
+  const id = String(lessonId ?? '').trim();
+  if (!id) {
+    return false;
+  }
+  for (const mod of curriculumModules ?? []) {
+    for (const les of mod.lessons ?? []) {
+      if (String(les.id) === id) {
+        return Boolean(les.locked);
+      }
+    }
+  }
+  return false;
 }
 
 function reviewsToRating(reviews = []) {
@@ -64,6 +114,8 @@ function reviewsToRating(reviews = []) {
  * @param {object[]} quizzesForCourse  quizzes where `quiz.courseId === course.id`
  * @param {object[]} [quizResults] learner attempt history (`/api/quiz-results`)
  * @param {string[]} [lessonProgressKeys] learner-completed lesson keys
+ * @param {object|null} [courseStats]
+ * @param {{ applyLessonLocks?: boolean }} [options]
  */
 export function mapLmsToStyledCourseDetail(
   course,
@@ -71,8 +123,10 @@ export function mapLmsToStyledCourseDetail(
   quizzesForCourse,
   quizResults = [],
   lessonProgressKeys = [],
-  courseStats = null
+  courseStats = null,
+  options = {}
 ) {
+  const applyLessonLocks = options.applyLessonLocks !== false;
   const moduleEmbeddedQuizzes = (Array.isArray(modules) ? modules : []).flatMap((m) =>
     Array.isArray(m?.quizzes) ? m.quizzes : []
   );
@@ -150,6 +204,8 @@ export function mapLmsToStyledCourseDetail(
               meta,
               sortOrder: typeof sl.sortOrder === 'number' ? sl.sortOrder : Number.MAX_SAFE_INTEGER,
               completed: moduleCompleted || Boolean(sl.completed) || completedLessonKeys.has(sl.id),
+              locked: typeof sl.locked === 'boolean' ? sl.locked : undefined,
+              lessonPreview: isLessonPreviewEnabled(sl.lessonMeta),
               expandable: slExpandable,
               peekBody: slExpandable ? peekText.slice(0, 620) : undefined,
             };
@@ -162,6 +218,7 @@ export function mapLmsToStyledCourseDetail(
             meta: `${q.questionCount ?? 0} questions`,
             sortOrder: typeof q.sortOrder === 'number' ? q.sortOrder : Number.MAX_SAFE_INTEGER,
             completed: attemptedQuizIds.has(q.id),
+            locked: typeof q.locked === 'boolean' ? q.locked : undefined,
             expandable: false,
           }));
           const orderedSupplemental = [...standaloneLessons, ...quizLessons]
@@ -176,6 +233,8 @@ export function mapLmsToStyledCourseDetail(
               title: coreLessonListTitle(m),
               meta: m.duration ?? '—',
               completed: moduleCompleted || Boolean(m.coreCompleted) || completedLessonKeys.has(`${m.id}-core`),
+              locked: typeof m.coreLocked === 'boolean' ? m.coreLocked : undefined,
+              lessonPreview: isLessonPreviewEnabled(m.lessonMeta),
               expandable,
               peekBody,
             },
@@ -359,7 +418,7 @@ export function mapLmsToStyledCourseDetail(
     audience: tabs.audience,
   };
 
-  const heroImageUrl = resolveCourseHeroImageUrl(course);
+  const heroImageUrl = resolveCourseMarketingBannerUrl(course);
 
   const fallbackNoticeBodies =
     tabs.noticeStrings.length > 0
@@ -397,12 +456,20 @@ export function mapLmsToStyledCourseDetail(
     answer: row.answer,
   }));
 
+  const lockLessonsInOrder = applyLessonLocks && Boolean(course?.marketing?.lockLessonsInOrder);
+  const curriculumModulesWithLocks =
+    !applyLessonLocks
+      ? applySequentialLessonLocks(curriculumModules, false)
+      : modulesExposeBackendLocks(sortedModules)
+        ? curriculumModules
+        : applySequentialLessonLocks(curriculumModules, lockLessonsInOrder);
+
   return {
     data,
     heroImageUrl,
     completion,
     detailRows,
-    curriculumModules,
+    curriculumModules: curriculumModulesWithLocks,
     noticeContent,
     faqItems,
     continueHref,

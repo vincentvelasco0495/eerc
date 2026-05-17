@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { useMemo, useState, useEffect, useCallback, useLayoutEffect } from 'react';
+import { useRef, useMemo, useState, useEffect, useCallback, useLayoutEffect } from 'react';
 
 import Box from '@mui/material/Box';
 import Tab from '@mui/material/Tab';
@@ -17,6 +17,7 @@ import { styles } from './styles';
 import { TextLessonWorkspaceHeader } from '../text-lesson-workspace-header';
 import { TextLessonWorkspaceSettings } from '../text-lesson-workspace-settings';
 import { TextLessonWorkspaceMaterials } from '../text-lesson-workspace-materials';
+import { buildLessonAuthoringTargetKey } from '../../utils/lesson-materials-cache';
 import { TextLessonWorkspaceEditorSection } from '../text-lesson-workspace-editor-section';
 import { dayjsFromClockString, normalizeLessonMetaForApi } from '../../utils/lesson-authoring-helpers';
 
@@ -44,8 +45,8 @@ export function CurriculumTextLessonWorkspace({
   saveLiveRichLesson,
   /** Server snapshot driving initial field values (`GET /modules?courseId=…`). */
   liveLessonAuthoring = null,
-  /** Refetch modules catalog after uploads / deletes. */
-  onLessonMaterialsInvalidate,
+  /** Merge uploaded/deleted materials into the modules cache (no full page refetch). */
+  onLessonMaterialsChange,
 }) {
   const [workspaceTab, setWorkspaceTab] = useState(0);
   const [duration, setDuration] = useState('');
@@ -75,21 +76,19 @@ export function CurriculumTextLessonWorkspace({
     } catch {
       metaStable = String(meta);
     }
-    const matsKey = Array.isArray(liveLessonAuthoring.lessonMaterials)
-      ? liveLessonAuthoring.lessonMaterials
-          .map((x) => x?.id)
-          .filter(Boolean)
-          .sort()
-          .join(',')
-      : '';
     return [
       lite(excerpt),
       lite(body),
       metaStable,
-      matsKey,
       liveLessonAuthoring.isCoreLesson ? 'core' : 'standalone',
     ].join('|');
   }, [liveLessonAuthoring, saveLiveRichLesson]);
+
+  const authoringTargetKey = useMemo(
+    () => buildLessonAuthoringTargetKey(lesson, liveLessonAuthoring),
+    [lesson, liveLessonAuthoring]
+  );
+  const hydratedAuthoringKeyRef = useRef('');
 
   const materialModulePublicId = useMemo(() => {
     if (liveLessonAuthoring?.modulePublicId != null && String(liveLessonAuthoring.modulePublicId).trim() !== '') {
@@ -126,6 +125,7 @@ export function CurriculumTextLessonWorkspace({
 
   useLayoutEffect(() => {
     if (!saveLiveRichLesson || !liveLessonAuthoring) {
+      hydratedAuthoringKeyRef.current = '';
       setDuration('');
       setLessonPreview(false);
       setUnlockAfterPurchase(false);
@@ -135,6 +135,11 @@ export function CurriculumTextLessonWorkspace({
       setLessonContentHtml('');
       return;
     }
+
+    if (hydratedAuthoringKeyRef.current === authoringTargetKey) {
+      return;
+    }
+    hydratedAuthoringKeyRef.current = authoringTargetKey;
 
     const lm =
       liveLessonAuthoring.lessonMeta && typeof liveLessonAuthoring.lessonMeta === 'object'
@@ -162,7 +167,7 @@ export function CurriculumTextLessonWorkspace({
 
     setShortDescriptionHtml(String(liveLessonAuthoring.excerptHtml ?? '').trim());
     setLessonContentHtml(String(liveLessonAuthoring.bodyHtml ?? '').trim());
-  }, [lesson.id, lesson.type, saveLiveRichLesson, liveLessonAuthoring, lessonAuthorFingerprint]);
+  }, [authoringTargetKey, lesson.id, lesson.type, saveLiveRichLesson, liveLessonAuthoring]);
 
   const persistLesson = useCallback(async () => {
     if (saveLiveRichLesson) {
@@ -291,8 +296,10 @@ export function CurriculumTextLessonWorkspace({
                 : null
             }
             standaloneLessonPublicId={materialStandaloneLessonPublicId}
-            onAfterMaterialsChange={() => {
-              void onLessonMaterialsInvalidate?.();
+            onAfterMaterialsChange={onLessonMaterialsChange}
+            materialsTarget={{
+              modulePublicId: materialModulePublicId,
+              standaloneLessonPublicId: materialStandaloneLessonPublicId,
             }}
           />
         </Stack>

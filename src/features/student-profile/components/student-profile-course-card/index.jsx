@@ -1,18 +1,44 @@
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
-import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Rating from '@mui/material/Rating';
 import Button from '@mui/material/Button';
+import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
 import CardContent from '@mui/material/CardContent';
 
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 
+import { resolveProgramBannerSrc } from 'src/utils/program-banner';
+
 import { Iconify } from 'src/components/iconify';
 
-import { styles, cardArtSx } from './styles';
+import { styles, cardArtSx, cardBannerFrameSx } from './styles';
+
+function CourseCardBanner({ course }) {
+  const usesProgramBanner = Object.prototype.hasOwnProperty.call(course, 'bannerPath');
+  const bannerSrc = usesProgramBanner ? resolveProgramBannerSrc(course.bannerPath) : '';
+
+  if (usesProgramBanner) {
+    if (bannerSrc) {
+      return (
+        <Box sx={cardBannerFrameSx}>
+          <Box
+            component="img"
+            src={bannerSrc}
+            alt=""
+            sx={{ width: 1, height: 1, objectFit: 'cover', display: 'block' }}
+          />
+        </Box>
+      );
+    }
+
+    return <Skeleton variant="rounded" animation="wave" sx={styles.bannerSkeleton} />;
+  }
+
+  return <Box sx={{ ...cardArtSx(course.variant) }} />;
+}
 
 function CourseMetaPill({ icon, children }) {
   return (
@@ -28,16 +54,7 @@ export function StudentProfileCourseCard({ course }) {
     <Card sx={styles.card}>
       <CardContent sx={styles.cardContent}>
         <Stack spacing={2}>
-          <Box sx={{ ...cardArtSx(course.variant), p: 1.25 }}>
-            {course.badge ? (
-              <Chip
-                label={course.badge}
-                color={course.badge === 'Needs Review' ? 'warning' : 'success'}
-                size="small"
-                sx={styles.badgeChip}
-              />
-            ) : null}
-          </Box>
+          <CourseCardBanner course={course} />
 
           <Stack spacing={1}>
             <Typography variant="caption" sx={styles.categoryCaption}>
@@ -46,41 +63,55 @@ export function StudentProfileCourseCard({ course }) {
             <Typography variant="h6" sx={styles.title}>
               {course.title}
             </Typography>
+            {course.description ? (
+              <Typography variant="body2" sx={styles.description}>
+                {course.description}
+              </Typography>
+            ) : null}
           </Stack>
 
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <CourseMetaPill icon="solar:notebook-bookmark-bold-duotone">
-              {course.lessons} Lectures
+              {course.lessons} {course.lessonsMetaLabel ?? 'Lectures'}
             </CourseMetaPill>
+            {typeof course.lectureCount === 'number' && course.lectureCount > 0 ? (
+              <CourseMetaPill icon="solar:book-bookmark-bold-duotone">
+                {course.lectureCount} Lectures
+              </CourseMetaPill>
+            ) : null}
             <CourseMetaPill icon="solar:clock-circle-bold-duotone">
               {course.durationHours} Hours
             </CourseMetaPill>
           </Stack>
 
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Rating readOnly precision={0.1} value={course.rating} size="small" />
-            <Typography variant="body2" sx={styles.ratingCaption}>
-              {course.rating.toFixed(1)}
-            </Typography>
-          </Stack>
+          {typeof course.rating === 'number' && Number.isFinite(course.rating) ? (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Rating readOnly precision={0.1} value={course.rating} size="small" />
+              <Typography variant="body2" sx={styles.ratingCaption}>
+                {course.rating.toFixed(1)}
+              </Typography>
+            </Stack>
+          ) : null}
 
           <Button
             component={RouterLink}
             href={
-              course.courseSlug
-                ? paths.dashboard.courseDetails(course.courseSlug)
-                : course.courseId
-                  ? paths.dashboard.courses.details(course.courseId)
-                  : paths.dashboard.courses.root
+              course.programSlug
+                ? `${paths.programCourseDetail}?program=${encodeURIComponent(course.programSlug)}`
+                : course.courseSlug
+                  ? paths.dashboard.courseDetails(course.courseSlug)
+                  : course.courseId
+                    ? paths.dashboard.courses.details(course.courseId)
+                    : paths.dashboard.courses.root
             }
             variant="contained"
             sx={styles.startCourseBtn}
           >
-            Start Course
+            {course.actionLabel ?? 'Start Course'}
           </Button>
 
           <Typography variant="caption" sx={styles.startedCaption}>
-            Started {course.startedAt}
+            {course.startedAt ? `Started ${course.startedAt}` : 'Available to enroll'}
           </Typography>
         </Stack>
       </CardContent>

@@ -8,6 +8,7 @@ use App\Models\Course;
 use App\Models\Module;
 use App\Models\ModuleResource;
 use App\Models\UserLessonProgress;
+use App\Services\LmsCatalogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -31,7 +32,7 @@ class LmsLessonProgressController extends Controller
         return response()->json(['data' => $lessonKeys]);
     }
 
-    public function complete(Request $request, string $coursePublicId): JsonResponse
+    public function complete(Request $request, string $coursePublicId, LmsCatalogService $catalog): JsonResponse
     {
         $user = $this->lmsActor();
         $course = Course::query()->where('public_id', $coursePublicId)->firstOrFail();
@@ -42,6 +43,10 @@ class LmsLessonProgressController extends Controller
 
         if (! $this->lessonBelongsToCourse($course, $lessonKey)) {
             return response()->json(['message' => 'Lesson does not belong to this course.'], 422);
+        }
+
+        if ($catalog->isCurriculumItemLockedForUser($user, $course, $lessonKey)) {
+            return response()->json(['message' => 'Complete earlier lessons before accessing this one.'], 403);
         }
 
         UserLessonProgress::query()->updateOrCreate(

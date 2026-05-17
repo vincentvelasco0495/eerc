@@ -16,6 +16,8 @@ import { _notifications } from 'src/_mock';
 
 import { Logo } from 'src/components/logo';
 
+import { useAuthContext } from 'src/auth/hooks';
+
 import { NavMobile } from './nav/mobile';
 import { NavDesktop } from './nav/desktop';
 import { Footer, HomeFooter } from './footer';
@@ -38,13 +40,16 @@ const COURSE_DETAIL_NOTIFICATION_DATA = _notifications.map((notification, index)
 
 function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md' }) {
   const pathname = usePathname();
+  const { authenticated } = useAuthContext();
 
   const { goToDashboardOrSignIn, loading: authLoadingForDashboard } = useDashboardEntry();
 
   const { value: open, onFalse: onClose, onTrue: onOpen } = useBoolean();
 
   const isHomePage = pathname === '/';
-  const isProgramCourseDetailPage = pathname === paths.programCourseDetail;
+  const isProgramCourseDetailPage =
+    pathname === paths.programCourseDetail || /^\/program-course-detail\/?$/.test(pathname ?? '');
+  const hideProgramDetailHeader = isProgramCourseDetailPage && !authenticated;
   const isMinimalCourseChrome =
     pathname === paths.courseDetailDemo || isProgramCourseDetailPage;
 
@@ -58,10 +63,14 @@ function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md' }) {
   }, [programs, slotProps?.nav?.data]);
 
   const renderHeader = () => {
+    if (hideProgramDetailHeader) {
+      return null;
+    }
+
     if (isMinimalCourseChrome) {
       const courseDetailHeaderSlots = {
         topArea: null,
-        leftArea: (
+        leftArea: isProgramCourseDetailPage ? null : (
           <Box
             sx={{
               display: 'flex',
@@ -237,7 +246,7 @@ function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md' }) {
       /** **************************************
        * @Header
        *************************************** */
-      headerSection={isProgramCourseDetailPage ? null : renderHeader()}
+      headerSection={renderHeader()}
       /** **************************************
        * @Footer
        *************************************** */

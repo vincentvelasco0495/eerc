@@ -1,19 +1,9 @@
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
-import { resolveCourseHeroImageUrl } from 'src/utils/course-hero-image';
+import { resolveCourseMarketingBannerUrl } from 'src/utils/course-hero-image';
 
 dayjs.extend(relativeTime);
-
-const ICONS = [
-  'solar:book-bookmark-bold-duotone',
-  'solar:cpu-bolt-bold-duotone',
-  'solar:shield-keyhole-bold-duotone',
-  'solar:global-bold-duotone',
-  'solar:notes-bold-duotone',
-  'solar:play-stream-bold-duotone',
-  'solar:clapperboard-edit-bold-duotone',
-];
 
 const BADGE_COLORS = ['error', 'success', 'info', 'warning', 'default'];
 
@@ -31,7 +21,6 @@ function stableHash(str) {
 export function mapLmsCatalogCourseToInstructorCard(course) {
   const id = course.id ?? '';
   const seed = stableHash(id || course.slug || course.title || 'x');
-  const icon = ICONS[seed % ICONS.length];
   const firstTag = course.tags?.[0];
   const programTitle =
     typeof course.programTitle === 'string' && course.programTitle.trim()
@@ -65,8 +54,8 @@ export function mapLmsCatalogCourseToInstructorCard(course) {
 
   return {
     id,
-    /** Same URL as learner course-detail hero (`marketing.bannerImageUrl` or shared fallback). */
-    bannerImageUrl: resolveCourseHeroImageUrl(course),
+    /** `marketing.bannerImageUrl` only — empty when unset (card shows skeleton). */
+    bannerImageUrl: resolveCourseMarketingBannerUrl(course),
     /** Prefer URL slug from API; `useResolvedCourseIdFromLookup` also accepts `id` when slug is absent. */
     detailSlug: slug || id || '',
     status,
@@ -78,6 +67,5 @@ export function mapLmsCatalogCourseToInstructorCard(course) {
     durationHours: course.hours ?? 0,
     rating,
     updatedAt,
-    icon,
   };
 }

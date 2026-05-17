@@ -40,7 +40,8 @@ function resolveServerAssetUrl(value) {
   return `${origin}/storage/${raw.replace(/^\/+/, '')}`;
 }
 
-export function resolveCourseHeroImageUrl(course) {
+/** Marketing banner only — no stock fallback (use for instructor cards / skeleton when empty). */
+export function resolveCourseMarketingBannerUrl(course) {
   const bannerFromMarketing =
     course?.marketing &&
     typeof course.marketing.bannerImageUrl === 'string' &&
@@ -48,7 +49,12 @@ export function resolveCourseHeroImageUrl(course) {
       ? course.marketing.bannerImageUrl.trim()
       : '';
 
-  if (bannerFromMarketing) return resolveServerAssetUrl(bannerFromMarketing);
+  return bannerFromMarketing ? resolveServerAssetUrl(bannerFromMarketing) : '';
+}
+
+export function resolveCourseHeroImageUrl(course) {
+  const banner = resolveCourseMarketingBannerUrl(course);
+  if (banner) return banner;
 
   return pickHero(course?.id ?? course?.slug ?? 'hero');
 }

@@ -67,24 +67,6 @@ const ThumbImg = styled.img`
   object-fit: cover;
 `;
 
-const Badge = styled.span`
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #fff;
-  background: ${(props) => {
-    if (props.$tone === 'hot') return '#ef4444';
-    if (props.$tone === 'special') return '#3b82f6';
-    return '#22c55e';
-  }};
-`;
-
 const Body = styled.div`
   display: flex;
   flex-direction: column;
@@ -157,7 +139,6 @@ export function PopularCourses({ title = 'Popular courses', items }) {
             >
               <Thumb>
                 <ThumbImg src={item.imageUrl} alt="" loading="lazy" />
-                {item.badge ? <Badge $tone={item.badgeTone ?? 'special'}>{item.badge}</Badge> : null}
               </Thumb>
               <Body>
                 <RowTitle>{item.title}</RowTitle>

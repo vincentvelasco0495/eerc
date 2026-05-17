@@ -17,7 +17,7 @@ export const CONFIG = {
   auth: {
     method: 'jwt',
     skip: false,
-    redirectPath: paths.dashboard.studentProfile,
+    redirectPath: paths.dashboard.enrolledCourses,
     /**
      * Frontend-only demo sign-in (`admin@demo.com` / `student@demo.com`).
      * Set `VITE_ALLOW_DEMO_SIGN_IN=false` when your backend `/api/auth/sign-in` is live.

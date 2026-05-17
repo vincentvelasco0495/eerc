@@ -3,8 +3,9 @@ import { useMemo, useState, useEffect } from 'react';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Pagination from '@mui/material/Pagination';
+import Typography from '@mui/material/Typography';
 
-import { useLmsCourses, useLmsPrograms } from 'src/hooks/use-lms';
+import { useEnrollment, useLmsPrograms, useLmsEnrolledProgramCourses } from 'src/hooks/use-lms';
 
 import { styles } from './styles';
 import { buildStudentProfileCourses } from '../../student-profile-data';
@@ -22,15 +23,16 @@ const FILTER_OPTIONS = [
 ];
 
 export function StudentProfileView() {
-  const { courses } = useLmsCourses(1, 200);
+  const enrollment = useEnrollment();
+  const { courses, isLoading: coursesLoading } = useLmsEnrolledProgramCourses(enrollment);
   const { programs } = useLmsPrograms();
 
   const [filterValue, setFilterValue] = useState('all');
   const [page, setPage] = useState(1);
 
   const courseItems = useMemo(
-    () => buildStudentProfileCourses(courses, programs),
-    [courses, programs]
+    () => buildStudentProfileCourses(courses, programs, enrollment),
+    [courses, enrollment, programs]
   );
 
   const tabCounts = useMemo(
@@ -78,23 +80,40 @@ export function StudentProfileView() {
       <Stack spacing={3}>
         <StudentProfileCourseTabs value={filterValue} tabs={tabs} onChange={setFilterValue} />
 
-        <Grid container spacing={{ xs: 2, sm: 2, md: 2.5 }}>
-          {visibleCourses.map((course) => (
-            <Grid key={course.id} size={{ xs: 12, sm: 6, lg: 4 }} sx={styles.courseGrid}>
-              <StudentProfileCourseCard course={course} />
-            </Grid>
-          ))}
-        </Grid>
+        {coursesLoading ? (
+          <Typography variant="body2" color="text.secondary">
+            Loading your courses…
+          </Typography>
+        ) : null}
 
-        <Pagination
-          page={page}
-          count={totalPages}
-          shape="rounded"
-          color="primary"
-          size="small"
-          onChange={(_, value) => setPage(value)}
-          sx={styles.pagination}
-        />
+        {!coursesLoading && courseItems.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 480 }}>
+            No courses to show yet. Enroll in a program from Available Programs and wait for approval
+            — approved programs will appear here.
+          </Typography>
+        ) : null}
+
+        {courseItems.length > 0 ? (
+          <Grid container spacing={{ xs: 2, sm: 2, md: 2.5 }}>
+            {visibleCourses.map((course) => (
+              <Grid key={course.id} size={{ xs: 12, sm: 6, lg: 4 }} sx={styles.courseGrid}>
+                <StudentProfileCourseCard course={course} />
+              </Grid>
+            ))}
+          </Grid>
+        ) : null}
+
+        {courseItems.length > 0 ? (
+          <Pagination
+            page={page}
+            count={totalPages}
+            shape="rounded"
+            color="primary"
+            size="small"
+            onChange={(_, value) => setPage(value)}
+            sx={styles.pagination}
+          />
+        ) : null}
       </Stack>
     </StudentWorkspaceShell>
   );

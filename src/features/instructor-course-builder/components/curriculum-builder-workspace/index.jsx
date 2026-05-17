@@ -36,13 +36,15 @@ export function CurriculumBuilderWorkspace({
   saveLiveQuizLesson,
   liveQuizAuthoring,
   saveLiveQuizSettings,
-  onLessonMaterialsInvalidate,
+  onLessonMaterialsChange,
 }) {
   if (!lesson) {
     return <CurriculumBuilderEmptyWorkspace />;
   }
 
-  if (lesson.type === 'document') {
+  const workspaceLessonType = liveLessonAuthoring?.authoringKind ?? lesson.type;
+
+  if (workspaceLessonType === 'document') {
     return (
       <CurriculumTextLessonWorkspace
         lesson={lesson}
@@ -50,12 +52,12 @@ export function CurriculumBuilderWorkspace({
         onLessonSave={onLessonSave}
         saveLiveRichLesson={saveLiveRichLesson}
         liveLessonAuthoring={liveLessonAuthoring}
-        onLessonMaterialsInvalidate={onLessonMaterialsInvalidate}
+        onLessonMaterialsChange={onLessonMaterialsChange}
       />
     );
   }
 
-  if (lesson.type === 'video') {
+  if (workspaceLessonType === 'video') {
     return (
       <CurriculumVideoLessonWorkspace
         lesson={lesson}
@@ -63,12 +65,12 @@ export function CurriculumBuilderWorkspace({
         onLessonSave={onLessonSave}
         saveLiveRichLesson={saveLiveRichLesson}
         liveLessonAuthoring={liveLessonAuthoring}
-        onLessonMaterialsInvalidate={onLessonMaterialsInvalidate}
+        onLessonMaterialsChange={onLessonMaterialsChange}
       />
     );
   }
 
-  if (lesson.type === 'quiz') {
+  if (lesson.type === 'quiz' && workspaceLessonType !== 'document' && workspaceLessonType !== 'video') {
     return (
       <CurriculumQuizLessonWorkspace
         lesson={lesson}

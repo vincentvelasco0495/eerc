@@ -1,8 +1,10 @@
 import { useDispatch, useSelector } from 'react-redux';
-import { useMemo, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 
+import axios from 'src/lib/axios';
 import { lmsEndpoints } from 'src/redux/api/lmsEndpoints';
 import { LMS_REDUX_FLAGS, shouldUseReduxRead } from 'src/features/lms/redux-flags';
+import { getApprovedProgramIds } from 'src/features/student-profile/student-profile-data';
 import {
   selectAppState,
   selectLmsLoading,
@@ -105,7 +107,12 @@ function useReduxLmsResource(endpoint, enabled = true, options = {}) {
 export function useLmsUser(enabled = true) {
   const key = enabled ? lmsEndpoints.user() : null;
   const redux = useReduxLmsResource(key, Boolean(key), { ttlMs: 5000 });
-  return { user: redux.data ?? null, isLoading: redux.isLoading, error: redux.error };
+  return {
+    user: redux.data ?? null,
+    isLoading: redux.isLoading,
+    error: redux.error,
+    mutate: redux.mutate,
+  };
 }
 
 export function useLmsMeta() {
@@ -124,6 +131,144 @@ export function useLmsPrograms() {
   const redux = useReduxLmsResource(lmsEndpoints.programs(), true, { ttlMs: 10_000 });
   return {
     programs: redux.data?.data ?? [],
+    isLoading: redux.isLoading,
+    error: redux.error,
+    mutate: redux.mutate,
+  };
+}
+
+export function useLmsProgramsPaginated(page = 1, perPage = 10, search = '') {
+  const endpoint = useMemo(
+    () =>
+      lmsEndpoints.programsPaginated({
+        page,
+        perPage,
+        search: typeof search === 'string' ? search : '',
+      }),
+    [page, perPage, search]
+  );
+  const redux = useReduxLmsResource(endpoint, true, { ttlMs: 10_000 });
+  const payload = redux.data ?? {};
+  const meta = payload?.meta ?? null;
+  return {
+    programs: payload?.data ?? [],
+    meta,
+    isLoading: redux.isLoading,
+    error: redux.error,
+    mutate: redux.mutate,
+  };
+}
+
+export function useRefreshLmsProgramsCatalog() {
+  const dispatch = useDispatch();
+  return useCallback(() => {
+    const endpoint = lmsEndpoints.programs();
+    if (!shouldUseReduxRead(endpoint)) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+      dispatch(lmsResourceFetchRequest({ key: endpoint, endpoint, resolve, reject }));
+    });
+  }, [dispatch]);
+}
+
+/** Full instructor roster (`GET /api/instructors` without pagination). */
+export function useLmsInstructors() {
+  const redux = useReduxLmsResource(lmsEndpoints.instructors(), true, { ttlMs: 10_000 });
+  return {
+    instructors: redux.data?.data ?? [],
+    isLoading: redux.isLoading,
+    error: redux.error,
+    mutate: redux.mutate,
+  };
+}
+
+export function useLmsInstructorsPaginated(page = 1, perPage = 10, search = '') {
+  const endpoint = useMemo(
+    () =>
+      lmsEndpoints.instructorsPaginated({
+        page,
+        perPage,
+        search: typeof search === 'string' ? search : '',
+      }),
+    [page, perPage, search]
+  );
+  const redux = useReduxLmsResource(endpoint, true, { ttlMs: 10_000 });
+  const payload = redux.data ?? {};
+  const meta = payload?.meta ?? null;
+  return {
+    instructors: payload?.data ?? [],
+    meta,
+    isLoading: redux.isLoading,
+    error: redux.error,
+    mutate: redux.mutate,
+  };
+}
+
+export function useRefreshInstructorsCatalog() {
+  const dispatch = useDispatch();
+  return useCallback(() => {
+    const endpoint = lmsEndpoints.instructors();
+    if (!shouldUseReduxRead(endpoint)) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+      dispatch(lmsResourceFetchRequest({ key: endpoint, endpoint, resolve, reject }));
+    });
+  }, [dispatch]);
+}
+
+export function useLmsInstructorLinkableUsers() {
+  const endpoint = lmsEndpoints.instructorsLinkableUsers();
+  const redux = useReduxLmsResource(endpoint, true, { ttlMs: 10_000 });
+  return {
+    linkableUsers: redux.data?.data ?? [],
+    isLoading: redux.isLoading,
+    error: redux.error,
+    mutate: redux.mutate,
+  };
+}
+
+export function useLmsStudentsPaginated(page = 1, perPage = 10, search = '') {
+  const endpoint = useMemo(
+    () =>
+      lmsEndpoints.studentsPaginated({
+        page,
+        perPage,
+        search: typeof search === 'string' ? search : '',
+      }),
+    [page, perPage, search]
+  );
+  const redux = useReduxLmsResource(endpoint, true, { ttlMs: 10_000 });
+  const payload = redux.data ?? {};
+  const meta = payload?.meta ?? null;
+  return {
+    students: payload?.data ?? [],
+    meta,
+    isLoading: redux.isLoading,
+    error: redux.error,
+    mutate: redux.mutate,
+  };
+}
+
+export function useRefreshStudentsCatalog() {
+  const dispatch = useDispatch();
+  return useCallback(() => {
+    const endpoint = lmsEndpoints.students();
+    if (!shouldUseReduxRead(endpoint)) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+      dispatch(lmsResourceFetchRequest({ key: endpoint, endpoint, resolve, reject }));
+    });
+  }, [dispatch]);
+}
+
+export function useLmsStudentLinkableUsers() {
+  const endpoint = lmsEndpoints.studentsLinkableUsers();
+  const redux = useReduxLmsResource(endpoint, true, { ttlMs: 10_000 });
+  return {
+    linkableUsers: redux.data?.data ?? [],
     isLoading: redux.isLoading,
     error: redux.error,
     mutate: redux.mutate,
@@ -151,6 +296,74 @@ export function useLmsCourses(page = 1, limit = 100, program = '') {
     error: redux.error,
     mutate: redux.mutate,
   };
+}
+
+/** Published catalog courses for programs the learner is approved on (per-program fetch). */
+export function useLmsEnrolledProgramCourses(enrollments = []) {
+  const approvedProgramIds = useMemo(
+    () => [...getApprovedProgramIds(enrollments, [])],
+    [enrollments]
+  );
+  const programKey = approvedProgramIds.join('|');
+
+  const [courses, setCourses] = useState([]);
+  const [isLoading, setIsLoading] = useState(Boolean(programKey));
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!programKey) {
+      setCourses([]);
+      setIsLoading(false);
+      setError(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+
+    (async () => {
+      try {
+        const responses = await Promise.all(
+          approvedProgramIds.map((programId) =>
+            axios
+              .get(lmsEndpoints.courses({ page: 1, limit: 500, program: programId }))
+              .then((res) => res.data)
+          )
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        const byId = new Map();
+        responses.forEach((payload) => {
+          (Array.isArray(payload?.data) ? payload.data : []).forEach((course) => {
+            if (course?.id) {
+              byId.set(course.id, course);
+            }
+          });
+        });
+
+        setCourses([...byId.values()]);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err);
+          setCourses([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [approvedProgramIds, programKey]);
+
+  return { courses, isLoading, error };
 }
 
 export function useLmsCourseByLookup(courseLookup) {
@@ -313,9 +526,43 @@ export function useLeaderboard(period) {
   return redux.data?.data ?? [];
 }
 
-export function useLmsEnrollments() {
-  const redux = useReduxLmsResource(lmsEndpoints.enrollments(), true, { ttlMs: 10_000 });
-  return { enrollments: redux.data?.data ?? [], isLoading: redux.isLoading };
+export function useLmsEnrollments(enabled = true) {
+  const redux = useReduxLmsResource(lmsEndpoints.enrollments(), enabled, { ttlMs: 10_000 });
+  return { enrollments: redux.data?.data ?? [], isLoading: redux.isLoading, mutate: redux.mutate };
+}
+
+export function useLmsEnrollmentsPaginated(page = 1, perPage = 10, search = '') {
+  const endpoint = useMemo(
+    () =>
+      lmsEndpoints.enrollmentsPaginated({
+        page,
+        perPage,
+        search: typeof search === 'string' ? search : '',
+      }),
+    [page, perPage, search]
+  );
+  const redux = useReduxLmsResource(endpoint, true, { ttlMs: 10_000 });
+  const payload = redux.data ?? {};
+  return {
+    enrollments: payload?.data ?? [],
+    meta: payload?.meta ?? null,
+    isLoading: redux.isLoading,
+    error: redux.error,
+    mutate: redux.mutate,
+  };
+}
+
+export function useRefreshEnrollmentsCatalog() {
+  const dispatch = useDispatch();
+  return useCallback(() => {
+    const endpoint = lmsEndpoints.enrollments();
+    if (!shouldUseReduxRead(endpoint)) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+      dispatch(lmsResourceFetchRequest({ key: endpoint, endpoint, resolve, reject }));
+    });
+  }, [dispatch]);
 }
 
 export function useAdminData() {
@@ -329,7 +576,7 @@ export function useAdminData() {
 export function useLmsActions() {
   const dispatch = useDispatch();
   const submitEnrollment = useCallback(
-    (courseId) => dispatch(submitEnrollmentRequest({ courseId })),
+    (programId) => dispatch(submitEnrollmentRequest({ programId })),
     [dispatch]
   );
   const simulateQuiz = useCallback(
@@ -391,7 +638,7 @@ export function useLmsActions() {
 }
 
 /** @deprecated Use `useLmsEnrollments`. */
-export function useEnrollment() {
-  const { enrollments } = useLmsEnrollments();
+export function useEnrollment(enabled = true) {
+  const { enrollments } = useLmsEnrollments(enabled);
   return enrollments;
 }
