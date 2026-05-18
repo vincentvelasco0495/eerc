@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 
 import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
@@ -15,8 +15,10 @@ import { useEnrollment, useLmsActions, useLmsPrograms } from 'src/hooks/use-lms'
 
 import { LMS_PROGRAM_SELECT_OPTIONS } from 'src/constants/lms';
 
+import { toast } from 'src/components/snackbar';
 import { LmsStatCard } from 'src/components/ui/lms-stat-card';
 import { LmsPageShell } from 'src/components/layout/lms-page-shell';
+import { EnrollmentPaymentDialog } from 'src/components/enrollments/enrollment-payment-dialog';
 
 import { styles } from './styles';
 
@@ -29,6 +31,8 @@ export function EnrollmentView() {
   const enrollment = useEnrollment();
   const { submitEnrollment } = useLmsActions();
   const [selectedProgramId, setSelectedProgramId] = useState('');
+  const [applyDialogOpen, setApplyDialogOpen] = useState(false);
+  const [applySubmitting, setApplySubmitting] = useState(false);
 
   const defaultProgramId = useMemo(() => {
     for (const option of LMS_PROGRAM_SELECT_OPTIONS) {
@@ -57,6 +61,30 @@ export function EnrollmentView() {
     const fromApi = programs.find((program) => program.id === programId)?.title;
     return fromApi ?? programLabelById[programId] ?? programId;
   };
+
+  const selectedProgramTitle = resolveProgramTitle(selectedProgramId);
+  const selectedProgram = programs.find((program) => program.id === selectedProgramId);
+
+  const handleApplySubmit = useCallback(
+    async (paymentProofFile) => {
+      if (!selectedProgramId) {
+        return;
+      }
+
+      setApplySubmitting(true);
+      try {
+        await submitEnrollment(selectedProgramId, paymentProofFile);
+        setApplyDialogOpen(false);
+      } catch (error) {
+        const message =
+          typeof error === 'string' ? error : error?.message ?? 'Could not submit enrollment.';
+        toast.error(message);
+      } finally {
+        setApplySubmitting(false);
+      }
+    },
+    [selectedProgramId, submitEnrollment]
+  );
 
   return (
     <LmsPageShell
@@ -117,7 +145,7 @@ export function EnrollmentView() {
                 </TextField>
                 <Button
                   disabled={!canSubmitProgram}
-                  onClick={() => selectedProgramId && submitEnrollment(selectedProgramId)}
+                  onClick={() => setApplyDialogOpen(true)}
                   variant="contained"
                 >
                   Submit application
@@ -161,6 +189,17 @@ export function EnrollmentView() {
           </Card>
         </Grid>
       </Grid>
+
+      <EnrollmentPaymentDialog
+        open={applyDialogOpen}
+        onClose={() => setApplyDialogOpen(false)}
+        title="Enroll in program"
+        programId={selectedProgramId}
+        programCode={selectedProgram?.code}
+        programTitle={selectedProgramTitle}
+        submitting={applySubmitting}
+        onSubmit={handleApplySubmit}
+      />
     </LmsPageShell>
   );
 }

@@ -1,5 +1,7 @@
 import { paths } from 'src/routes/paths';
 
+import { getRoleHomePath, canAccessPageHref } from 'src/auth/utils/page-permissions';
+
 // Sidebar navigation groups
 const sidebarGroups = [
   {
@@ -8,12 +10,12 @@ const sidebarGroups = [
       {
         label: 'Dashboard',
         icon: 'solar:widget-5-bold-duotone',
-        path: paths.dashboard.instructorProfile,
+        pathKey: 'home',
       },
       {
         label: 'Add Courses',
         icon: 'solar:add-circle-bold-duotone',
-        path: paths.dashboard.instructorNewCourseCurriculum,
+        path: paths.dashboard.newCourseCurriculum,
       },
     ],
   },
@@ -33,7 +35,7 @@ const sidebarGroups = [
       {
         label: 'Announcement',
         icon: 'solar:speaker-bold-duotone',
-        path: paths.dashboard.instructorAnnouncement,
+        path: paths.dashboard.announcement,
       },
     ],
   },
@@ -43,12 +45,12 @@ const sidebarGroups = [
       {
         label: 'Gradebook',
         icon: 'solar:clipboard-check-bold-duotone',
-        path: paths.dashboard.instructorGradebook,
+        path: paths.dashboard.gradebook,
       },
       {
         label: 'Assignments',
         icon: 'solar:clipboard-list-bold-duotone',
-        path: paths.dashboard.instructorAssignments,
+        path: paths.dashboard.assignment,
         badge: '18',
       },
     ],
@@ -59,35 +61,47 @@ const sidebarGroups = [
       {
         label: 'Profile',
         icon: 'solar:settings-bold-duotone',
-        path: paths.dashboard.instructorSettings,
+        path: paths.dashboard.settingProfile,
       },
       {
         label: 'Programs',
         icon: 'solar:layers-bold-duotone',
-        path: paths.dashboard.programs,
+        path: paths.dashboard.settingProgram,
       },
       {
         label: 'Instructors',
         icon: 'solar:users-group-rounded-bold-duotone',
-        path: paths.dashboard.instructors,
+        path: paths.dashboard.settingInstructor,
       },
       {
         label: 'Students',
         icon: 'solar:user-rounded-bold-duotone',
-        path: paths.dashboard.students,
+        path: paths.dashboard.settingStudent,
       },
       { label: 'Log out', icon: 'solar:logout-3-bold-duotone', action: 'logout' },
     ],
   },
 ];
 
-export function getInstructorWorkspaceNavGroups(pathname) {
+export function getInstructorWorkspaceNavGroups(pathname, role, user) {
+  const homePath = getRoleHomePath(role);
+
   return sidebarGroups.map((group) => ({
     ...group,
-    items: group.items.map((item) => ({
-      ...item,
-      active: item.path ? pathname === item.path : false,
-    })),
+    items: group.items
+      .map((item) => {
+        if (item.pathKey === 'home') {
+          return { ...item, path: homePath };
+        }
+        return item;
+      })
+      .filter((item) => !item.path || canAccessPageHref(user ?? { role, pagePermissions: [] }, item.path))
+      .map((item) => ({
+        ...item,
+        active: item.path
+          ? pathname === item.path || pathname === `${item.path}/`
+          : false,
+      })),
   }));
 }
 
@@ -115,17 +129,41 @@ export function buildInstructorProfileIdentity(user) {
   };
 }
 
-// Summary metrics (instructor analytics strip)
-export const instructorAnalyticsStats = [
-  { id: 'courses', label: 'Courses', value: '14', icon: 'solar:book-bookmark-bold-duotone' },
+const INSTRUCTOR_ANALYTICS_STAT_TEMPLATES = [
+  { id: 'courses', label: 'Courses', icon: 'solar:book-bookmark-bold-duotone' },
   {
     id: 'enrollments',
     label: 'Enrollments',
-    value: '189,240',
     icon: 'solar:users-group-rounded-bold-duotone',
   },
-  { id: 'students', label: 'Students', value: '19,258', icon: 'solar:user-circle-bold-duotone' },
+  { id: 'students', label: 'Students', icon: 'solar:user-circle-bold-duotone' },
 ];
+
+function formatInstructorStatValue(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) {
+    return '—';
+  }
+
+  return new Intl.NumberFormat('en-US').format(n);
+}
+
+/** Map `GET /api/analytics` → instructor summary stat cards. */
+export function buildInstructorAnalyticsStats(instructorSummary) {
+  const summary = instructorSummary ?? {};
+
+  return INSTRUCTOR_ANALYTICS_STAT_TEMPLATES.map((item) => ({
+    ...item,
+    value: formatInstructorStatValue(summary[item.id]),
+  }));
+}
+
+/** @deprecated Use `buildInstructorAnalyticsStats` with API data. */
+export const instructorAnalyticsStats = buildInstructorAnalyticsStats({
+  courses: 0,
+  enrollments: 0,
+  students: 0,
+});
 
 export const instructorReportingPeriods = ['All time', 'This month', 'This quarter', 'This year'];
 

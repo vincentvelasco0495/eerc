@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Instructor;
 use App\Models\User;
 use App\Services\LmsInstructorService;
+use App\Support\PageAuthorization;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -39,6 +40,10 @@ class LmsInstructorController extends Controller
     {
         if (! $request->filled('page')) {
             return response()->json(['data' => $service->instructors()]);
+        }
+
+        if ($response = PageAuthorization::denyUnlessCanAccess($request, '/setting-instructor')) {
+            return $response;
         }
 
         $validated = $request->validate([

@@ -23,8 +23,8 @@ export const navData = [
     items: [
       { title: 'Dashboard', path: paths.dashboard.root, icon: ICONS.dashboard },
       {
-        title: 'Instructor Profile',
-        path: paths.dashboard.instructorProfile,
+        title: 'Instructor Dashboard',
+        path: paths.dashboard.home,
         icon: ICONS.instructorProfile,
       },
       { title: 'Enrolled Courses', path: paths.dashboard.enrolledCourses, icon: ICONS.enrolledCourses },

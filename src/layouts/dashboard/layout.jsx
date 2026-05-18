@@ -5,8 +5,8 @@ import Alert from '@mui/material/Alert';
 import { useTheme } from '@mui/material/styles';
 import { iconButtonClasses } from '@mui/material/IconButton';
 
-import { paths } from 'src/routes/paths';
 import { usePathname } from 'src/routes/hooks';
+import { paths, isCourseCurriculumBuilderPath } from 'src/routes/paths';
 
 import { _notifications } from 'src/_mock';
 
@@ -34,16 +34,17 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
   const navVars = dashboardNavColorVars(theme, settings.state.navColor, settings.state.navLayout);
 
   const isStudentWorkspace = [
-    paths.dashboard.instructorProfile,
-    paths.dashboard.instructorAnnouncement,
-    paths.dashboard.instructorSettings,
-    paths.dashboard.instructorGradebook,
-    paths.dashboard.instructorCourseCurriculum,
-    paths.dashboard.instructorAssignments,
-    paths.dashboard.instructors,
+    paths.dashboard.home,
+    paths.dashboard.instructorHome,
+    paths.dashboard.announcement,
+    paths.dashboard.settingProfile,
+    paths.dashboard.gradebook,
+    paths.dashboard.courseCurriculum,
+    paths.dashboard.assignment,
+    paths.dashboard.settingInstructor,
     paths.dashboard.enrollment,
-    paths.dashboard.programs,
-    paths.dashboard.students,
+    paths.dashboard.settingProgram,
+    paths.dashboard.settingStudent,
     paths.dashboard.enrolledCourses,
     paths.dashboard.availablePrograms,
     paths.dashboard.studentAssignments,
@@ -55,10 +56,11 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
     /^\/course-details\/[^/]+\/?$/.test(pathname ?? '') ||
     /^\/courses\/[^/]+\/?$/.test(pathname ?? '');
 
+  const isCurriculumBuilder = isCourseCurriculumBuilderPath(pathname);
+
   const hideDashboardHeader =
-    pathname === paths.dashboard.instructorCourseCurriculum ||
+    isCurriculumBuilder ||
     /^\/program-course-detail(\/.*)?$/.test(pathname ?? '') ||
-    /^\/instructor-course\/[^/]+\/edit\/?$/.test(pathname ?? '') ||
     (isCourseDetailsLanding && !authenticated);
   const hideHeaderLogo = isCourseDetailsLanding;
 
@@ -135,7 +137,15 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
       headerSection={hideDashboardHeader ? null : renderHeader()}
       sidebarSection={null}
       footerSection={renderFooter()}
-      cssVars={{ ...dashboardLayoutVars(theme), ...navVars.layout, ...cssVars }}
+      cssVars={{
+        ...dashboardLayoutVars(theme),
+        ...navVars.layout,
+        ...(isCurriculumBuilder && {
+          '--layout-dashboard-content-pt': '0px',
+          '--layout-dashboard-content-pb': '0px',
+        }),
+        ...cssVars,
+      }}
       sx={[...(Array.isArray(sx) ? sx : [sx])]}
     >
       {renderMain()}

@@ -8,7 +8,7 @@ import Pagination from '@mui/material/Pagination';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 
-import { useLmsCourses } from 'src/hooks/use-lms';
+import { useLmsCourses, useLmsAnalytics } from 'src/hooks/use-lms';
 
 import { styles } from './styles';
 import { InstructorCourseCard } from '../../components/instructor-course-card';
@@ -19,17 +19,23 @@ import { InstructorProfileStatCard } from '../../components/instructor-profile-s
 import { mapLmsCatalogCourseToInstructorCard } from '../../map-lms-catalog-course-to-instructor-card';
 import {
   instructorCourseFilters,
-  instructorAnalyticsStats,
   instructorReportingPeriods,
+  buildInstructorAnalyticsStats,
 } from '../../instructor-profile-data';
 
 const ITEMS_PER_PAGE = 6;
 const COURSES_PAGE_SIZE = 100;
 
 export function InstructorProfileView() {
+  const { analytics, isLoading: analyticsLoading } = useLmsAnalytics();
   const { courses: apiCourses, isLoading, error, mutate: mutateCourses } = useLmsCourses(
     1,
     COURSES_PAGE_SIZE
+  );
+
+  const analyticsStats = useMemo(
+    () => buildInstructorAnalyticsStats(analytics?.instructorSummary),
+    [analytics?.instructorSummary]
   );
 
   const mappedFromApi = useMemo(
@@ -99,13 +105,13 @@ export function InstructorProfileView() {
         />
 
         <Grid container spacing={{ xs: 2, sm: 2, md: 2.5 }}>
-          {instructorAnalyticsStats.map((item) => (
+          {analyticsStats.map((item) => (
             <Grid
               key={item.id}
               size={{ xs: 12, sm: 6, md: 4, lg: 4, xl: 4 }}
               sx={styles.statGrid}
             >
-              <InstructorProfileStatCard item={item} />
+              <InstructorProfileStatCard item={item} loading={analyticsLoading} />
             </Grid>
           ))}
         </Grid>

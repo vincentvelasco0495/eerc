@@ -1,5 +1,4 @@
 import Box from '@mui/material/Box';
-import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Switch from '@mui/material/Switch';
 import Divider from '@mui/material/Divider';
@@ -20,8 +19,6 @@ export function CourseContinuationSection({
   onLearnHtmlChange,
   previewDescription,
   onPreviewDescriptionChange,
-  featuredCourse,
-  onFeaturedCourseChange,
   lockLessonsInOrder,
   onLockLessonsInOrderChange,
   onSave,
@@ -67,24 +64,11 @@ export function CourseContinuationSection({
 
       <Box sx={{ mt: 3 }}>
         <StackedToggleRow
-          checked={featuredCourse}
-          onChange={(e) => onFeaturedCourseChange(e.target.checked)}
-          label="Featured course"
-          info="Feature this course in catalog highlights (subject to quota)."
-        />
-
-        <StackedToggleRow
           checked={lockLessonsInOrder}
           onChange={(e) => onLockLessonsInOrderChange(e.target.checked)}
           label="Lock lessons in order"
           info="Learners must finish lessons sequentially before unlocking the next."
         />
-
-        {featuredCourse ? (
-          <Alert severity="warning" icon={<Iconify icon="solar:danger-circle-bold" width={22} />} sx={css.quotaAlert}>
-            You have reached your featured courses quota limit!
-          </Alert>
-        ) : null}
       </Box>
 
       {!hideEmbeddedSaveFooter ? (

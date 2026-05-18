@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 
 import Card from '@mui/material/Card';
@@ -18,7 +18,13 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 
-import { useLmsQuiz, useLmsQuizResults } from 'src/hooks/use-lms';
+import {
+  useLmsQuiz,
+  useLmsQuizResults,
+  useLmsModulesByCourse,
+  useResolvedCourseIdFromLookup,
+  extractQuizzesFromModules,
+} from 'src/hooks/use-lms';
 
 import { LmsStatCard } from 'src/components/ui/lms-stat-card';
 import { LmsPageShell } from 'src/components/layout/lms-page-shell';
@@ -29,8 +35,21 @@ export function QuizHistoryView() {
   const [searchParams] = useSearchParams();
   const quizId = searchParams.get('quizId') ?? '';
   const courseLookup = searchParams.get('course') ?? '';
-  const { results, isLoading } = useLmsQuizResults();
-  const quiz = useLmsQuiz(quizId);
+  const { results, isLoading, mutate } = useLmsQuizResults();
+  const quizFromCatalog = useLmsQuiz(quizId);
+  const resolvedCourseId = useResolvedCourseIdFromLookup(courseLookup);
+  const { modules } = useLmsModulesByCourse(resolvedCourseId);
+  const quizFromCourse = useMemo(() => {
+    if (!quizId) {
+      return null;
+    }
+    return extractQuizzesFromModules(modules).find((item) => item.id === quizId) ?? null;
+  }, [modules, quizId]);
+  const quiz = quizFromCourse ?? quizFromCatalog;
+
+  useEffect(() => {
+    void mutate();
+  }, [mutate, quizId]);
 
   const scopedResults = useMemo(() => {
     if (!quizId) {

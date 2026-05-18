@@ -42,6 +42,24 @@ export function timerBoxSx(theme) {
   };
 }
 
+export const postResultActionsSx = {
+  mb: 2,
+  width: '100%',
+  maxWidth: '100%',
+};
+
+export const resultActionBtnSx = {
+  px: 2.5,
+  py: 1,
+  minHeight: 40,
+  textTransform: 'none',
+  fontWeight: 600,
+  borderRadius: 1,
+  alignSelf: { xs: 'stretch', sm: 'center' },
+  whiteSpace: 'nowrap',
+  flexShrink: 0,
+};
+
 export function resultBannerSx(theme, tone) {
   const isDark = theme.palette.mode === 'dark';
   if (tone === 'success') {
@@ -77,9 +95,9 @@ export function resultBannerSx(theme, tone) {
   return {};
 }
 
-export function optionRowSx(theme, { phase, isSelected, isCorrect, revealCorrect }) {
+export function optionRowSx(theme, { feedbackActive, isSelected, isCorrect, highlightCorrect }) {
   const isDark = theme.palette.mode === 'dark';
-  if (phase !== 'complete') {
+  if (!feedbackActive) {
     return {
       justifyContent: 'flex-start',
       textAlign: 'left',
@@ -90,7 +108,7 @@ export function optionRowSx(theme, { phase, isSelected, isCorrect, revealCorrect
       bgcolor: isSelected ? alpha(theme.palette.primary.main, isDark ? 0.12 : 0.08) : 'background.paper',
     };
   }
-  if (isCorrect && (!revealCorrect ? isSelected : true)) {
+  if (isCorrect && highlightCorrect) {
     return {
       justifyContent: 'flex-start',
       textAlign: 'left',

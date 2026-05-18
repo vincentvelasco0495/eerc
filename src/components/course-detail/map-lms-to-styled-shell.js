@@ -37,6 +37,18 @@ function plainTextFromRichLessonFields(row) {
  * @param {object[]} curriculumModules
  * @param {boolean} lockLessonsInOrder
  */
+/** Lock every lesson row (program enrollment required). */
+export function applyEnrollmentLessonLocks(curriculumModules) {
+  if (!Array.isArray(curriculumModules)) {
+    return curriculumModules;
+  }
+
+  return curriculumModules.map((mod) => ({
+    ...mod,
+    lessons: (mod.lessons ?? []).map((lesson) => ({ ...lesson, locked: true })),
+  }));
+}
+
 export function applySequentialLessonLocks(curriculumModules, lockLessonsInOrder) {
   if (!Array.isArray(curriculumModules)) {
     return curriculumModules;
@@ -115,7 +127,7 @@ function reviewsToRating(reviews = []) {
  * @param {object[]} [quizResults] learner attempt history (`/api/quiz-results`)
  * @param {string[]} [lessonProgressKeys] learner-completed lesson keys
  * @param {object|null} [courseStats]
- * @param {{ applyLessonLocks?: boolean }} [options]
+ * @param {{ applyLessonLocks?: boolean, requiresEnrollment?: boolean }} [options]
  */
 export function mapLmsToStyledCourseDetail(
   course,
@@ -127,6 +139,7 @@ export function mapLmsToStyledCourseDetail(
   options = {}
 ) {
   const applyLessonLocks = options.applyLessonLocks !== false;
+  const requiresEnrollment = Boolean(options.requiresEnrollment);
   const moduleEmbeddedQuizzes = (Array.isArray(modules) ? modules : []).flatMap((m) =>
     Array.isArray(m?.quizzes) ? m.quizzes : []
   );
@@ -305,7 +318,6 @@ export function mapLmsToStyledCourseDetail(
       value: String(Number.isFinite(statsTotalQuizzes) ? statsTotalQuizzes : quizzesForCourseVisible.length),
       icon: 'check',
     },
-    { key: 'level', label: 'Level', value: course.level ?? '—', icon: 'level' },
   ];
 
   const totalModsRaw =
@@ -457,12 +469,21 @@ export function mapLmsToStyledCourseDetail(
   }));
 
   const lockLessonsInOrder = applyLessonLocks && Boolean(course?.marketing?.lockLessonsInOrder);
-  const curriculumModulesWithLocks =
+  let curriculumModulesWithLocks =
     !applyLessonLocks
       ? applySequentialLessonLocks(curriculumModules, false)
       : modulesExposeBackendLocks(sortedModules)
         ? curriculumModules
         : applySequentialLessonLocks(curriculumModules, lockLessonsInOrder);
+
+  if (requiresEnrollment) {
+    curriculumModulesWithLocks = applyEnrollmentLessonLocks(curriculumModulesWithLocks);
+  }
+
+  const enrollCtaHref =
+    typeof course.programSlug === 'string' && course.programSlug.trim()
+      ? `${paths.programCourseDetail}?program=${encodeURIComponent(course.programSlug.trim())}`
+      : paths.dashboard.availablePrograms;
 
   return {
     data,
@@ -472,7 +493,8 @@ export function mapLmsToStyledCourseDetail(
     curriculumModules: curriculumModulesWithLocks,
     noticeContent,
     faqItems,
-    continueHref,
+    continueHref: requiresEnrollment ? enrollCtaHref : continueHref,
     courseLookup,
+    requiresEnrollment,
   };
 }

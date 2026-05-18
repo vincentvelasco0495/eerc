@@ -1244,7 +1244,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
 
   if (attemptedLiveCourse && !apiEnabled) {
     return (
-      <DashboardContent maxWidth={false} sx={styles.content}>
+      <DashboardContent maxWidth={false} disablePadding sx={styles.content}>
         <Typography variant="body2">
           Course editing requires the Laravel LMS API. Set <code>VITE_SERVER_URL</code> in your
           frontend env and restart the dev server so this page can load and save real course data.
@@ -1262,7 +1262,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
     !bootstrapCourseId
   ) {
     return (
-      <DashboardContent maxWidth={false} sx={styles.content}>
+      <DashboardContent maxWidth={false} disablePadding sx={styles.content}>
         <Typography variant="body2">Course “{trimmedLookup}” was not found in the catalog.</Typography>
       </DashboardContent>
     );
@@ -1270,7 +1270,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
 
   if (isLive && effectiveCourseId && !course && courseLoading) {
     return (
-      <DashboardContent maxWidth={false} sx={styles.content}>
+      <DashboardContent maxWidth={false} disablePadding sx={styles.content}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
           <CircularProgress />
         </Box>
@@ -1280,17 +1280,17 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
 
   if (isLive && effectiveCourseId && !course && !courseLoading) {
     return (
-      <DashboardContent maxWidth={false} sx={styles.content}>
+      <DashboardContent maxWidth={false} disablePadding sx={styles.content}>
         <Typography variant="body2">Unable to load this course.</Typography>
       </DashboardContent>
     );
   }
 
   return (
-    <DashboardContent maxWidth={false} sx={styles.content}>
+    <DashboardContent maxWidth={false} disablePadding sx={styles.content}>
       <Box sx={styles.shell(theme)}>
         <CurriculumBuilderTopBar
-          backHref={paths.dashboard.instructorProfile}
+          backHref={paths.dashboard.home}
           courseTitle={isLive && course?.title ? course.title : curriculumBuilderCourse.title}
           courseTab={courseTab}
           onCourseTabChange={setCourseTab}
@@ -1331,6 +1331,7 @@ export function InstructorCourseCurriculumView({ courseLookup = null, isNewCours
               saveLiveQuizLesson={saveLiveQuizLesson}
               liveQuizAuthoring={liveQuizAuthoring}
               saveLiveQuizSettings={saveLiveQuizSettings}
+              quizModulePublicId={liveQuizAuthoring?.moduleId ?? null}
               onLessonMaterialsChange={handleLessonMaterialsChange}
             />
           </Stack>

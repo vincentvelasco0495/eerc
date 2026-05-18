@@ -33,7 +33,7 @@ export function QuestionCollapsedBar({
   return (
     <Box sx={styles.questionCollapsedBar}>
       <Box sx={styles.collapsedBarLeft}>
-        <Typography sx={styles.collapsedQuestionText} noWrap title={displayText}>
+        <Typography sx={styles.collapsedQuestionText} title={displayText}>
           {displayText}
         </Typography>
       </Box>

@@ -576,7 +576,10 @@ export function useAdminData() {
 export function useLmsActions() {
   const dispatch = useDispatch();
   const submitEnrollment = useCallback(
-    (programId) => dispatch(submitEnrollmentRequest({ programId })),
+    (programId, paymentProofFile) =>
+      new Promise((resolve, reject) => {
+        dispatch(submitEnrollmentRequest({ programId, paymentProofFile, resolve, reject }));
+      }),
     [dispatch]
   );
   const simulateQuiz = useCallback(

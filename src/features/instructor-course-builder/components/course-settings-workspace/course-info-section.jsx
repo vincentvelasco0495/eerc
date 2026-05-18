@@ -192,13 +192,15 @@ export function CourseInfoSection({
 
       <Box sx={{ mt: 3 }}>
         <Typography sx={css.fieldLabel}>Image</Typography>
-        <Box sx={css.imageDropzone}>
-          <Box
-            component="img"
-            alt=""
-            src={coverSrcResolved}
-            sx={{ width: 1, maxHeight: 320, objectFit: 'cover' }}
-          />
+        <Box sx={[css.imageDropzone, !coverSrcResolved && css.imageDropzoneEmpty]}>
+          {coverSrcResolved ? (
+            <Box
+              component="img"
+              alt=""
+              src={coverSrcResolved}
+              sx={{ width: 1, maxHeight: 320, objectFit: 'cover' }}
+            />
+          ) : null}
         </Box>
       </Box>
 

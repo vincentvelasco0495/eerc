@@ -4,7 +4,6 @@ import { useNavigate, useSearchParams } from 'react-router';
 
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
-import Button from '@mui/material/Button';
 import Skeleton from '@mui/material/Skeleton';
 
 import {
@@ -23,7 +22,8 @@ import { InstructorCourseCard } from 'src/features/instructor-profile/components
 import { InstructorProfileTabs } from 'src/features/instructor-profile/components/instructor-profile-tabs';
 import { mapLmsCatalogCourseToInstructorCard } from 'src/features/instructor-profile/map-lms-catalog-course-to-instructor-card';
 
-import { ConfirmDialog } from 'src/components/custom-dialog';
+import { toast } from 'src/components/snackbar';
+import { EnrollmentPaymentDialog } from 'src/components/enrollments/enrollment-payment-dialog';
 
 import { useAuthContext } from 'src/auth/hooks';
 
@@ -262,7 +262,8 @@ const PROGRAM_ALIAS_TO_ID = {
 
 export default function ProgramCourseDetail() {
   const [selectedFilter, setSelectedFilter] = useState('all');
-  const [enrollConfirmOpen, setEnrollConfirmOpen] = useState(false);
+  const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
+  const [enrollSubmitting, setEnrollSubmitting] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { authenticated, loading: authLoading } = useAuthContext();
@@ -371,12 +372,26 @@ export default function ProgramCourseDetail() {
   const isRejectedEnrollment = programEnrollment?.status === 'rejected';
   const isActiveEnrollment = isEnrolledInProgram && !isRejectedEnrollment;
 
-  const handleEnrollConfirm = useCallback(() => {
-    setEnrollConfirmOpen(false);
-    if (selectedProgram?.id && (!isEnrolledInProgram || isRejectedEnrollment)) {
-      submitEnrollment(selectedProgram.id);
-    }
-  }, [isEnrolledInProgram, isRejectedEnrollment, selectedProgram?.id, submitEnrollment]);
+  const handleEnrollSubmit = useCallback(
+    async (paymentProofFile) => {
+      if (!selectedProgram?.id || (isEnrolledInProgram && !isRejectedEnrollment)) {
+        return;
+      }
+
+      setEnrollSubmitting(true);
+      try {
+        await submitEnrollment(selectedProgram.id, paymentProofFile);
+        setEnrollDialogOpen(false);
+      } catch (error) {
+        const message =
+          typeof error === 'string' ? error : error?.message ?? 'Could not submit enrollment.';
+        toast.error(message);
+      } finally {
+        setEnrollSubmitting(false);
+      }
+    },
+    [isEnrolledInProgram, isRejectedEnrollment, selectedProgram?.id, submitEnrollment]
+  );
 
   const enrollmentStatusLabel =
     programEnrollment?.status === 'approved'
@@ -493,7 +508,7 @@ export default function ProgramCourseDetail() {
                     </RejectedNotice>
                     <EnrollNowBtn
                       type="button"
-                      onClick={() => setEnrollConfirmOpen(true)}
+                      onClick={() => setEnrollDialogOpen(true)}
                       disabled={!selectedProgram?.id}
                     >
                       Enroll again
@@ -507,7 +522,7 @@ export default function ProgramCourseDetail() {
                 ) : (
                   <EnrollNowBtn
                     type="button"
-                    onClick={() => setEnrollConfirmOpen(true)}
+                    onClick={() => setEnrollDialogOpen(true)}
                     disabled={!selectedProgram?.id}
                   >
                     Enroll Now
@@ -560,25 +575,15 @@ export default function ProgramCourseDetail() {
       </PageInner>
     </PageBg>
 
-    <ConfirmDialog
-      open={enrollConfirmOpen}
-      onClose={() => setEnrollConfirmOpen(false)}
+    <EnrollmentPaymentDialog
+      open={enrollDialogOpen}
+      onClose={() => setEnrollDialogOpen(false)}
       title={isRejectedEnrollment ? 'Enroll again' : 'Enroll in program'}
-      content={
-        <>
-          {isRejectedEnrollment ? (
-            <>Submit a new enrollment application for </>
-          ) : (
-            <>Submit an enrollment application for </>
-          )}
-          <strong>{programTitle}</strong>? You can review approval status after submitting.
-        </>
-      }
-      action={
-        <Button variant="contained" color="primary" onClick={handleEnrollConfirm}>
-          {isRejectedEnrollment ? 'Confirm re-enrollment' : 'Confirm enrollment'}
-        </Button>
-      }
+      programId={selectedProgram?.id}
+      programCode={selectedProgram?.code}
+      programTitle={programTitle}
+      submitting={enrollSubmitting}
+      onSubmit={handleEnrollSubmit}
     />
     </>
   );

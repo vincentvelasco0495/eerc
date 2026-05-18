@@ -206,6 +206,7 @@ export function CourseDetailLayout({
   courseLookup,
   /** Primary CTA (first/next module player) */
   continueHref,
+  requiresEnrollment = false,
   wrapMinHeightPage = false,
 }) {
   return (
@@ -231,7 +232,9 @@ export function CourseDetailLayout({
                   </CompletionLeft>
                   <DetailsBtn type="button">Details</DetailsBtn>
                 </StatusPill>
-                <ContinueBtn href={continueHref ?? '#'}>CONTINUE</ContinueBtn>
+                <ContinueBtn href={continueHref ?? '#'}>
+                  {requiresEnrollment ? 'ENROLL' : 'CONTINUE'}
+                </ContinueBtn>
               </SidebarCard>
 
               <SidebarCard $variant="muted">
@@ -261,6 +264,7 @@ export function CourseDetailLayout({
                 curriculumModules={curriculumModules}
                 faqItems={faqItems}
                 courseLookup={courseLookup}
+                requiresEnrollment={requiresEnrollment}
               />
             </MainColumn>
           </TwoColGrid>

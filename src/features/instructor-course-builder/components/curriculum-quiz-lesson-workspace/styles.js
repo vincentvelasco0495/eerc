@@ -17,6 +17,9 @@ export const styles = {
     display: 'flex',
     flexDirection: 'column',
     minHeight: 0,
+    minWidth: 0,
+    maxWidth: '100%',
+    overflowX: 'hidden',
     bgcolor: quizColors.pageBg,
     p: { xs: 2, sm: 2.5 },
     boxSizing: 'border-box',
@@ -122,8 +125,9 @@ export const styles = {
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: { xs: 1, sm: 1.5, md: 2 },
-    flexWrap: 'nowrap',
+    flexWrap: 'wrap',
     minWidth: 0,
+    maxWidth: '100%',
     mt: 0,
     pt: { xs: 1.5, sm: 2 },
     pb: { xs: 1.5, sm: 2 },
@@ -132,17 +136,15 @@ export const styles = {
 
   tabsWrap: {
     display: 'flex',
+    flexWrap: 'wrap',
     gap: '4px',
     p: '4px',
     bgcolor: '#e8eaed',
     borderRadius: '10px',
-    flex: '1 1 0%',
+    flex: { xs: '1 1 100%', sm: '1 1 0%' },
     minWidth: 0,
-    overflowX: 'auto',
-    WebkitOverflowScrolling: 'touch',
+    maxWidth: '100%',
     flexShrink: 1,
-    scrollbarWidth: 'thin',
-    '&::-webkit-scrollbar': { height: 4 },
   },
 
   tabActions: {
@@ -150,7 +152,8 @@ export const styles = {
     alignItems: 'center',
     gap: { xs: 0.75, sm: 1.25 },
     flexShrink: 0,
-    flexWrap: 'nowrap',
+    flexWrap: 'wrap',
+    maxWidth: '100%',
   },
 
   listIconBtn: {
@@ -244,7 +247,10 @@ export const styles = {
     flexDirection: 'column',
     gap: 2,
     minHeight: 0,
-    overflow: 'auto',
+    minWidth: 0,
+    maxWidth: '100%',
+    overflowX: 'hidden',
+    overflowY: 'auto',
     pb: 2,
   },
 
@@ -254,6 +260,9 @@ export const styles = {
     borderRadius: '10px',
     boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
     overflow: 'hidden',
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box',
   },
 
   cardActionsRow: {
@@ -278,9 +287,11 @@ export const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: 2,
     px: 2,
     py: 1.5,
+    minWidth: 0,
     bgcolor: '#f3f4f6',
     borderBottom: `1px solid ${quizColors.border}`,
   },
@@ -299,6 +310,9 @@ export const styles = {
     color: quizColors.text,
     minWidth: 0,
     flex: 1,
+    wordBreak: 'break-word',
+    overflowWrap: 'anywhere',
+    whiteSpace: 'normal',
   },
 
   trashBtn: {
@@ -327,12 +341,110 @@ export const styles = {
     mb: 1,
   },
 
+  questionEditorWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: 0,
+    maxWidth: '100%',
+    overflow: 'hidden',
+  },
+
+  editorMainFull: {
+    p: { xs: 1.75, sm: 2.5 },
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 1,
+    minWidth: 0,
+    maxWidth: '100%',
+    overflow: 'hidden',
+    boxSizing: 'border-box',
+  },
+
+  editorShell: {
+    minWidth: 0,
+    maxWidth: '100%',
+    overflow: 'hidden',
+    '& .ProseMirror': {
+      wordBreak: 'break-word',
+      overflowWrap: 'anywhere',
+    },
+    '& table': {
+      maxWidth: '100%',
+      tableLayout: 'fixed',
+    },
+    '& img': {
+      maxWidth: '100%',
+      height: 'auto',
+    },
+  },
+
   editorTop: {
     display: 'flex',
     flexDirection: { xs: 'column', sm: 'row' },
     gap: { xs: 1.5, sm: 2 },
     p: { xs: 1.75, sm: 2.5 },
     alignItems: { xs: 'stretch', sm: 'flex-start' },
+  },
+
+  questionImagesRow: {
+    display: 'grid',
+    gridTemplateColumns: { xs: '1fr', sm: 'minmax(0, 1fr) minmax(0, 1fr)' },
+    borderTop: `1px solid ${quizColors.border}`,
+    minWidth: 0,
+    maxWidth: '100%',
+  },
+
+  questionImageField: {
+    p: { xs: 2, sm: 2.5 },
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 1.5,
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+    bgcolor: '#fafafa',
+  },
+
+  questionImageFieldBorderRight: {
+    borderRight: { xs: 'none', sm: `1px solid ${quizColors.border}` },
+    borderBottom: { xs: `1px solid ${quizColors.border}`, sm: 'none' },
+  },
+
+  questionImageLabel: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: quizColors.text,
+    textAlign: 'center',
+  },
+
+  questionImagePreview: {
+    width: '100%',
+    maxWidth: 280,
+    maxHeight: 160,
+    objectFit: 'contain',
+    borderRadius: '6px',
+    border: `1px solid ${quizColors.border}`,
+    bgcolor: '#fff',
+  },
+
+  questionImageFileRow: {
+    width: '100%',
+    maxWidth: '100%',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+
+  questionImageChooseBtn: {
+    textTransform: 'none',
+    fontWeight: 500,
+    fontSize: 13,
+    flexShrink: 0,
+  },
+
+  questionImageFileName: {
+    maxWidth: 140,
+    fontSize: 13,
   },
 
   imageTile: {
@@ -349,6 +461,64 @@ export const styles = {
     color: quizColors.muted,
     cursor: 'pointer',
     alignSelf: { xs: 'flex-start', sm: 'auto' },
+  },
+
+  diagramColumn: {
+    width: { xs: '100%', sm: 140 },
+    flexShrink: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 0.75,
+    alignSelf: { xs: 'flex-start', sm: 'auto' },
+  },
+
+  diagramDropzone: {
+    width: '100%',
+    minHeight: { xs: 120, sm: 140 },
+    border: `1px dashed ${quizColors.border}`,
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    bgcolor: '#f9fafb',
+    color: quizColors.muted,
+    overflow: 'hidden',
+    p: 1,
+    boxSizing: 'border-box',
+  },
+
+  diagramDropzoneActive: {
+    borderColor: quizColors.primaryBlue,
+    bgcolor: 'rgba(37, 99, 235, 0.06)',
+  },
+
+  diagramDropzoneHasImage: {
+    borderStyle: 'solid',
+    p: 0,
+  },
+
+  diagramPreview: {
+    width: '100%',
+    height: '100%',
+    minHeight: { xs: 120, sm: 140 },
+    objectFit: 'contain',
+    display: 'block',
+    bgcolor: '#fff',
+  },
+
+  diagramActionBtn: {
+    textTransform: 'none',
+    fontWeight: 600,
+    fontSize: 12,
+    flex: 1,
+    minWidth: 0,
+  },
+
+  diagramRemoveBtn: {
+    border: `1px solid ${quizColors.border}`,
+    borderRadius: '8px',
+    color: '#dc2626',
   },
 
   editorMain: {
@@ -369,6 +539,34 @@ export const styles = {
     borderTop: `1px solid ${quizColors.border}`,
   },
 
+  settingsRowTop: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 2,
+    px: 2.5,
+    py: 2,
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+    borderBottom: `1px solid ${quizColors.border}`,
+  },
+
+  questionTypeSelect: {
+    minWidth: 0,
+    maxWidth: { xs: '100%', sm: 280 },
+    flex: { xs: '1 1 100%', sm: '1 1 220px' },
+  },
+
+  settingsRequiredLabel: {
+    m: 0,
+    ml: { xs: 0, sm: 'auto' },
+    flex: { xs: '1 1 100%', sm: '0 0 auto' },
+    '& .MuiFormControlLabel-label': {
+      whiteSpace: 'normal',
+    },
+  },
+
   answersSection: {
     bgcolor: '#fff',
     border: `1px solid ${quizColors.border}`,
@@ -383,6 +581,9 @@ export const styles = {
     px: 2.5,
     pb: 2.5,
     bgcolor: '#fff',
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box',
   },
 
   answersHead: {
@@ -420,14 +621,25 @@ export const styles = {
   answerRow: {
     display: 'flex',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 1.5,
     minHeight: 52,
     px: 2,
     py: 1,
+    minWidth: 0,
+    maxWidth: '100%',
     border: `1px solid ${quizColors.border}`,
     borderRadius: '8px',
     bgcolor: '#fff',
     boxSizing: 'border-box',
+  },
+
+  answerRowMain: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1.5,
+    flex: '1 1 180px',
+    minWidth: 0,
   },
 
   dragHandle: {
@@ -453,9 +665,9 @@ export const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: 1,
-    flexShrink: 0,
-    minWidth: 120,
-    justifyContent: 'flex-end',
+    flex: { xs: '1 1 100%', sm: '0 0 auto' },
+    minWidth: { xs: 0, sm: 120 },
+    justifyContent: { xs: 'flex-start', sm: 'flex-end' },
   },
 
   correctLabel: {
@@ -468,12 +680,17 @@ export const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 1,
     mt: 1.5,
     px: 2,
     py: 1.25,
+    minWidth: 0,
+    maxWidth: '100%',
     border: `1px solid ${quizColors.border}`,
     borderRadius: '8px',
     bgcolor: '#f9fafb',
+    boxSizing: 'border-box',
   },
 
   addAnswerBtn: {

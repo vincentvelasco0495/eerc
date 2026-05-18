@@ -68,7 +68,7 @@ export function JwtSignInView() {
       await signInWithPassword({ email: data.email, password: data.password });
       const sessionUser = await checkUserSession?.();
       const role = sessionUser?.role ?? 'admin';
-      router.replace(resolvePostLoginUrl(role, searchParams.get('returnTo')));
+      router.replace(resolvePostLoginUrl(role, searchParams.get('returnTo'), sessionUser));
     } catch (error) {
       console.error(error);
       const feedbackMessage = getErrorMessage(error);

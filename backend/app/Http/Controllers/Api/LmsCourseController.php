@@ -256,14 +256,14 @@ class LmsCourseController extends Controller
                 $base['faq'] = self::sanitizeFaqArray($incoming['faq']);
             }
 
-            foreach (['featuredCourse', 'lockLessonsInOrder'] as $boolKey) {
-                if (array_key_exists($boolKey, $incoming)) {
-                    $boolValue = filter_var($incoming[$boolKey], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-                    if ($boolValue === null) {
-                        unset($base[$boolKey]);
-                    } else {
-                        $base[$boolKey] = (bool) $boolValue;
-                    }
+            unset($base['featuredCourse']);
+
+            if (array_key_exists('lockLessonsInOrder', $incoming)) {
+                $boolValue = filter_var($incoming['lockLessonsInOrder'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                if ($boolValue === null) {
+                    unset($base['lockLessonsInOrder']);
+                } else {
+                    $base['lockLessonsInOrder'] = (bool) $boolValue;
                 }
             }
 

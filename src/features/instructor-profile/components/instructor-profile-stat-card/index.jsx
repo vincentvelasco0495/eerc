@@ -1,5 +1,6 @@
 import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
+import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
 import CardContent from '@mui/material/CardContent';
 
@@ -7,7 +8,7 @@ import { Iconify } from 'src/components/iconify';
 
 import { styles } from './styles';
 
-export function InstructorProfileStatCard({ item }) {
+export function InstructorProfileStatCard({ item, loading = false }) {
   return (
     <Card sx={styles.card}>
       <CardContent sx={styles.cardContent}>
@@ -20,7 +21,11 @@ export function InstructorProfileStatCard({ item }) {
             <Typography variant="caption" sx={styles.caption}>
               {item.label}
             </Typography>
-            <Typography variant="h6">{item.value}</Typography>
+            {loading ? (
+              <Skeleton variant="text" width={72} height={28} animation="wave" />
+            ) : (
+              <Typography variant="h6">{item.value}</Typography>
+            )}
           </Stack>
         </Stack>
       </CardContent>

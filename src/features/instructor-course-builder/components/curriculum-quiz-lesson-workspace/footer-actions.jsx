@@ -3,9 +3,9 @@ import Button from '@mui/material/Button';
 
 import { Iconify } from 'src/components/iconify';
 
-import { styles, quizColors } from './styles';
+import { styles } from './styles';
 
-export function FooterActions({ onAddQuestion, onQuestionBank, onSave, saveDisabled = false }) {
+export function FooterActions({ onAddQuestion, onSave, saveDisabled = false }) {
   return (
     <Box sx={styles.footer}>
       <span />
@@ -18,17 +18,6 @@ export function FooterActions({ onAddQuestion, onQuestionBank, onSave, saveDisab
           endIcon={<Iconify icon="solar:alt-arrow-down-linear" width={18} />}
         >
           + Question
-        </Button>
-        <Button
-          variant="contained"
-          sx={{
-            ...styles.footerBtn,
-            bgcolor: quizColors.success,
-            '&:hover': { bgcolor: quizColors.successHover },
-          }}
-          onClick={onQuestionBank}
-        >
-          + Question Bank
         </Button>
       </Box>
       <Box sx={styles.footerEnd}>

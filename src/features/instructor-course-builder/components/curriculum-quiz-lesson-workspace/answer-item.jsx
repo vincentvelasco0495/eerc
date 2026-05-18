@@ -40,22 +40,24 @@ export function AnswerItem({ answer, selectedCorrectId, onTextChange, onSelectCo
 
   return (
     <Box sx={styles.answerRow}>
-      <Box sx={styles.dragHandle} aria-hidden>
-        <DragDots />
+      <Box sx={styles.answerRowMain}>
+        <Box sx={styles.dragHandle} aria-hidden>
+          <DragDots />
+        </Box>
+        <TextField
+          variant="outlined"
+          size="small"
+          fullWidth
+          value={answer.text}
+          onChange={(e) => onTextChange(answer.id, e.target.value)}
+          sx={styles.answerInput}
+          placeholder="Answer"
+          aria-label={`Answer ${answer.text || 'empty'}`}
+        />
+        <IconButton size="small" sx={{ color: 'text.secondary', flexShrink: 0 }} aria-label="Edit answer">
+          <Iconify icon="solar:pen-linear" width={18} />
+        </IconButton>
       </Box>
-      <TextField
-        variant="outlined"
-        size="small"
-        fullWidth
-        value={answer.text}
-        onChange={(e) => onTextChange(answer.id, e.target.value)}
-        sx={styles.answerInput}
-        placeholder="Answer"
-        aria-label={`Answer ${answer.text || 'empty'}`}
-      />
-      <IconButton size="small" sx={{ color: 'text.secondary' }} aria-label="Edit answer">
-        <Iconify icon="solar:pen-linear" width={18} />
-      </IconButton>
       <Box sx={styles.answerCorrect}>
         <Box component="span" sx={styles.correctLabel}>
           Correct

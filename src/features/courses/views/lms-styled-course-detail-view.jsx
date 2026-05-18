@@ -88,6 +88,7 @@ export function LmsStyledCourseDetailView({ courseLookup }) {
         faqItems={shell.faqItems}
         continueHref={shell.continueHref}
         courseLookup={shell.courseLookup}
+        requiresEnrollment={shell.requiresEnrollment}
         wrapMinHeightPage={false}
       />
     </>

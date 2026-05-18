@@ -49,21 +49,28 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/user', [LmsUserController::class, 'show']);
     Route::patch('/user', [LmsUserController::class, 'update']);
-    Route::post('/programs', [LmsProgramController::class, 'store']);
-    Route::patch('/programs/{programPublicId}', [LmsProgramController::class, 'update']);
-    Route::delete('/programs/{programPublicId}', [LmsProgramController::class, 'destroy']);
-
-    Route::get('/instructors/linkable-users', [LmsInstructorController::class, 'linkableUsers']);
     Route::get('/instructors', [LmsInstructorController::class, 'index']);
-    Route::post('/instructors', [LmsInstructorController::class, 'store']);
-    Route::patch('/instructors/{userPublicUid}', [LmsInstructorController::class, 'update']);
-    Route::delete('/instructors/{userPublicUid}', [LmsInstructorController::class, 'destroy']);
 
-    Route::get('/students/linkable-users', [LmsStudentController::class, 'linkableUsers']);
-    Route::get('/students', [LmsStudentController::class, 'index']);
-    Route::post('/students', [LmsStudentController::class, 'store']);
-    Route::patch('/students/{userPublicUid}', [LmsStudentController::class, 'update']);
-    Route::delete('/students/{userPublicUid}', [LmsStudentController::class, 'destroy']);
+    Route::middleware('page:/setting-program')->group(function () {
+        Route::post('/programs', [LmsProgramController::class, 'store']);
+        Route::patch('/programs/{programPublicId}', [LmsProgramController::class, 'update']);
+        Route::delete('/programs/{programPublicId}', [LmsProgramController::class, 'destroy']);
+    });
+
+    Route::middleware('page:/setting-instructor')->group(function () {
+        Route::get('/instructors/linkable-users', [LmsInstructorController::class, 'linkableUsers']);
+        Route::post('/instructors', [LmsInstructorController::class, 'store']);
+        Route::patch('/instructors/{userPublicUid}', [LmsInstructorController::class, 'update']);
+        Route::delete('/instructors/{userPublicUid}', [LmsInstructorController::class, 'destroy']);
+    });
+
+    Route::middleware('page:/setting-student')->group(function () {
+        Route::get('/students/linkable-users', [LmsStudentController::class, 'linkableUsers']);
+        Route::get('/students', [LmsStudentController::class, 'index']);
+        Route::post('/students', [LmsStudentController::class, 'store']);
+        Route::patch('/students/{userPublicUid}', [LmsStudentController::class, 'update']);
+        Route::delete('/students/{userPublicUid}', [LmsStudentController::class, 'destroy']);
+    });
     Route::post('/courses', [LmsCourseController::class, 'store']);
     Route::post('/courses/{coursePublicId}/modules', [LmsModuleController::class, 'store']);
     Route::patch('/courses/{coursePublicId}/modules/reorder', [LmsModuleController::class, 'reorder']);
@@ -83,6 +90,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin', [LmsAdminSummaryController::class, 'show']);
 
     Route::post('/enrollments', [LmsEnrollmentController::class, 'store']);
+    Route::get('/enrollments/{publicId}/payment-proof', [LmsEnrollmentController::class, 'downloadPaymentProof']);
     Route::patch('/enrollments/{publicId}', [LmsEnrollmentController::class, 'updateStatus']);
 
     Route::get('/quizzes/{publicId}/questions', [LmsQuizController::class, 'questions']);

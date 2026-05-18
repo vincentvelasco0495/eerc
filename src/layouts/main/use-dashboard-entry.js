@@ -1,16 +1,15 @@
 import { useCallback } from 'react';
 
-import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 
 import { useAuthContext } from 'src/auth/hooks';
-import { getAuthSignInPath } from 'src/auth/utils';
+import { getAuthSignInPath, getPostLoginRedirectPath } from 'src/auth/utils';
 
 // ----------------------------------------------------------------------
 
 export function useDashboardEntry() {
   const router = useRouter();
-  const { authenticated, loading } = useAuthContext();
+  const { authenticated, loading, user } = useAuthContext();
 
   const goToDashboardOrSignIn = useCallback(() => {
     if (loading) {
@@ -18,12 +17,12 @@ export function useDashboardEntry() {
     }
 
     if (authenticated) {
-      router.push(paths.dashboard.root);
+      router.push(getPostLoginRedirectPath(user?.role));
       return;
     }
 
     router.push(getAuthSignInPath());
-  }, [authenticated, loading, router]);
+  }, [authenticated, loading, router, user?.role]);
 
   return { goToDashboardOrSignIn, loading };
 }

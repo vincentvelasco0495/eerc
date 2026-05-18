@@ -97,6 +97,10 @@ export const css = {
     },
   },
 
+  imageDropzoneEmpty: {
+    minHeight: 180,
+  },
+
   quotaAlert: {
     mt: 1.25,
     alignItems: 'flex-start',

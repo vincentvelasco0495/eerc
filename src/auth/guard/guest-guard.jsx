@@ -15,7 +15,11 @@ export function GuestGuard({ children }) {
   const [isChecking, setIsChecking] = useState(true);
 
   const searchParams = useSearchParams();
-  const redirectUrl = resolvePostLoginUrl(user?.role ?? 'admin', searchParams.get('returnTo'));
+  const redirectUrl = resolvePostLoginUrl(
+    user?.role ?? 'admin',
+    searchParams.get('returnTo'),
+    user
+  );
 
   const checkPermissions = async () => {
     if (loading) {

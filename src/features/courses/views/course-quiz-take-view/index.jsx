@@ -2,6 +2,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { useRef, useMemo, useState, useEffect, useCallback, useLayoutEffect } from 'react';
 
 import Box from '@mui/material/Box';
+import Alert from '@mui/material/Alert';
 import Badge from '@mui/material/Badge';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -38,6 +39,8 @@ import {
   headerRowSx,
   optionRowSx,
   resultBannerSx,
+  postResultActionsSx,
+  resultActionBtnSx,
 } from './styles';
 
 // ----------------------------------------------------------------------
@@ -53,6 +56,21 @@ function normalizeQuestions(rows) {
   return (Array.isArray(rows) ? rows : []).map((q, idx) => ({
     id: String(q?.id ?? `q-${idx}`),
     prompt: String(q?.prompt ?? ''),
+    questionType: q?.questionType === 'simulation_diagram' ? 'simulation_diagram' : 'single_choice',
+    problemImageUrl:
+      typeof q?.problemImageUrl === 'string'
+        ? q.problemImageUrl
+        : typeof q?.diagramUrl === 'string'
+          ? q.diagramUrl
+          : null,
+    problemImageName:
+      typeof q?.problemImageName === 'string'
+        ? q.problemImageName
+        : typeof q?.diagramName === 'string'
+          ? q.diagramName
+          : null,
+    solutionImageUrl: typeof q?.solutionImageUrl === 'string' ? q.solutionImageUrl : null,
+    solutionImageName: typeof q?.solutionImageName === 'string' ? q.solutionImageName : null,
     options: (Array.isArray(q?.options) ? q.options : []).map((o, oi) => ({
       id: String(o?.id ?? `o-${idx}-${oi}`),
       label: String(o?.label ?? ''),
@@ -73,6 +91,23 @@ function computeScore(questions, selections) {
   });
   const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
   return { correct, total, pct };
+}
+
+function isQuestionAnsweredWrong(question, selections) {
+  if (!question) {
+    return false;
+  }
+  const sel = selections[question.id];
+  if (!sel) {
+    return false;
+  }
+  const picked = question.options.find((o) => o.id === sel);
+  return Boolean(picked && !picked.isCorrect);
+}
+
+function getCorrectOptionLabel(question) {
+  const label = question?.options?.find((o) => o.isCorrect)?.label;
+  return typeof label === 'string' ? label.trim() : '';
 }
 
 const QUIZ_SESSION_VERSION = 1;
@@ -231,6 +266,8 @@ export function CourseQuizTakeView() {
 
   const hydrateKeyRef = useRef('');
   const attemptSubmitRef = useRef('');
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
   /** Block take UI: `pass` = passed with retake-after-pass OFF; `attempts` = no attempts left. */
   const [takeBlocked, setTakeBlocked] = useState('');
 
@@ -240,9 +277,8 @@ export function CourseQuizTakeView() {
     setTakeBlocked('');
   }, [quizId, courseLookup]);
 
-  /** New attempt from Start Quiz (`?new=1`) or Retake — drop stored "complete" session so inputs unlock. */
-  useLayoutEffect(() => {
-    if (searchParams.get('new') !== '1' || !quizId || !courseLookup) {
+  const beginFreshAttempt = useCallback(() => {
+    if (!quizId || !courseLookup) {
       return;
     }
     try {
@@ -250,13 +286,32 @@ export function CourseQuizTakeView() {
     } catch {
       // ignore
     }
+    try {
+      localStorage.removeItem(passBlockStorageKey(quizId));
+    } catch {
+      // ignore
+    }
     attemptSubmitRef.current = '';
     hydrateKeyRef.current = '';
+    setTakeBlocked('');
+    setPhase('taking');
+    setSelections({});
+    setStep(0);
+    setSecondsLeft(0);
+    setDeadlineAtMs(null);
     setAttemptResetToken((n) => n + 1);
+  }, [courseLookup, quizId]);
+
+  /** New attempt from Start Quiz (`?new=1`) or Retake — drop stored "complete" session so inputs unlock. */
+  useLayoutEffect(() => {
+    if (searchParams.get('new') !== '1' || !quizId || !courseLookup) {
+      return;
+    }
+    beginFreshAttempt();
     const next = new URLSearchParams(searchParams);
     next.delete('new');
     setSearchParams(next, { replace: true });
-  }, [courseLookup, quizId, searchParams, setSearchParams]);
+  }, [beginFreshAttempt, courseLookup, quizId, searchParams, setSearchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -297,6 +352,8 @@ export function CourseQuizTakeView() {
     setPhase('complete');
   }, []);
 
+  const hasQuizContent = displayQuestions.length > 0 && apiQuestions.length > 0;
+
   /** Hydrate or start session: timer uses absolute `deadlineAt` so refresh does not reset time remaining. */
   useEffect(() => {
     if (!quizId || !courseLookup || apiQuestions.length === 0) {
@@ -312,6 +369,16 @@ export function CourseQuizTakeView() {
     }
 
     let existing = readQuizSession(storageKey);
+
+    // Keep review UI stable after submit while modules revalidate in the background.
+    if (
+      phaseRef.current === 'complete' &&
+      displayQuestions.length > 0 &&
+      existing?.phase === 'complete'
+    ) {
+      hydrateKeyRef.current = versionKey;
+      return;
+    }
     if (
       existing &&
       quizMeta &&
@@ -520,11 +587,14 @@ export function CourseQuizTakeView() {
     void runCommand('quiz.attempt', {
       publicId: quizId,
       body: {
-      selections,
-      durationUsedSeconds,
+        selections,
+        durationUsedSeconds,
       },
     })
-      .then(() => Promise.all([mutateQuizResults(), mutateModules()]))
+      .then(() => {
+        void mutateQuizResults();
+        void mutateModules();
+      })
       .catch(() => {
         // Keep the quiz UX unblocked even if attempt logging fails.
       });
@@ -571,14 +641,13 @@ export function CourseQuizTakeView() {
   );
 
   const revealCorrect = Boolean(quizMeta?.showCorrectAnswer);
+  const answerFeedbackActive = phase === 'complete' && revealCorrect;
+  const currentAnsweredWrong = isQuestionAnsweredWrong(current, selections);
+  const correctOptionLabel = getCorrectOptionLabel(current);
   const passingGrade = Number(quizMeta?.passingGrade) || 0;
   const passedCut = phase === 'complete' && passingGrade > 0 && score.pct >= passingGrade;
   const failedCut = phase === 'complete' && passingGrade > 0 && score.pct < passingGrade;
 
-  const freshTakeHref = useMemo(
-    () => `${paths.dashboard.courseQuizTake(courseLookup, quizId)}?new=1`,
-    [courseLookup, quizId]
-  );
   const historyHref = useMemo(() => {
     const q = new URLSearchParams();
     if (quizId) {
@@ -607,6 +676,11 @@ export function CourseQuizTakeView() {
   const showRetakeCta =
     phase === 'complete' && quizMeta != null && !attemptsExhausted && !passBlocksRetake;
 
+  const handleRetakeClick = useCallback(() => {
+    beginFreshAttempt();
+    navigate(paths.dashboard.courseQuizTake(courseLookup, quizId), { replace: true });
+  }, [beginFreshAttempt, courseLookup, navigate, quizId]);
+
   const handleSelectOption = (optionId) => {
     if (phase !== 'complete' && current) {
       setSelections((prev) => ({ ...prev, [current.id]: optionId }));
@@ -629,12 +703,14 @@ export function CourseQuizTakeView() {
     setStep(idx);
   };
 
-  const loading = Boolean(
+  const bootstrapping = Boolean(
     courseLookup &&
       (coursesLoading ||
-        modulesLoading ||
+        (modulesLoading && !quizMeta) ||
         (resolvedCourseId && !course && !coursesLoading))
   );
+  const awaitingDisplay =
+    apiQuestions.length > 0 && !takeBlocked && !loadError && displayQuestions.length === 0;
 
   if (!CONFIG.serverUrl?.trim()) {
     return (
@@ -646,11 +722,7 @@ export function CourseQuizTakeView() {
     );
   }
 
-  if (
-    loading ||
-    loadingQuestions ||
-    (apiQuestions.length > 0 && !takeBlocked && !loadError && displayQuestions.length === 0)
-  ) {
+  if (!hasQuizContent && (bootstrapping || loadingQuestions || awaitingDisplay)) {
     return (
       <DashboardContent
         maxWidth={false}
@@ -680,9 +752,15 @@ export function CourseQuizTakeView() {
         </Button>
         <Typography variant="body1">{msg}</Typography>
         {quizMeta?.quizAttemptHistory ? (
-          <Typography variant="body2" sx={{ mt: 2 }}>
-            <RouterLink href={historyHref}>View quiz attempt history</RouterLink>
-          </Typography>
+          <Button
+            component={RouterLink}
+            href={historyHref}
+            variant="contained"
+            color="inherit"
+            sx={{ ...resultActionBtnSx, mt: 2 }}
+          >
+            View quiz attempt history
+          </Button>
         ) : null}
       </DashboardContent>
     );
@@ -778,16 +856,32 @@ export function CourseQuizTakeView() {
           </Box>
         ) : null}
 
-        {phase === 'complete' && quizMeta?.quizAttemptHistory ? (
-          <Typography variant="body2" sx={{ mb: 2 }}>
-            <RouterLink href={historyHref}>View quiz attempt history</RouterLink>
-          </Typography>
-        ) : null}
-
-        {showRetakeCta ? (
-          <Button component={RouterLink} href={freshTakeHref} variant="contained" sx={{ mb: 2 }}>
-            Retake quiz
-          </Button>
+        {phase === 'complete' && (quizMeta?.quizAttemptHistory || showRetakeCta) ? (
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            alignItems={{ xs: 'flex-start', sm: 'center' }}
+            flexWrap="wrap"
+            useFlexGap
+            spacing={1.5}
+            sx={postResultActionsSx}
+          >
+            {quizMeta?.quizAttemptHistory ? (
+              <Button
+                component={RouterLink}
+                href={historyHref}
+                variant="contained"
+                color="inherit"
+                sx={resultActionBtnSx}
+              >
+                View quiz attempt history
+              </Button>
+            ) : null}
+            {showRetakeCta ? (
+              <Button type="button" variant="contained" color="inherit" sx={resultActionBtnSx} onClick={handleRetakeClick}>
+                Retake quiz
+              </Button>
+            ) : null}
+          </Stack>
         ) : null}
 
         {current ? (
@@ -802,6 +896,74 @@ export function CourseQuizTakeView() {
               bgcolor: 'background.paper',
             }}
           >
+            {current.questionType === 'simulation_diagram' && current.problemImageUrl ? (
+              <Box
+                sx={{
+                  mb: 2,
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: 'grey.50',
+                  p: { xs: 1.5, sm: 2 },
+                }}
+              >
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  Problem
+                </Typography>
+                <Box
+                  component="img"
+                  src={current.problemImageUrl}
+                  alt={
+                    current.problemImageName
+                      ? `Problem: ${current.problemImageName}`
+                      : 'Problem diagram'
+                  }
+                  sx={{
+                    display: 'block',
+                    width: '100%',
+                    maxHeight: { xs: 280, sm: 420 },
+                    objectFit: 'contain',
+                    mx: 'auto',
+                  }}
+                />
+              </Box>
+            ) : null}
+
+            {current.questionType === 'simulation_diagram' &&
+            current.solutionImageUrl &&
+            answerFeedbackActive ? (
+              <Box
+                sx={{
+                  mb: 2,
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: 'success.lighter',
+                  p: { xs: 1.5, sm: 2 },
+                }}
+              >
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  Solution
+                </Typography>
+                <Box
+                  component="img"
+                  src={current.solutionImageUrl}
+                  alt={
+                    current.solutionImageName
+                      ? `Solution: ${current.solutionImageName}`
+                      : 'Solution diagram'
+                  }
+                  sx={{
+                    display: 'block',
+                    width: '100%',
+                    maxHeight: { xs: 280, sm: 420 },
+                    objectFit: 'contain',
+                    mx: 'auto',
+                  }}
+                />
+              </Box>
+            ) : null}
+
             <Box
               sx={{
                 display: 'flex',
@@ -832,9 +994,16 @@ export function CourseQuizTakeView() {
               />
             </Box>
 
+            {answerFeedbackActive && currentAnsweredWrong && correctOptionLabel ? (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Correct answer: <strong>{correctOptionLabel}</strong>
+              </Alert>
+            ) : null}
+
             <Stack spacing={1.25}>
               {current.options.map((opt) => {
                 const isSelected = selections[current.id] === opt.id;
+                const highlightCorrect = answerFeedbackActive && opt.isCorrect;
                 return (
                   <Button
                     key={opt.id}
@@ -843,16 +1012,16 @@ export function CourseQuizTakeView() {
                     disabled={phase === 'complete'}
                     onClick={() => handleSelectOption(opt.id)}
                     sx={optionRowSx(theme, {
-                      phase,
+                      feedbackActive: answerFeedbackActive,
                       isSelected,
                       isCorrect: opt.isCorrect,
-                      revealCorrect,
+                      highlightCorrect,
                     })}
                     endIcon={
-                      phase === 'complete' ? (
+                      answerFeedbackActive ? (
                         isSelected && !opt.isCorrect ? (
                           <Iconify icon="solar:close-circle-bold" width={22} color="error.main" />
-                        ) : opt.isCorrect && (revealCorrect || isSelected) ? (
+                        ) : highlightCorrect ? (
                           <Iconify icon="solar:check-circle-bold" width={22} color="info.main" />
                         ) : null
                       ) : null
@@ -945,8 +1114,16 @@ export function CourseQuizTakeView() {
               )}
             </Stack>
             <Button
+              type="button"
               color="inherit"
-              onClick={phase === 'taking' && step >= lastIndex ? finishQuiz : handleNext}
+              onClick={(event) => {
+                event.preventDefault();
+                if (phase === 'taking' && step >= lastIndex) {
+                  finishQuiz();
+                  return;
+                }
+                handleNext();
+              }}
               endIcon={<Iconify icon="eva:arrow-ios-forward-fill" width={20} />}
             >
               {phase === 'taking' && step >= lastIndex ? 'Submit' : 'Next'}

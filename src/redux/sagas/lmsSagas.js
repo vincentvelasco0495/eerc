@@ -35,14 +35,27 @@ import {
 } from 'src/redux/actions/lmsActions';
 
 function* submitEnrollmentSaga(action) {
+  const { programId, paymentProofFile, resolve, reject } = action.payload ?? {};
   try {
-    const payload = yield call(lmsApi.submitEnrollmentRequest, action.payload.programId);
+    const payload = yield call(lmsApi.submitEnrollmentRequest, { programId, paymentProofFile });
     yield put(submitEnrollmentSuccess(payload));
     const enrollmentsEndpoint = lmsEndpoints.enrollments();
     yield put(lmsResourceFetchRequest({ key: enrollmentsEndpoint, endpoint: enrollmentsEndpoint }));
-    yield put(lmsFlashSet({ severity: 'success', message: 'Enrollment request submitted successfully.' }));
+    yield put(
+      lmsFlashSet({
+        severity: 'success',
+        message: 'Enrollment submitted with payment proof. An administrator will verify it shortly.',
+      })
+    );
+    if (typeof resolve === 'function') {
+      resolve(payload);
+    }
   } catch (error) {
-    yield put(submitEnrollmentFailure(apiErrorHandler(error)));
+    const message = apiErrorHandler(error);
+    yield put(submitEnrollmentFailure(message));
+    if (typeof reject === 'function') {
+      reject(new Error(message));
+    }
   }
 }
 

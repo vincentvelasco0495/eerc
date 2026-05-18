@@ -5,8 +5,6 @@ import Tooltip from '@mui/material/Tooltip';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -19,12 +17,10 @@ export function TextLessonWorkspaceSettings({
   onLessonPreviewChange,
   unlockAfterPurchase,
   onUnlockAfterPurchaseChange,
-  startDate,
-  onStartDateChange,
-  startTime,
-  onStartTimeChange,
   /** When true, omit the lesson duration field (e.g. video lesson supplies duration above). */
   hideDuration = false,
+  /** When false, hide unlock-after-purchase (text lessons). */
+  showUnlockAfterPurchase = true,
 }) {
   return (
     <Stack sx={styles.root}>
@@ -61,7 +57,8 @@ export function TextLessonWorkspaceSettings({
         </Stack>
       </Stack>
 
-      <Stack direction="row" sx={styles.toggleRowAlignStart}>
+      {showUnlockAfterPurchase ? (
+        <Stack direction="row" sx={styles.toggleRowAlignStart}>
           <Switch
             size="small"
             checked={unlockAfterPurchase}
@@ -69,43 +66,11 @@ export function TextLessonWorkspaceSettings({
             color="primary"
             sx={styles.switch}
           />
-        <Typography sx={[styles.toggleLabel, styles.toggleLabelFill]}>
-          Unlock the lesson after a certain time after the purchase
-        </Typography>
-      </Stack>
-
-      <Stack sx={styles.row}>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={styles.fieldLabel}>Lesson start date</Typography>
-          <DatePicker
-            value={startDate}
-            onChange={onStartDateChange}
-            format="MM/DD/YYYY"
-            slotProps={{
-              textField: {
-                fullWidth: true,
-                size: 'small',
-                placeholder: 'Select Date',
-              },
-            }}
-          />
-        </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={styles.fieldLabel}>Lesson start time</Typography>
-          <TimePicker
-            value={startTime}
-            onChange={onStartTimeChange}
-            ampm
-            slotProps={{
-              textField: {
-                fullWidth: true,
-                size: 'small',
-                placeholder: 'HH:MM',
-              },
-            }}
-          />
-        </Box>
-      </Stack>
+          <Typography sx={[styles.toggleLabel, styles.toggleLabelFill]}>
+            Unlock the lesson after a certain time after the purchase
+          </Typography>
+        </Stack>
+      ) : null}
     </Stack>
   );
 }

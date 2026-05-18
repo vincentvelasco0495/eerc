@@ -32,7 +32,6 @@ export const courseDetailMock = {
     { key: 'video', label: 'Video', value: '1 hour', icon: 'play' },
     { key: 'assignments', label: 'Assignments', value: '1', icon: 'clipboard' },
     { key: 'quizzes', label: 'Quizzes', value: '10', icon: 'check' },
-    { key: 'level', label: 'Level', value: 'Advanced', icon: 'level' },
   ],
 
   paragraphs: [

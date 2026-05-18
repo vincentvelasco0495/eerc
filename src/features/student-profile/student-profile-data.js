@@ -42,12 +42,6 @@ export function getStudentWorkspaceNavGroups(pathname) {
           path: paths.dashboard.studentSettings,
           active: pathname === paths.dashboard.studentSettings,
         },
-        {
-          label: 'Programs',
-          icon: 'solar:layers-bold-duotone',
-          path: paths.dashboard.programs,
-          active: pathname === paths.dashboard.programs,
-        },
         { label: 'Log out', icon: 'solar:logout-3-bold-duotone', action: 'logout' },
       ],
     },
@@ -57,25 +51,21 @@ export function getStudentWorkspaceNavGroups(pathname) {
 const derivedCourseConfig = {
   'course-ce-review': {
     rating: 4.7,
-    status: 'in-progress',
     startedAt: DEFAULT_STARTED_AT,
     variant: 'stage',
   },
   'course-ce-structures': {
     rating: 4.6,
-    status: 'in-progress',
     startedAt: 'April 20, 2026',
     variant: 'cobalt',
   },
   'course-plumbing-mastery': {
     rating: 4.5,
-    status: 'in-progress',
     startedAt: 'April 22, 2026',
     variant: 'linen',
   },
   'course-materials-intensive': {
     rating: 4.9,
-    status: 'completed',
     startedAt: 'April 20, 2026',
     variant: 'slate',
   },
@@ -121,7 +111,6 @@ export function buildStudentProfileCourses(courses, programs, enrollments = []) 
     .map((course) => {
       const config = derivedCourseConfig[course.id] ?? {
         rating: 4.5,
-        status: 'in-progress',
         startedAt: DEFAULT_STARTED_AT,
         variant: 'cobalt',
       };
@@ -139,7 +128,7 @@ export function buildStudentProfileCourses(courses, programs, enrollments = []) 
         lessons: course.totalModules,
         durationHours: course.hours,
         rating: config.rating,
-        status: isCompleted ? 'completed' : config.status,
+        status: isCompleted ? 'completed' : 'in-progress',
         startedAt: config.startedAt,
         variant: config.variant,
         badge: isCompleted ? 'Completed' : null,
@@ -157,8 +146,61 @@ function isPublishedCatalogCourse(course) {
   return true;
 }
 
+/** Enrollment rows that apply to a program (direct program id or legacy course enrollment). */
+export function getProgramEnrollmentRows(programId, enrollments = [], courses = []) {
+  return (enrollments ?? []).filter((item) => {
+    if (item?.programId === programId) {
+      return true;
+    }
+
+    if (!item?.courseId) {
+      return false;
+    }
+
+    const legacyCourse = (courses ?? []).find((course) => course.id === item.courseId);
+    return legacyCourse?.programId === programId;
+  });
+}
+
+/** Highest-priority enrollment state for a program card. */
+export function getProgramEnrollmentKind(programId, enrollments = [], courses = []) {
+  const rows = getProgramEnrollmentRows(programId, enrollments, courses);
+
+  if (!rows.length) {
+    return 'none';
+  }
+
+  if (rows.some((item) => item.status === 'approved')) {
+    return 'approved';
+  }
+
+  if (rows.some((item) => item.status === 'pending')) {
+    return 'pending';
+  }
+
+  if (rows.some((item) => item.status === 'rejected')) {
+    return 'rejected';
+  }
+
+  return 'none';
+}
+
+function deriveProgramProgressStatus(programCourses) {
+  if (!programCourses.length) {
+    return 'in-progress';
+  }
+
+  const allCompleted = programCourses.every(
+    (course) =>
+      Number(course.totalModules) > 0 &&
+      Number(course.completedModules) >= Number(course.totalModules)
+  );
+
+  return allCompleted ? 'completed' : 'in-progress';
+}
+
 /** Active `programs` rows for the Available programs grid (`title` + `description` from DB). */
-export function buildAvailableProgramCards(programs, courses) {
+export function buildAvailableProgramCards(programs, courses, enrollments = []) {
   const publishedCourses = (courses ?? []).filter(isPublishedCatalogCourse);
 
   return (programs ?? [])
@@ -176,6 +218,34 @@ export function buildAvailableProgramCards(programs, courses) {
           .trim()
           .toLowerCase();
 
+      const enrollmentKind = getProgramEnrollmentKind(program.id, enrollments, publishedCourses);
+      const enrollmentRows = getProgramEnrollmentRows(program.id, enrollments, publishedCourses);
+      const approvedEnrollment = enrollmentRows.find((item) => item.status === 'approved');
+
+      let status = 'available';
+      let enrollmentCaption = 'Available to enroll';
+      let actionLabel = 'Browse program';
+      let startedAt = null;
+      let badge = null;
+
+      if (enrollmentKind === 'approved') {
+        status = deriveProgramProgressStatus(programCourses);
+        enrollmentCaption = status === 'completed' ? 'Enrolled · Completed' : 'Enrolled · In progress';
+        actionLabel = status === 'completed' ? 'Review program' : 'Continue program';
+        badge = status === 'completed' ? 'Completed' : 'Enrolled';
+        startedAt = approvedEnrollment?.submittedAt ?? null;
+      } else if (enrollmentKind === 'pending') {
+        status = 'pending';
+        enrollmentCaption = 'Enrollment pending approval';
+        actionLabel = 'View program';
+        badge = 'Pending';
+      } else if (enrollmentKind === 'rejected') {
+        status = 'failed';
+        enrollmentCaption = 'Enrollment not approved';
+        actionLabel = 'Browse program';
+        badge = 'Not approved';
+      }
+
       return {
         id: program.id,
         category: String(program?.code ?? '').trim() || 'Program',
@@ -186,12 +256,14 @@ export function buildAvailableProgramCards(programs, courses) {
         durationHours: totalHours,
         lectureCount: totalLectures,
         rating: null,
-        status: 'in-progress',
-        startedAt: null,
+        status,
+        enrollmentKind,
+        enrollmentCaption,
+        startedAt,
         bannerPath: program?.bannerPath ?? '',
         programSlug,
-        actionLabel: 'Browse program',
-        badge: null,
+        actionLabel,
+        badge,
       };
     });
 }

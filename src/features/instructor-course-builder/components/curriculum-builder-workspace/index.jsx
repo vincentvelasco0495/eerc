@@ -36,6 +36,7 @@ export function CurriculumBuilderWorkspace({
   saveLiveQuizLesson,
   liveQuizAuthoring,
   saveLiveQuizSettings,
+  quizModulePublicId,
   onLessonMaterialsChange,
 }) {
   if (!lesson) {
@@ -80,6 +81,8 @@ export function CurriculumBuilderWorkspace({
         saveLiveQuizLesson={saveLiveQuizLesson}
         liveQuizAuthoring={liveQuizAuthoring}
         saveLiveQuizSettings={saveLiveQuizSettings}
+        quizModulePublicId={quizModulePublicId}
+        onLessonMaterialsChange={onLessonMaterialsChange}
       />
     );
   }

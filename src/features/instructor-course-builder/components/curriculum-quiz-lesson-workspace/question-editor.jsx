@@ -2,35 +2,74 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 
 import { Editor } from 'src/components/editor';
-import { Iconify } from 'src/components/iconify';
 
 import { styles } from './styles';
+import { QuestionImagesRow } from './question-images-row';
+import { isSimulationDiagramQuestion } from './quiz-question-types';
 
-export function QuestionEditor({ questionText, onQuestionTextChange }) {
+export function QuestionEditor({
+  questionType,
+  questionText,
+  onQuestionTextChange,
+  modulePublicId,
+  problemImageMaterialPublicId,
+  problemImagePreviewUrl,
+  problemImageName,
+  solutionImageMaterialPublicId,
+  solutionImagePreviewUrl,
+  solutionImageName,
+  imageUploadingSlot,
+  onImageUploadingSlotChange,
+  onProblemImageChange,
+  onSolutionImageChange,
+  onAfterMaterialsChange,
+}) {
+  const showImages = isSimulationDiagramQuestion(questionType);
+
   return (
-    <Box sx={styles.editorTop}>
-      <Box sx={styles.imageTile} component="button" type="button" aria-label="Add image">
-        <Iconify icon="solar:gallery-linear" width={24} />
+    <Box sx={styles.questionEditorWrap}>
+      <Box sx={styles.editorMainFull}>
+        <Typography sx={styles.stemLabel}>{showImages ? 'Question :' : 'Enter your question'}</Typography>
+        <Box sx={styles.editorShell}>
+          <Editor
+            value={questionText}
+            onChange={onQuestionTextChange}
+            placeholder={
+              showImages
+                ? 'Enter the question text for this simulation…'
+                : 'What is the primary purpose of a retaining wall?'
+            }
+            chrome="tinymce"
+            sx={{
+              minHeight: { xs: 200, sm: 260 },
+              maxHeight: { xs: 360, sm: 440 },
+              minWidth: 0,
+              maxWidth: '100%',
+            }}
+            tinymceResizeBounds={{
+              min: 100,
+              max: 320,
+            }}
+          />
+        </Box>
       </Box>
-      <Box sx={styles.editorMain}>
-        <Typography component="div" sx={styles.stemLabel}>
-          Enter your question
-        </Typography>
-        <Editor
-          value={questionText}
-          onChange={onQuestionTextChange}
-          placeholder="What does CPU stand for?"
-          chrome="tinymce"
-          sx={{
-            minHeight: { xs: 200, sm: 260 },
-            maxHeight: { xs: 360, sm: 440 },
-          }}
-          tinymceResizeBounds={{
-            min: 100,
-            max: 320,
-          }}
+
+      {showImages ? (
+        <QuestionImagesRow
+          modulePublicId={modulePublicId}
+          problemImageMaterialPublicId={problemImageMaterialPublicId}
+          problemImagePreviewUrl={problemImagePreviewUrl}
+          problemImageName={problemImageName}
+          solutionImageMaterialPublicId={solutionImageMaterialPublicId}
+          solutionImagePreviewUrl={solutionImagePreviewUrl}
+          solutionImageName={solutionImageName}
+          uploadingSlot={imageUploadingSlot}
+          onUploadingSlotChange={onImageUploadingSlotChange}
+          onProblemImageChange={onProblemImageChange}
+          onSolutionImageChange={onSolutionImageChange}
+          onAfterMaterialsChange={onAfterMaterialsChange}
         />
-      </Box>
+      ) : null}
     </Box>
   );
 }

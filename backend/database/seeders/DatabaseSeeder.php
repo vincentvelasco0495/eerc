@@ -8,6 +8,9 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call(LmsDemoSeeder::class);
+        $this->call([
+            LmsDemoSeeder::class,
+            RolePagePermissionSeeder::class,
+        ]);
     }
 }

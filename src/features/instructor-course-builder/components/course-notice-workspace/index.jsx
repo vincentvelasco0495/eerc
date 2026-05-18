@@ -12,7 +12,7 @@ import { toast } from 'src/components/snackbar';
 import { styles } from './styles';
 import { courseNoticeSeedHtml } from '../../instructor-course-curriculum-data';
 
-/** Navbar “Notice” tab — mirrors `/instructor-course-curriculum` rich-editor layout with optional LMS save. */
+/** Navbar “Notice” tab — mirrors `/course-curriculum` rich-editor layout with optional LMS save. */
 export function CourseNoticeWorkspace({
   persisted = false,
   noticeHeading = '',

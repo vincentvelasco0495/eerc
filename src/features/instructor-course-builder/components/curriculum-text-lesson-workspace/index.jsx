@@ -1,4 +1,3 @@
-import dayjs from 'dayjs';
 import { useRef, useMemo, useState, useEffect, useCallback, useLayoutEffect } from 'react';
 
 import Box from '@mui/material/Box';
@@ -16,10 +15,10 @@ import { toast } from 'src/components/snackbar';
 import { styles } from './styles';
 import { TextLessonWorkspaceHeader } from '../text-lesson-workspace-header';
 import { TextLessonWorkspaceSettings } from '../text-lesson-workspace-settings';
+import { normalizeLessonMetaForApi } from '../../utils/lesson-authoring-helpers';
 import { TextLessonWorkspaceMaterials } from '../text-lesson-workspace-materials';
 import { buildLessonAuthoringTargetKey } from '../../utils/lesson-materials-cache';
 import { TextLessonWorkspaceEditorSection } from '../text-lesson-workspace-editor-section';
-import { dayjsFromClockString, normalizeLessonMetaForApi } from '../../utils/lesson-authoring-helpers';
 
 /**
  * @typedef {object} LiveLessonAuthoringHydration
@@ -28,9 +27,6 @@ import { dayjsFromClockString, normalizeLessonMetaForApi } from '../../utils/les
  * @property {string} [bodyHtml]
  * @property {string} [durationLabel]
  * @property {boolean} [lessonPreview]
- * @property {boolean} [unlockAfterPurchase]
- * @property {string|null} [startDate]
- * @property {string|null} [startTime]
  * @property {Array<{ id: string, name: string, mime?: string|null, sizeBytes?: number }>} [lessonMaterials]
  * @property {string} modulePublicId
  * @property {string|null} [standaloneLessonPublicId]
@@ -51,9 +47,6 @@ export function CurriculumTextLessonWorkspace({
   const [workspaceTab, setWorkspaceTab] = useState(0);
   const [duration, setDuration] = useState('');
   const [lessonPreview, setLessonPreview] = useState(false);
-  const [unlockAfterPurchase, setUnlockAfterPurchase] = useState(false);
-  const [startDate, setStartDate] = useState(null);
-  const [startTime, setStartTime] = useState(null);
   const [shortDescriptionHtml, setShortDescriptionHtml] = useState('');
   const [lessonContentHtml, setLessonContentHtml] = useState('');
 
@@ -128,9 +121,6 @@ export function CurriculumTextLessonWorkspace({
       hydratedAuthoringKeyRef.current = '';
       setDuration('');
       setLessonPreview(false);
-      setUnlockAfterPurchase(false);
-      setStartDate(null);
-      setStartTime(null);
       setShortDescriptionHtml('');
       setLessonContentHtml('');
       return;
@@ -160,10 +150,6 @@ export function CurriculumTextLessonWorkspace({
     }
 
     setLessonPreview(!!lm.lessonPreview);
-    setUnlockAfterPurchase(!!lm.unlockAfterPurchase);
-    const startD = lm.startDate ? dayjs(String(lm.startDate)) : null;
-    setStartDate(startD?.isValid() ? startD.startOf('day') : null);
-    setStartTime(dayjsFromClockString(lm.startTime != null ? String(lm.startTime) : '') || null);
 
     setShortDescriptionHtml(String(liveLessonAuthoring.excerptHtml ?? '').trim());
     setLessonContentHtml(String(liveLessonAuthoring.bodyHtml ?? '').trim());
@@ -175,9 +161,7 @@ export function CurriculumTextLessonWorkspace({
         const normalizedMeta = normalizeLessonMetaForApi(
           {
             lessonPreview,
-            unlockAfterPurchase,
-            startDate,
-            startTime,
+            unlockAfterPurchase: false,
             durationLabel: duration.trim(),
           },
           { durationLabelFallback: duration }
@@ -207,9 +191,6 @@ export function CurriculumTextLessonWorkspace({
     onLessonSave,
     saveLiveRichLesson,
     shortDescriptionHtml,
-    startDate,
-    startTime,
-    unlockAfterPurchase,
   ]);
 
   return (
@@ -240,12 +221,7 @@ export function CurriculumTextLessonWorkspace({
             onDurationChange={setDuration}
             lessonPreview={lessonPreview}
             onLessonPreviewChange={setLessonPreview}
-            unlockAfterPurchase={unlockAfterPurchase}
-            onUnlockAfterPurchaseChange={setUnlockAfterPurchase}
-            startDate={startDate}
-            onStartDateChange={setStartDate}
-            startTime={startTime}
-            onStartTimeChange={setStartTime}
+            showUnlockAfterPurchase={false}
           />
 
           <TextLessonWorkspaceEditorSection

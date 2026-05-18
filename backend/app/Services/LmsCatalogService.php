@@ -9,11 +9,15 @@ use App\Models\LessonMaterial;
 use App\Models\Module;
 use App\Models\ModuleResource;
 use App\Models\Program;
+use App\Models\Question;
+use App\Models\QuestionOption;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
+use App\Models\Student;
 use App\Models\User;
 use App\Models\UserLessonProgress;
 use App\Models\UserModuleProgress;
+use App\Support\LessonMetaSupport;
 use App\Support\LmsMeta;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -53,7 +57,11 @@ class LmsCatalogService
 
     public function userPayload(User $user): array
     {
-        return $this->formatActor($user);
+        $payload = $this->formatActor($user);
+        $payload['pagePermissions'] = app(PagePermissionService::class)
+            ->permissionsPayloadForRole((string) $user->role);
+
+        return $payload;
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -361,6 +369,10 @@ class LmsCatalogService
             ->map(fn ($m) => $this->formatModule($m, $user))
             ->all();
 
+        if ($user->id > 0 && ! $this->userCanAccessCourseLessons($user, $course)) {
+            return $this->applyEnrollmentLocksToModules($formatted);
+        }
+
         return $this->applySequentialLessonLocksToModules(
             $formatted,
             $this->shouldApplyLessonLocksForUser($user, $course)
@@ -398,13 +410,54 @@ class LmsCatalogService
     public function isCurriculumItemLockedForUser(User $user, Course $course, string $itemKey): bool
     {
         $itemKey = trim($itemKey);
-        if ($itemKey === '' || ! $this->shouldApplyLessonLocksForUser($user, $course)) {
+        if ($itemKey === '') {
+            return false;
+        }
+
+        if ($user->id > 0 && ! $this->userCanAccessCourseLessons($user, $course)) {
+            return true;
+        }
+
+        if (! $this->shouldApplyLessonLocksForUser($user, $course)) {
             return false;
         }
 
         $map = $this->curriculumLockMapForUser($user, $course);
 
         return (bool) ($map[$itemKey] ?? false);
+    }
+
+    public function curriculumAccessDeniedMessage(User $user, Course $course): ?string
+    {
+        if ($user->id > 0 && ! $this->userCanAccessCourseLessons($user, $course)) {
+            return 'Enroll in this program to access lessons.';
+        }
+
+        return null;
+    }
+
+    public function userCanAccessCourseLessons(User $user, Course $course): bool
+    {
+        if ($user->id <= 0) {
+            return false;
+        }
+
+        $role = strtolower((string) ($user->role ?? ''));
+        if (in_array($role, ['admin', 'instructor'], true)) {
+            return true;
+        }
+
+        $course->loadMissing('program');
+        $programId = $course->program_id;
+        if ($programId === null) {
+            return false;
+        }
+
+        return Enrollment::query()
+            ->where('user_id', $user->id)
+            ->where('program_id', $programId)
+            ->where('status', 'approved')
+            ->exists();
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -477,6 +530,12 @@ class LmsCatalogService
     public static function bustUserAnalyticsCache(int $userId): void
     {
         Cache::forget('lms:analytics:'.$userId);
+        self::bustInstructorDashboardStatsCache();
+    }
+
+    public static function bustInstructorDashboardStatsCache(): void
+    {
+        Cache::forget('lms:instructor-dashboard-stats');
     }
 
     public static function bustLeaderboardCache(): void
@@ -593,7 +652,7 @@ class LmsCatalogService
 
     /**
      * @param  array<string, mixed>|null  $raw  courses.marketing_json
-     * @return array{description: array<int, string>, paragraphs: array<int, string>, learningOutcomes: array<int, string>, audience: array<int, string>, faq: array<int, array{question: string, answer: string}>, notices: array<int, string>, noticeHeading: string|null, bannerImageUrl: string|null, featuredCourse: bool, lockLessonsInOrder: bool}
+     * @return array{description: array<int, string>, paragraphs: array<int, string>, learningOutcomes: array<int, string>, audience: array<int, string>, faq: array<int, array{question: string, answer: string}>, notices: array<int, string>, noticeHeading: string|null, bannerImageUrl: string|null, lockLessonsInOrder: bool}
      */
     protected function formatMarketingPayload(?array $raw): array
     {
@@ -621,7 +680,6 @@ class LmsCatalogService
                 ? trim($j['noticeHeading'])
                 : null,
             'bannerImageUrl' => $bannerTrimmed,
-            'featuredCourse' => (bool) ($j['featuredCourse'] ?? false),
             'lockLessonsInOrder' => (bool) ($j['lockLessonsInOrder'] ?? false),
         ];
     }
@@ -716,6 +774,7 @@ class LmsCatalogService
             'updatedAt' => $c->updated_at?->toIso8601String(),
             'status' => $c->is_published ? 'published' : 'draft',
             'isPublished' => (bool) $c->is_published,
+            'canAccessLessons' => $this->userCanAccessCourseLessons($user, $c),
             'averageRating' => $c->average_rating !== null ? round((float) $c->average_rating, 1) : null,
             ...($c->video_hours_label ? ['videoHoursLabel' => $c->video_hours_label] : []),
             ...($c->preview_completed ? ['previewCompleted' => true] : []),
@@ -774,10 +833,12 @@ class LmsCatalogService
             ->map(fn ($m) => $this->formatModule($m, $user))
             ->all();
 
-        $lockedModules = $this->applySequentialLessonLocksToModules(
-            $formatted,
-            $this->shouldApplyLessonLocksForUser($user, $course)
-        );
+        $lockedModules = $user->id > 0 && ! $this->userCanAccessCourseLessons($user, $course)
+            ? $this->applyEnrollmentLocksToModules($formatted)
+            : $this->applySequentialLessonLocksToModules(
+                $formatted,
+                $this->shouldApplyLessonLocksForUser($user, $course)
+            );
 
         $map = [];
         foreach ($lockedModules as $mod) {
@@ -886,10 +947,14 @@ class LmsCatalogService
         foreach ($byCourse as $coursePublicId => $indices) {
             $course = Course::query()->where('public_id', $coursePublicId)->first();
             $subset = array_map(fn (int $i) => $modules[$i], $indices);
-            $locked = $this->applySequentialLessonLocksToModules(
-                $subset,
-                $course !== null && $this->shouldApplyLessonLocksForUser($user, $course)
-            );
+            if ($course !== null && $user->id > 0 && ! $this->userCanAccessCourseLessons($user, $course)) {
+                $locked = $this->applyEnrollmentLocksToModules($subset);
+            } else {
+                $locked = $this->applySequentialLessonLocksToModules(
+                    $subset,
+                    $course !== null && $this->shouldApplyLessonLocksForUser($user, $course)
+                );
+            }
             foreach ($indices as $pos => $originalIndex) {
                 $out[$originalIndex] = $locked[$pos] ?? $modules[$originalIndex];
             }
@@ -902,6 +967,39 @@ class LmsCatalogService
      * @param  array<string, mixed>  $mod
      * @return array<string, mixed>
      */
+    /**
+     * Lock every curriculum item when the learner is signed in but not approved on the program.
+     *
+     * @param  array<int, array<string, mixed>>  $modules
+     * @return array<int, array<string, mixed>>
+     */
+    protected function applyEnrollmentLocksToModules(array $modules): array
+    {
+        return array_map(function (array $mod) {
+            if (($mod['visible'] ?? true) === false) {
+                return $mod;
+            }
+
+            $mod['coreLocked'] = true;
+
+            if (is_array($mod['standaloneLessons'] ?? null)) {
+                $mod['standaloneLessons'] = array_map(
+                    fn (array $row) => array_merge($row, ['locked' => true]),
+                    $mod['standaloneLessons']
+                );
+            }
+
+            if (is_array($mod['quizzes'] ?? null)) {
+                $mod['quizzes'] = array_map(
+                    fn (array $row) => array_merge($row, ['locked' => true]),
+                    $mod['quizzes']
+                );
+            }
+
+            return $mod;
+        }, $modules);
+    }
+
     protected function applyLockFieldsToModuleRow(array $mod): array
     {
         $mod['coreLocked'] = false;
@@ -989,7 +1087,7 @@ class LmsCatalogService
                     'summary' => $r->summary,
                     'excerptHtml' => $r->excerpt_html,
                     'bodyHtml' => filled($r->body_html ?? null) ? $r->body_html : ($r->summary ?? ''),
-                    'lessonMeta' => $r->lesson_meta_json ?? null,
+                    'lessonMeta' => LessonMetaSupport::sanitize($r->lesson_meta_json ?? null),
                     'sortOrder' => (int) $r->sort_order,
                     'completed' => isset($completedSet[(string) $r->public_id]),
                     'lessonMaterials' => $r->lessonMaterials
@@ -1002,7 +1100,7 @@ class LmsCatalogService
             'summary' => $m->summary,
             'excerptHtml' => $m->excerpt_html,
             'bodyHtml' => filled($m->body_html ?? null) ? $m->body_html : ($m->summary ?? ''),
-            'lessonMeta' => $m->lesson_meta_json ?? null,
+            'lessonMeta' => LessonMetaSupport::sanitize($m->lesson_meta_json ?? null),
             'coreCompleted' => isset($completedSet[$coreLessonKey]),
             'lessonMaterials' => $m->moduleLessonMaterials
                 ->map(fn (LessonMaterial $f) => $this->formatLessonMaterial($f, $user))
@@ -1022,7 +1120,7 @@ class LmsCatalogService
         ];
     }
 
-    protected function formatLessonMaterial(LessonMaterial $f, User $user): array
+    public function formatLessonMaterial(LessonMaterial $f, User $user): array
     {
         $publicPath = $this->ensurePublicLessonMaterialPath($f->storage_path);
         $fileUrl = $publicPath !== null ? Storage::disk('public')->url($publicPath) : null;
@@ -1079,6 +1177,93 @@ class LmsCatalogService
         $quiz->loadCount('questions');
 
         return $this->formatQuiz($quiz, $user);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function formatQuizQuestion(Question $q, User $user): array
+    {
+        $meta = is_array($q->meta_json) ? $q->meta_json : [];
+
+        $problemImageMaterialPublicId = $this->quizQuestionMaterialIdFromMeta(
+            $meta,
+            'problemImageMaterialPublicId',
+            'diagramMaterialPublicId'
+        );
+        $solutionImageMaterialPublicId = $this->quizQuestionMaterialIdFromMeta(
+            $meta,
+            'solutionImageMaterialPublicId'
+        );
+
+        $problemImage = $this->quizQuestionImagePayload($problemImageMaterialPublicId, $user);
+        $solutionImage = $this->quizQuestionImagePayload($solutionImageMaterialPublicId, $user);
+
+        $questionType = (string) ($q->question_type ?? 'single_choice');
+        if ($questionType !== 'simulation_diagram') {
+            $questionType = 'single_choice';
+        }
+
+        return [
+            'id' => (string) $q->id,
+            'prompt' => $q->prompt,
+            'questionType' => $questionType,
+            'required' => (bool) ($meta['required'] ?? false),
+            'problemImageMaterialPublicId' => $problemImageMaterialPublicId,
+            'problemImageUrl' => $problemImage['url'],
+            'problemImageName' => $problemImage['name'],
+            'solutionImageMaterialPublicId' => $solutionImageMaterialPublicId,
+            'solutionImageUrl' => $solutionImage['url'],
+            'solutionImageName' => $solutionImage['name'],
+            // Legacy aliases (problem image only)
+            'diagramMaterialPublicId' => $problemImageMaterialPublicId,
+            'diagramUrl' => $problemImage['url'],
+            'diagramName' => $problemImage['name'],
+            'options' => $q->relationLoaded('options')
+                ? $q->options->map(function (QuestionOption $opt) {
+                    return [
+                        'id' => (string) $opt->id,
+                        'label' => $opt->label,
+                        'isCorrect' => (bool) $opt->is_correct,
+                    ];
+                })->values()->all()
+                : [],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     */
+    protected function quizQuestionMaterialIdFromMeta(array $meta, string $primaryKey, ?string $legacyKey = null): ?string
+    {
+        $id = isset($meta[$primaryKey]) ? trim((string) $meta[$primaryKey]) : '';
+        if ($id === '' && $legacyKey !== null && isset($meta[$legacyKey])) {
+            $id = trim((string) $meta[$legacyKey]);
+        }
+
+        return $id !== '' ? $id : null;
+    }
+
+    /**
+     * @return array{url: ?string, name: ?string}
+     */
+    protected function quizQuestionImagePayload(?string $materialPublicId, User $user): array
+    {
+        if ($materialPublicId === null) {
+            return ['url' => null, 'name' => null];
+        }
+
+        $material = LessonMaterial::query()->where('public_id', $materialPublicId)->first();
+        if ($material === null) {
+            return ['url' => null, 'name' => null];
+        }
+
+        $formatted = $this->formatLessonMaterial($material, $user);
+
+        return [
+            'url' => $formatted['fileUrl'] ?? $formatted['inlineFileUrl'] ?? null,
+            'name' => $formatted['name'] ?? null,
+        ];
     }
 
     /**
@@ -1212,6 +1397,14 @@ class LmsCatalogService
             $row['schoolHeld'] = $student?->school_held ?? '';
         }
 
+        if ($e->payment_proof_path) {
+            $row['hasPaymentProof'] = true;
+            $row['paymentProofFileName'] = $e->payment_proof_original_name ?? 'payment-proof';
+            if ($includeLearner) {
+                $row['paymentProofUrl'] = url('/api/enrollments/'.$e->public_id.'/payment-proof');
+            }
+        }
+
         return $row;
     }
 
@@ -1263,7 +1456,7 @@ class LmsCatalogService
 
         $completionRate = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
 
-        return [
+        $payload = [
             'completedModules' => $completed,
             'totalModules' => $total,
             'completionRate' => $completionRate,
@@ -1272,5 +1465,32 @@ class LmsCatalogService
             'weaknesses' => ['Open channel flow', 'Sanitary vent layouts', 'Heat treatment cycles'],
             'suggestedModuleIds' => ['module-hydraulics-practice', 'module-code-final-coaching', 'module-heat-treatment-refresher'],
         ];
+
+        if ($this->userCanViewInstructorDashboard($user)) {
+            $payload['instructorSummary'] = $this->buildInstructorDashboardStats();
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @return array{courses: int, enrollments: int, students: int}
+     */
+    protected function buildInstructorDashboardStats(): array
+    {
+        return Cache::remember('lms:instructor-dashboard-stats', now()->addSeconds(45), function () {
+            return [
+                'courses' => Course::query()->count(),
+                'enrollments' => Enrollment::query()->count(),
+                'students' => Student::query()->count(),
+            ];
+        });
+    }
+
+    protected function userCanViewInstructorDashboard(User $user): bool
+    {
+        $role = strtolower(trim((string) ($user->role ?? '')));
+
+        return $role === 'instructor' || $role === 'admin';
     }
 }

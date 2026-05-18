@@ -5,7 +5,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Pagination from '@mui/material/Pagination';
 
-import { useLmsCourses, useLmsPrograms } from 'src/hooks/use-lms';
+import { useEnrollment, useLmsCourses, useLmsPrograms } from 'src/hooks/use-lms';
 
 import { styles } from '../student-profile-view/styles';
 import { buildAvailableProgramCards } from '../../student-profile-data';
@@ -23,6 +23,7 @@ const FILTER_OPTIONS = [
 ];
 
 export function StudentAvailableProgramsView() {
+  const enrollments = useEnrollment();
   const { courses } = useLmsCourses(1, 200);
   const { programs } = useLmsPrograms();
 
@@ -30,8 +31,8 @@ export function StudentAvailableProgramsView() {
   const [page, setPage] = useState(1);
 
   const programItems = useMemo(
-    () => buildAvailableProgramCards(programs, courses),
-    [courses, programs]
+    () => buildAvailableProgramCards(programs, courses, enrollments),
+    [courses, enrollments, programs]
   );
 
   const tabCounts = useMemo(

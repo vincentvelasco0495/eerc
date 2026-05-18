@@ -45,6 +45,10 @@ class LmsLessonProgressController extends Controller
             return response()->json(['message' => 'Lesson does not belong to this course.'], 422);
         }
 
+        if ($message = $catalog->curriculumAccessDeniedMessage($user, $course)) {
+            return response()->json(['message' => $message], 403);
+        }
+
         if ($catalog->isCurriculumItemLockedForUser($user, $course, $lessonKey)) {
             return response()->json(['message' => 'Complete earlier lessons before accessing this one.'], 403);
         }

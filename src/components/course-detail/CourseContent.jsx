@@ -135,6 +135,7 @@ export function CourseContent({
   curriculumModules,
   faqItems,
   courseLookup,
+  requiresEnrollment = false,
   programCourses,
   programCoursesHeading,
 }) {
@@ -242,7 +243,11 @@ export function CourseContent({
       ) : null}
 
       {tabKey === 'curriculum' ? (
-        <CourseCurriculum modules={curriculumModules} courseLookup={courseLookup} />
+        <CourseCurriculum
+          modules={curriculumModules}
+          courseLookup={courseLookup}
+          requiresEnrollment={requiresEnrollment}
+        />
       ) : null}
 
       {tabKey === 'faq' ? <CourseFaq items={faqItems} /> : null}

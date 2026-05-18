@@ -167,13 +167,10 @@ class LmsLessonMaterialController extends Controller
 
         LmsCatalogService::bustUserAnalyticsCache($actor->id);
 
+        $catalog = app(LmsCatalogService::class);
+
         return response()->json([
-            'data' => [
-                'id' => $material->public_id,
-                'name' => $material->original_name,
-                'mime' => $material->mime,
-                'sizeBytes' => (int) $material->size_bytes,
-            ],
+            'data' => $catalog->formatLessonMaterial($material->fresh(), $actor),
         ], 201);
     }
 }

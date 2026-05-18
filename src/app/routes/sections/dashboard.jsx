@@ -9,7 +9,7 @@ import { DashboardLayout } from 'src/layouts/dashboard';
 
 import { LoadingScreen } from 'src/components/loading-screen';
 
-import { AuthGuard } from 'src/auth/guard';
+import { AuthGuard, PermissionGuard } from 'src/auth/guard';
 
 const CourseListPage = lazy(() => import('src/pages/course/list'));
 const CourseDetailsPage = lazy(() => import('src/pages/course/details'));
@@ -52,26 +52,82 @@ function SuspenseOutlet() {
   );
 }
 
+function withPermissionGuard(Page) {
+  return function PermissionProtectedPage() {
+    return (
+      <PermissionGuard>
+        <Page />
+      </PermissionGuard>
+    );
+  };
+}
+
+const AdminDashboardPage = withPermissionGuard(InstructorProfilePage);
+const InstructorHomePage = withPermissionGuard(InstructorProfilePage);
+const ProtectedCourseCurriculumPage = withPermissionGuard(InstructorCourseCurriculumPage);
+const ProtectedCourseEditPage = withPermissionGuard(InstructorCourseEditPage);
+
+
 const dashboardLayout = () => (
   <DashboardLayout>
     <SuspenseOutlet />
   </DashboardLayout>
 );
 
-/** Maps old `/dashboard/...` bookmarks to flattened LMS URLs. */
-function LegacyDashboardRedirect() {
+/** Maps old `/dashboard/...` bookmarks to flattened LMS URLs (not `/dashboard` itself). */
+function LegacyDashboardSubpathRedirect() {
   const { pathname, search, hash } = useLocation();
+  const rest = pathname.slice('/dashboard'.length);
 
-  if (pathname === '/dashboard' || pathname === '/dashboard/') {
-    return <Navigate to={`${paths.dashboard.root}${search}${hash}`} replace />;
+  if (!rest || rest === '/') {
+    return <Navigate to={paths.dashboard.home} replace />;
   }
 
-  if (pathname.startsWith('/dashboard/')) {
-    const target = pathname.slice('/dashboard'.length) + search + hash;
-    return <Navigate to={target} replace />;
-  }
+  return <Navigate to={`${rest}${search}${hash}`} replace />;
+}
 
-  return <Navigate to={paths.dashboard.root} replace />;
+/** Preserves query strings (e.g. `?new=1`) when redirecting legacy curriculum URLs. */
+function LegacyInstructorCourseCurriculumRedirect() {
+  const { pathname, search, hash } = useLocation();
+  const target = pathname.replace(/^\/instructor-course-curriculum/, paths.dashboard.courseCurriculum);
+  return <Navigate to={`${target}${search}${hash}`} replace />;
+}
+
+/** Redirects `/instructor-course/:slug/edit` → `/course-curriculum/:slug/edit`. */
+function LegacyInstructorCourseEditRedirect() {
+  const { pathname, search, hash } = useLocation();
+  const target = pathname.replace(/^\/instructor-course\//, '/course-curriculum/');
+  return <Navigate to={`${target}${search}${hash}`} replace />;
+}
+
+/** Redirects `/instructor-announcement` → `/announcement` (preserves query string). */
+function LegacyInstructorAnnouncementRedirect() {
+  const { search, hash } = useLocation();
+  return <Navigate to={`${paths.dashboard.announcement}${search}${hash}`} replace />;
+}
+
+/** Redirects `/instructor-settings` → `/setting-profile` (preserves query string). */
+function LegacyInstructorSettingsRedirect() {
+  const { search, hash } = useLocation();
+  return <Navigate to={`${paths.dashboard.settingProfile}${search}${hash}`} replace />;
+}
+
+/** Redirects `/programs` → `/setting-program` (preserves query string). */
+function LegacyProgramsRedirect() {
+  const { search, hash } = useLocation();
+  return <Navigate to={`${paths.dashboard.settingProgram}${search}${hash}`} replace />;
+}
+
+/** Redirects `/instructors` → `/setting-instructor` (preserves query string). */
+function LegacyInstructorsRedirect() {
+  const { search, hash } = useLocation();
+  return <Navigate to={`${paths.dashboard.settingInstructor}${search}${hash}`} replace />;
+}
+
+/** Redirects `/students` → `/setting-student` (preserves query string). */
+function LegacyStudentsRedirect() {
+  const { search, hash } = useLocation();
+  return <Navigate to={`${paths.dashboard.settingStudent}${search}${hash}`} replace />;
 }
 
 const dashboardLayoutElement = CONFIG.auth.skip ? dashboardLayout() : <AuthGuard>{dashboardLayout()}</AuthGuard>;
@@ -97,16 +153,47 @@ export const dashboardRoutes = [
       { path: 'quizzes/:quizId', element: <QuizDetailsPage /> },
       { path: 'analytics', element: <AnalyticsPage /> },
       { path: 'leaderboard', element: <LeaderboardPage /> },
-      { path: 'instructor-profile', element: <InstructorProfilePage /> },
-      { path: 'instructor-announcement', element: <InstructorAnnouncementPage /> },
-      { path: 'instructor-settings', element: <InstructorSettingsPage /> },
-      { path: 'instructor-gradebook', element: <InstructorGradebookPage /> },
-      { path: 'instructor-course-curriculum', element: <InstructorCourseCurriculumPage /> },
-      { path: 'instructor-course/:courseLookup/edit', element: <InstructorCourseEditPage /> },
-      { path: 'instructor-assignments', element: <InstructorAssignmentsPage /> },
-      { path: 'programs', element: <ProgramsPage /> },
-      { path: 'instructors', element: <InstructorsPage /> },
-      { path: 'students', element: <StudentsPage /> },
+      { path: 'dashboard', element: <AdminDashboardPage /> },
+      { path: 'instructor-home', element: <InstructorHomePage /> },
+      { path: 'dashboard/*', element: <LegacyDashboardSubpathRedirect /> },
+      {
+        path: 'instructor-profile',
+        element: <Navigate to={paths.dashboard.instructorHome} replace />,
+      },
+      {
+        path: 'instructor-profile/*',
+        element: <Navigate to={paths.dashboard.instructorHome} replace />,
+      },
+      { path: 'announcement', element: <InstructorAnnouncementPage /> },
+      { path: 'instructor-announcement', element: <LegacyInstructorAnnouncementRedirect /> },
+      { path: 'instructor-announcement/*', element: <LegacyInstructorAnnouncementRedirect /> },
+      { path: 'setting-profile', element: <InstructorSettingsPage /> },
+      { path: 'instructor-settings', element: <LegacyInstructorSettingsRedirect /> },
+      { path: 'instructor-settings/*', element: <LegacyInstructorSettingsRedirect /> },
+      { path: 'gradebook', element: <InstructorGradebookPage /> },
+      {
+        path: 'instructor-gradebook',
+        element: <Navigate to={paths.dashboard.gradebook} replace />,
+      },
+      { path: 'course-curriculum/:courseLookup/edit', element: <ProtectedCourseEditPage /> },
+      { path: 'course-curriculum', element: <ProtectedCourseCurriculumPage /> },
+      { path: 'instructor-course-curriculum', element: <LegacyInstructorCourseCurriculumRedirect /> },
+      { path: 'instructor-course-curriculum/*', element: <LegacyInstructorCourseCurriculumRedirect /> },
+      { path: 'instructor-course/:courseLookup/edit', element: <LegacyInstructorCourseEditRedirect /> },
+      { path: 'assignment', element: <InstructorAssignmentsPage /> },
+      {
+        path: 'instructor-assignments',
+        element: <Navigate to={paths.dashboard.assignment} replace />,
+      },
+      { path: 'setting-program', element: <ProgramsPage /> },
+      { path: 'programs', element: <LegacyProgramsRedirect /> },
+      { path: 'programs/*', element: <LegacyProgramsRedirect /> },
+      { path: 'setting-instructor', element: <InstructorsPage /> },
+      { path: 'instructors', element: <LegacyInstructorsRedirect /> },
+      { path: 'instructors/*', element: <LegacyInstructorsRedirect /> },
+      { path: 'setting-student', element: <StudentsPage /> },
+      { path: 'students', element: <LegacyStudentsRedirect /> },
+      { path: 'students/*', element: <LegacyStudentsRedirect /> },
       { path: 'assignments', element: <AssignmentsPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'enrolled-courses', element: <EnrolledCoursesPage /> },
@@ -125,13 +212,6 @@ export const dashboardRoutes = [
         path: 'analytics/legacy',
         element: <Navigate to={paths.dashboard.analyticsHub} replace />,
       },
-    ],
-  },
-  {
-    path: 'dashboard',
-    children: [
-      { index: true, element: <LegacyDashboardRedirect /> },
-      { path: '*', element: <LegacyDashboardRedirect /> },
     ],
   },
 ];

@@ -350,9 +350,10 @@ function LessonTypeIcon({ type }) {
 }
 
 /** Collapsible modules + typed lesson rows (Curriculum tab). */
-export function CourseCurriculum({ modules, courseLookup }) {
+export function CourseCurriculum({ modules, courseLookup, requiresEnrollment = false }) {
   const { authenticated } = useAuthContext();
   const isGuest = !authenticated;
+  const enrollmentBlocked = authenticated && requiresEnrollment;
 
   const [moduleOpen, setModuleOpen] = useState(() => {
     const init = {};
@@ -407,7 +408,7 @@ export function CourseCurriculum({ modules, courseLookup }) {
                   const allowsGuestPreview = Boolean(lesson.lessonPreview) && !isQuiz;
                   const canNavigate = isGuest
                     ? Boolean(lessonHref && allowsGuestPreview)
-                    : Boolean(lessonHref && !isLocked);
+                    : Boolean(lessonHref && !isLocked && !enrollmentBlocked);
                   const effectiveHref = canNavigate ? lessonHref : null;
                   const guestPreviewBlocked = isGuest && lessonHref && !allowsGuestPreview;
 
@@ -450,12 +451,14 @@ export function CourseCurriculum({ modules, courseLookup }) {
                             )}
                           </LessonChevronCell>
                         </LessonRowOuter>
-                      ) : (lessonHref && isLocked) || guestPreviewBlocked ? (
+                      ) : (lessonHref && (isLocked || enrollmentBlocked)) || guestPreviewBlocked ? (
                         <LessonRowOuter
                           title={
-                            guestPreviewBlocked
-                              ? 'Sign in or enable lesson preview to open this lesson'
-                              : 'Complete previous lessons to unlock'
+                            enrollmentBlocked
+                              ? 'Lessons are unavailable until your program enrollment is approved'
+                              : guestPreviewBlocked
+                                ? 'Sign in or enable lesson preview to open this lesson'
+                                : 'Complete previous lessons to unlock'
                           }
                         >
                           <LessonRow style={{ flex: 1, cursor: 'not-allowed', opacity: 0.72 }}>
@@ -466,7 +469,9 @@ export function CourseCurriculum({ modules, courseLookup }) {
                             </LessonMid>
                             <RightMetaRail>
                               <DoneSlot>
-                                {guestPreviewBlocked ? null : <LockedBadge>Locked</LockedBadge>}
+                                {guestPreviewBlocked ? null : (
+                                  <LockedBadge>{enrollmentBlocked ? 'Unavailable' : 'Locked'}</LockedBadge>
+                                )}
                               </DoneSlot>
                               <MetaText>{lesson.meta}</MetaText>
                             </RightMetaRail>

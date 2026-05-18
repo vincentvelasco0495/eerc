@@ -19,7 +19,6 @@ const FILTER_OPTIONS = [
   { value: 'all', label: 'All' },
   { value: 'completed', label: 'Completed' },
   { value: 'in-progress', label: 'In progress' },
-  { value: 'failed', label: 'Failed' },
 ];
 
 export function StudentProfileView() {
@@ -40,7 +39,6 @@ export function StudentProfileView() {
       all: courseItems.length,
       completed: courseItems.filter((item) => item.status === 'completed').length,
       'in-progress': courseItems.filter((item) => item.status === 'in-progress').length,
-      failed: courseItems.filter((item) => item.status === 'failed').length,
     }),
     [courseItems]
   );

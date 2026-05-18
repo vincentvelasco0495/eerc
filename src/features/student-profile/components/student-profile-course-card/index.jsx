@@ -111,7 +111,8 @@ export function StudentProfileCourseCard({ course }) {
           </Button>
 
           <Typography variant="caption" sx={styles.startedCaption}>
-            {course.startedAt ? `Started ${course.startedAt}` : 'Available to enroll'}
+            {course.enrollmentCaption ??
+              (course.startedAt ? `Started ${course.startedAt}` : 'Available to enroll')}
           </Typography>
         </Stack>
       </CardContent>

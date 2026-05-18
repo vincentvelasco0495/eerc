@@ -134,21 +134,13 @@ function MediaDropzone({
 export function VideoLessonWorkspaceFields({
   sourceType,
   onSourceTypeChange,
-  videoWidth,
-  onVideoWidthChange,
   duration,
   onDurationChange,
-  onPosterFiles,
   onVideoFiles,
-  posterSecondaryHint = null,
   videoSecondaryHint = null,
-  posterPreviewUrl = '',
   videoPreviewUrl = '',
-  posterUploading = false,
   videoUploading = false,
-  onPosterRemove,
   onVideoRemove,
-  showPosterRemove = false,
   showVideoRemove = false,
 }) {
   return (
@@ -168,39 +160,6 @@ export function VideoLessonWorkspaceFields({
             ))}
           </Select>
         </FormControl>
-      </Box>
-
-      <Box>
-        <Typography sx={styles.fieldLabel}>Lesson video poster</Typography>
-        <MediaDropzone
-          accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }}
-          hint="Drag and drop an image here, or use the button below to choose a file."
-          hintWhenPreview="Drag and drop to replace the poster, or use Replace."
-          uploadButtonLabel="Upload an image"
-          replaceButtonLabel="Replace image"
-          icon="solar:gallery-bold"
-          onFiles={onPosterFiles}
-          disabled={posterUploading}
-          previewUrl={posterPreviewUrl}
-          uploading={posterUploading}
-        />
-        {posterSecondaryHint ? (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
-            {posterSecondaryHint}
-          </Typography>
-        ) : null}
-        {showPosterRemove ? (
-          <Button
-            type="button"
-            size="small"
-            color="error"
-            sx={{ ...styles.removeLink, mt: 0.5, alignSelf: 'flex-start' }}
-            disabled={posterUploading}
-            onClick={onPosterRemove}
-          >
-            Remove poster
-          </Button>
-        ) : null}
       </Box>
 
       <Box>
@@ -237,28 +196,16 @@ export function VideoLessonWorkspaceFields({
         ) : null}
       </Box>
 
-      <Stack sx={styles.row}>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={styles.fieldLabel}>Video width (px)</Typography>
-          <TextField
-            fullWidth
-            size="small"
-            value={videoWidth}
-            onChange={(e) => onVideoWidthChange(e.target.value)}
-            placeholder="e.g. 1280"
-          />
-        </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={styles.fieldLabel}>Lesson duration</Typography>
-          <TextField
-            fullWidth
-            size="small"
-            value={duration}
-            onChange={(e) => onDurationChange(e.target.value)}
-            placeholder="Example: 2h 45m"
-          />
-        </Box>
-      </Stack>
+      <Box>
+        <Typography sx={styles.fieldLabel}>Lesson duration</Typography>
+        <TextField
+          fullWidth
+          size="small"
+          value={duration}
+          onChange={(e) => onDurationChange(e.target.value)}
+          placeholder="Example: 2h 45m"
+        />
+      </Box>
     </Stack>
   );
 }

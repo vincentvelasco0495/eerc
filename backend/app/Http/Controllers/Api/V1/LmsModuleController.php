@@ -9,6 +9,7 @@ use App\Models\Module;
 use App\Models\ModuleResource;
 use App\Models\Quiz;
 use App\Services\LmsCatalogService;
+use App\Support\LessonMetaSupport;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -184,7 +185,7 @@ class LmsModuleController extends Controller
         }
 
         if (array_key_exists('lesson_meta', $validated)) {
-            $row->lesson_meta_json = $validated['lesson_meta'];
+            $row->lesson_meta_json = LessonMetaSupport::sanitize($validated['lesson_meta']);
         }
 
         self::syncStandalonePlainSummaryIfNeeded($row);
@@ -456,7 +457,7 @@ class LmsModuleController extends Controller
         }
 
         if (array_key_exists('lesson_meta', $validated)) {
-            $module->lesson_meta_json = $validated['lesson_meta'];
+            $module->lesson_meta_json = LessonMetaSupport::sanitize($validated['lesson_meta']);
         }
 
         self::syncModulePlainSummaryIfNeeded($module);

@@ -7,7 +7,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Enrollment extends Model
 {
-    protected $fillable = ['public_id', 'user_id', 'program_id', 'status', 'submitted_at'];
+    protected $fillable = [
+        'public_id',
+        'user_id',
+        'program_id',
+        'status',
+        'submitted_at',
+        'payment_proof_path',
+        'payment_proof_original_name',
+        'payment_proof_mime',
+    ];
 
     protected function casts(): array
     {

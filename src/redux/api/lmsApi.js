@@ -232,11 +232,27 @@ export async function fetchLessonMaterialBlob(publicId, options = {}) {
   return response.data;
 }
 
+export async function submitEnrollmentWithPaymentProof(programId, paymentProofFile) {
+  const fd = new FormData();
+  fd.append('program_id', programId);
+  fd.append('payment_proof', paymentProofFile);
+  const { data } = await axios.post(`${apiRoot}/enrollments`, fd);
+  return data;
+}
+
+export async function fetchEnrollmentPaymentProofBlob(publicId) {
+  const response = await axios.get(
+    `${apiRoot}/enrollments/${encodeURIComponent(publicId)}/payment-proof`,
+    { responseType: 'blob' }
+  );
+  return response.data;
+}
+
 export const lmsApi = {
-  submitEnrollmentRequest: (programId) =>
+  submitEnrollmentRequest: ({ programId, paymentProofFile }) =>
     isLmsLiveApi()
-      ? postJson(`${apiRoot}/enrollments`, { program_id: programId })
-      : mockSubmitEnrollment(programId),
+      ? submitEnrollmentWithPaymentProof(programId, paymentProofFile)
+      : mockSubmitEnrollment(programId, paymentProofFile),
 
   simulateQuizAttempt: (quizId) =>
     isLmsLiveApi()

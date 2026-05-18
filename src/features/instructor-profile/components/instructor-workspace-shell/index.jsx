@@ -29,7 +29,7 @@ export function InstructorWorkspaceShell({ children }) {
   const pathname = usePathname();
   const { user } = useAuthContext();
   const profile = buildInstructorProfileIdentity(user);
-  const navGroups = getInstructorWorkspaceNavGroups(pathname);
+  const navGroups = getInstructorWorkspaceNavGroups(pathname, user?.role, user);
 
   const isLgUp = useMediaQuery(theme.breakpoints.up('lg'));
   const [mobileNavOpen, setMobileNavOpen] = useState(false);

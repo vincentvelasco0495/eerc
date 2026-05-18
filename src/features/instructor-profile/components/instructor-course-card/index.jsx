@@ -144,7 +144,7 @@ export function InstructorCourseCard({
       toast.error('This course cannot be edited (missing slug or id from the API).');
       return;
     }
-    navigate(paths.dashboard.instructorCourseEdit(slugOrId));
+    navigate(paths.dashboard.courseCurriculumEdit(slugOrId));
   };
 
   const handleManageCourse = (event) => {
@@ -154,7 +154,7 @@ export function InstructorCourseCard({
       toast.error('This course cannot be opened (missing slug or id from the API).');
       return;
     }
-    navigate(paths.dashboard.instructorCourseEdit(slugOrId));
+    navigate(paths.dashboard.courseCurriculumEdit(slugOrId));
   };
 
   const handleOpenCourseDetail = () => {

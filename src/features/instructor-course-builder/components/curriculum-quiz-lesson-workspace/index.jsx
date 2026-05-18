@@ -17,9 +17,19 @@ import { QuestionSettings } from './question-settings';
 import { QuizSettingsPanel } from './quiz-settings-panel';
 import { QuestionCardChrome } from './question-card-chrome';
 import { QuestionCollapsedBar } from './question-collapsed-bar';
+import { isSimulationDiagramQuestion } from './quiz-question-types';
 import { QuizQuestionSortableItem } from './quiz-question-sortable-item';
 import { nid, createDemoQuestion, createBlankQuestion } from './quiz-question-factory';
 import { useQuizQuestionListDropMonitor } from './use-quiz-question-list-drop-monitor';
+
+function readImageMaterialId(q, primaryKey, legacyKey) {
+  const primary = typeof q?.[primaryKey] === 'string' ? q[primaryKey].trim() : '';
+  if (primary) return primary;
+  if (legacyKey && typeof q?.[legacyKey] === 'string' && q[legacyKey].trim() !== '') {
+    return q[legacyKey].trim();
+  }
+  return null;
+}
 
 function normalizeLoadedQuizQuestions(rows) {
   const list = Array.isArray(rows) ? rows : [];
@@ -39,12 +49,35 @@ function normalizeLoadedQuizQuestions(rows) {
     }));
     const fallbackId = answers[0]?.id ?? nid();
     const correct = answers.find((a) => a.isCorrect)?.id ?? fallbackId;
+    const questionType =
+      q?.questionType === 'simulation_diagram' ? 'simulation_diagram' : 'single_choice';
+
     return {
       id: typeof q?.id === 'string' ? q.id : nid(),
       collapsed: true,
       questionText: typeof q?.prompt === 'string' ? q.prompt : '',
-      questionType: 'single_choice',
-      required: false,
+      questionType,
+      required: Boolean(q?.required),
+      problemImageMaterialPublicId: readImageMaterialId(
+        q,
+        'problemImageMaterialPublicId',
+        'diagramMaterialPublicId'
+      ),
+      problemImagePreviewUrl:
+        typeof q?.problemImageUrl === 'string'
+          ? q.problemImageUrl
+          : typeof q?.diagramUrl === 'string'
+            ? q.diagramUrl
+            : null,
+      problemImageName:
+        typeof q?.problemImageName === 'string'
+          ? q.problemImageName
+          : typeof q?.diagramName === 'string'
+            ? q.diagramName
+            : null,
+      solutionImageMaterialPublicId: readImageMaterialId(q, 'solutionImageMaterialPublicId'),
+      solutionImagePreviewUrl: typeof q?.solutionImageUrl === 'string' ? q.solutionImageUrl : null,
+      solutionImageName: typeof q?.solutionImageName === 'string' ? q.solutionImageName : null,
       answers: answers.length > 0 ? answers.map(({ id, text }) => ({ id, text })) : [{ id: fallbackId, text: '' }],
       correctAnswerId: correct,
       newAnswerDraft: '',
@@ -54,15 +87,36 @@ function normalizeLoadedQuizQuestions(rows) {
 
 function toPersistedQuizQuestions(questions) {
   return (Array.isArray(questions) ? questions : [])
-    .map((q) => ({
-      prompt: String(q?.questionText ?? '').trim(),
-      choices: (Array.isArray(q?.answers) ? q.answers : [])
-        .map((a) => ({
-          label: String(a?.text ?? '').trim(),
-          isCorrect: String(a?.id ?? '') === String(q?.correctAnswerId ?? ''),
-        }))
-        .filter((c) => c.label !== ''),
-    }))
+    .map((q) => {
+      const questionType = isSimulationDiagramQuestion(q?.questionType)
+        ? 'simulation_diagram'
+        : 'single_choice';
+      const problemImageMaterialPublicId =
+        typeof q?.problemImageMaterialPublicId === 'string' && q.problemImageMaterialPublicId.trim() !== ''
+          ? q.problemImageMaterialPublicId.trim()
+          : null;
+      const solutionImageMaterialPublicId =
+        typeof q?.solutionImageMaterialPublicId === 'string' &&
+        q.solutionImageMaterialPublicId.trim() !== ''
+          ? q.solutionImageMaterialPublicId.trim()
+          : null;
+
+      return {
+        prompt: String(q?.questionText ?? '').trim(),
+        questionType,
+        required: Boolean(q?.required),
+        problemImageMaterialPublicId:
+          questionType === 'simulation_diagram' ? problemImageMaterialPublicId : null,
+        solutionImageMaterialPublicId:
+          questionType === 'simulation_diagram' ? solutionImageMaterialPublicId : null,
+        choices: (Array.isArray(q?.answers) ? q.answers : [])
+          .map((a) => ({
+            label: String(a?.text ?? '').trim(),
+            isCorrect: String(a?.id ?? '') === String(q?.correctAnswerId ?? ''),
+          }))
+          .filter((c) => c.label !== ''),
+      };
+    })
     .filter((q) => q.prompt !== '' && q.choices.length >= 2);
 }
 
@@ -74,11 +128,14 @@ export function CurriculumQuizLessonWorkspace({
   saveLiveQuizLesson,
   liveQuizAuthoring,
   saveLiveQuizSettings,
+  quizModulePublicId = null,
+  onLessonMaterialsChange,
 }) {
   const [activeTab, setActiveTab] = useState('questions');
   const [questions, setQuestions] = useState(() => [createDemoQuestion()]);
   const [savingLive, setSavingLive] = useState(false);
   const [savingQuizSettings, setSavingQuizSettings] = useState(false);
+  const [imageUploadingByQuestionId, setImageUploadingByQuestionId] = useState({});
   const mainColumnRef = useRef(null);
   const quizSettingsPanelRef = useRef(null);
 
@@ -121,6 +178,33 @@ export function CurriculumQuizLessonWorkspace({
   useQuizQuestionListDropMonitor({ listRef: mainColumnRef, onReorder: reorderQuestions });
 
   const saveQuizNow = useCallback(async () => {
+    const missingProblemImage = questions.some(
+      (q) =>
+        isSimulationDiagramQuestion(q.questionType) &&
+        !(
+          typeof q.problemImageMaterialPublicId === 'string' &&
+          q.problemImageMaterialPublicId.trim() !== ''
+        )
+    );
+    const missingSolutionImage = questions.some(
+      (q) =>
+        isSimulationDiagramQuestion(q.questionType) &&
+        !(
+          typeof q.solutionImageMaterialPublicId === 'string' &&
+          q.solutionImageMaterialPublicId.trim() !== ''
+        )
+    );
+    if (missingProblemImage || missingSolutionImage) {
+      toast.warning(
+        missingProblemImage && missingSolutionImage
+          ? 'Upload both problem and solution images for each simulation question before saving.'
+          : missingProblemImage
+            ? 'Upload a problem image for each simulation question before saving.'
+            : 'Upload a solution image for each simulation question before saving.'
+      );
+      return;
+    }
+
     if (typeof saveLiveQuizLesson === 'function') {
       setSavingLive(true);
       try {
@@ -283,13 +367,61 @@ export function CurriculumQuizLessonWorkspace({
                           onDelete={() => handleDeleteQuestion(q.id)}
                           dragHandleRef={dragHandleRef}
                         />
-                        <QuestionEditor
-                          questionText={q.questionText}
-                          onQuestionTextChange={(html) => patchQuestion(q.id, { questionText: html })}
-                        />
                         <QuestionSettings
+                          questionId={q.id}
+                          questionType={q.questionType}
+                          onQuestionTypeChange={(questionType) => {
+                            const partial = { questionType };
+                            if (!isSimulationDiagramQuestion(questionType)) {
+                              partial.problemImageMaterialPublicId = null;
+                              partial.problemImagePreviewUrl = null;
+                              partial.problemImageName = null;
+                              partial.solutionImageMaterialPublicId = null;
+                              partial.solutionImagePreviewUrl = null;
+                              partial.solutionImageName = null;
+                            }
+                            patchQuestion(q.id, partial);
+                          }}
                           required={q.required}
                           onRequiredChange={(required) => patchQuestion(q.id, { required })}
+                        />
+                        <QuestionEditor
+                          questionType={q.questionType}
+                          questionText={q.questionText}
+                          onQuestionTextChange={(html) => patchQuestion(q.id, { questionText: html })}
+                          modulePublicId={quizModulePublicId}
+                          problemImageMaterialPublicId={q.problemImageMaterialPublicId}
+                          problemImagePreviewUrl={q.problemImagePreviewUrl}
+                          problemImageName={q.problemImageName}
+                          solutionImageMaterialPublicId={q.solutionImageMaterialPublicId}
+                          solutionImagePreviewUrl={q.solutionImagePreviewUrl}
+                          solutionImageName={q.solutionImageName}
+                          imageUploadingSlot={imageUploadingByQuestionId[q.id] ?? null}
+                          onImageUploadingSlotChange={(slot) =>
+                            setImageUploadingByQuestionId((prev) => {
+                              if (!slot) {
+                                const next = { ...prev };
+                                delete next[q.id];
+                                return next;
+                              }
+                              return { ...prev, [q.id]: slot };
+                            })
+                          }
+                          onProblemImageChange={({ materialPublicId, previewUrl, fileName }) =>
+                            patchQuestion(q.id, {
+                              problemImageMaterialPublicId: materialPublicId,
+                              problemImagePreviewUrl: previewUrl,
+                              problemImageName: fileName,
+                            })
+                          }
+                          onSolutionImageChange={({ materialPublicId, previewUrl, fileName }) =>
+                            patchQuestion(q.id, {
+                              solutionImageMaterialPublicId: materialPublicId,
+                              solutionImagePreviewUrl: previewUrl,
+                              solutionImageName: fileName,
+                            })
+                          }
+                          onAfterMaterialsChange={onLessonMaterialsChange}
                         />
                         <AnswerList
                           embedded
@@ -313,7 +445,6 @@ export function CurriculumQuizLessonWorkspace({
 
           <FooterActions
             onAddQuestion={handleAddQuestion}
-            onQuestionBank={() => toast.info('Question bank (demo).')}
             onSave={handleFooterSave}
             saveDisabled={savingLive}
           />

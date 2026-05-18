@@ -12,8 +12,17 @@ const ROOTS = {
   AUTH_DEMO: '/auth-demo',
 };
 
-/** Default authenticated landing (matches previous `/dashboard` index redirect). */
+/** Default authenticated landing for students. */
 const LMS_HOME = '/enrolled-courses';
+
+/** Admin dashboard home. */
+const ADMIN_DASHBOARD = '/dashboard';
+
+/** Instructor dashboard home (non-admin instructors). */
+const INSTRUCTOR_HOME = '/instructor-home';
+
+/** Legacy instructor dashboard URL — kept for redirects and `returnTo` handling. */
+export const LEGACY_INSTRUCTOR_PROFILE_PATH = '/instructor-profile';
 
 /**
  * First URL segment for routes rendered inside `DashboardLayout`.
@@ -22,19 +31,29 @@ const LMS_HOME = '/enrolled-courses';
 const DASHBOARD_LAYOUT_FIRST_SEGMENTS = new Set([
   'courses',
   'course-details',
+  'setting-program',
   'programs',
+  'setting-instructor',
   'instructors',
+  'setting-student',
   'students',
   'modules',
   'quizzes',
   'analytics',
   'leaderboard',
+  'dashboard',
+  'instructor-home',
   'instructor-profile',
+  'announcement',
   'instructor-announcement',
+  'setting-profile',
   'instructor-settings',
+  'gradebook',
   'instructor-gradebook',
   'instructor-course',
+  'course-curriculum',
   'instructor-course-curriculum',
+  'assignment',
   'instructor-assignments',
   'assignments',
   'settings',
@@ -48,6 +67,21 @@ const DASHBOARD_LAYOUT_FIRST_SEGMENTS = new Set([
 export function isDashboardLayoutPath(pathname) {
   const seg = pathname?.split('/').filter(Boolean)[0];
   return !!seg && DASHBOARD_LAYOUT_FIRST_SEGMENTS.has(seg);
+}
+
+/** Curriculum builder shell — hide global dashboard header (logo, account, notifications). */
+export function isCourseCurriculumBuilderPath(pathname) {
+  const path = (pathname ?? '').replace(/\/$/, '') || '/';
+
+  if (path === '/course-curriculum' || path.startsWith('/course-curriculum/')) {
+    return true;
+  }
+
+  if (path === '/instructor-course-curriculum' || path.startsWith('/instructor-course-curriculum/')) {
+    return true;
+  }
+
+  return /^\/instructor-course\/[^/]+\/edit$/.test(path);
 }
 
 // ----------------------------------------------------------------------
@@ -129,7 +163,7 @@ export const paths = {
       verify: `${ROOTS.AUTH_DEMO}/centered/verify`,
     },
   },
-  // DASHBOARD (LMS routes — no `/dashboard` prefix)
+  // DASHBOARD (LMS routes — instructor home at `/dashboard`)
   dashboard: {
     root: LMS_HOME,
     overview: LMS_HOME,
@@ -159,19 +193,45 @@ export const paths = {
       details: (quizId) => `/quizzes/${quizId}`,
       history: `/quizzes/history`,
     },
-    instructorProfile: `/instructor-profile`,
-    instructorSettings: `/instructor-settings`,
-    instructorGradebook: `/instructor-gradebook`,
-    instructorAnnouncement: `/instructor-announcement`,
-    instructorCourseCurriculum: `/instructor-course-curriculum`,
+    /** Admin dashboard at `/dashboard`. */
+    home: ADMIN_DASHBOARD,
+    /** Instructor workspace home (non-admin). */
+    instructorHome: INSTRUCTOR_HOME,
+    /** @deprecated Legacy alias — use `home` (admin) or `instructorHome` (instructor). */
+    instructorProfile: ADMIN_DASHBOARD,
+    settingProfile: `/setting-profile`,
+    /** @deprecated Use `settingProfile` — legacy `/instructor-settings` URL. */
+    instructorSettings: `/setting-profile`,
+    gradebook: `/gradebook`,
+    /** @deprecated Use `gradebook` — legacy `/instructor-gradebook` URL. */
+    instructorGradebook: `/gradebook`,
+    announcement: `/announcement`,
+    /** @deprecated Use `announcement` — legacy `/instructor-announcement` URL. */
+    instructorAnnouncement: `/announcement`,
+    courseCurriculum: `/course-curriculum`,
     /** Opens the builder against the LMS API and creates a DB row on first save / first module. */
-    instructorNewCourseCurriculum: `/instructor-course-curriculum?new=1`,
+    newCourseCurriculum: `/course-curriculum?new=1`,
+    /** @deprecated Use `courseCurriculum` — legacy `/instructor-course-curriculum` URL. */
+    instructorCourseCurriculum: `/course-curriculum`,
+    /** @deprecated Use `newCourseCurriculum`. */
+    instructorNewCourseCurriculum: `/course-curriculum?new=1`,
+    courseCurriculumEdit: (slugOrPublicId) =>
+      `/course-curriculum/${encodeURIComponent(String(slugOrPublicId ?? ''))}/edit`,
+    /** @deprecated Use `courseCurriculumEdit` — legacy `/instructor-course/:slug/edit` URL. */
     instructorCourseEdit: (slugOrPublicId) =>
-      `/instructor-course/${encodeURIComponent(String(slugOrPublicId ?? ''))}/edit`,
-    instructorAssignments: `/instructor-assignments`,
-    programs: `/programs`,
-    instructors: `/instructors`,
-    students: `/students`,
+      `/course-curriculum/${encodeURIComponent(String(slugOrPublicId ?? ''))}/edit`,
+    assignment: `/assignment`,
+    /** @deprecated Use `assignment` — legacy `/instructor-assignments` URL. */
+    instructorAssignments: `/assignment`,
+    settingProgram: `/setting-program`,
+    /** @deprecated Use `settingProgram` — legacy `/programs` admin URL. */
+    programs: `/setting-program`,
+    settingInstructor: `/setting-instructor`,
+    /** @deprecated Use `settingInstructor` — legacy `/instructors` admin URL. */
+    instructors: `/setting-instructor`,
+    settingStudent: `/setting-student`,
+    /** @deprecated Use `settingStudent` — legacy `/students` admin URL. */
+    students: `/setting-student`,
     studentAssignments: `/assignments`,
     enrolledCourses: `/enrolled-courses`,
     availablePrograms: `/available-programs`,

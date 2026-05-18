@@ -129,6 +129,8 @@ export function QuizQuestionSortableItem({ questionId, chromeSurface = 'default'
       {...{ [QUIZ_QUESTION_ITEM_ATTR]: questionId }}
       sx={{
         position: 'relative',
+        minWidth: 0,
+        maxWidth: '100%',
         opacity: isDragging ? 0.55 : 1,
         transition: 'opacity 0.12s ease',
       }}

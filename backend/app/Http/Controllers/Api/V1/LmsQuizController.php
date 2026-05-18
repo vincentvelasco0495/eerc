@@ -67,23 +67,15 @@ class LmsQuizController extends Controller
         ], 201);
     }
 
-    public function questions(string $publicId): JsonResponse
+    public function questions(string $publicId, LmsCatalogService $catalog): JsonResponse
     {
+        $user = $this->lmsActor();
         $quiz = Quiz::query()->where('public_id', $publicId)->with(['questions.options'])->firstOrFail();
 
-        $items = $quiz->questions->map(function ($q) {
-            return [
-                'id' => (string) $q->id,
-                'prompt' => $q->prompt,
-                'options' => $q->options->map(function ($opt) {
-                    return [
-                        'id' => (string) $opt->id,
-                        'label' => $opt->label,
-                        'isCorrect' => (bool) $opt->is_correct,
-                    ];
-                })->values()->all(),
-            ];
-        })->values()->all();
+        $items = $quiz->questions
+            ->map(fn (Question $q) => $catalog->formatQuizQuestion($q, $user))
+            ->values()
+            ->all();
 
         return response()->json($items);
     }
@@ -102,6 +94,11 @@ class LmsQuizController extends Controller
             'title' => ['sometimes', 'nullable', 'string', 'max:512'],
             'questions' => ['sometimes', 'array'],
             'questions.*.prompt' => ['required_with:questions', 'string'],
+            'questions.*.questionType' => ['sometimes', 'string', 'in:single_choice,simulation_diagram'],
+            'questions.*.required' => ['sometimes', 'boolean'],
+            'questions.*.diagramMaterialPublicId' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'questions.*.problemImageMaterialPublicId' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'questions.*.solutionImageMaterialPublicId' => ['sometimes', 'nullable', 'string', 'max:64'],
             'questions.*.choices' => ['required_with:questions', 'array', 'min:2'],
             'questions.*.choices.*.label' => ['required_with:questions', 'string', 'max:2048'],
             'questions.*.choices.*.isCorrect' => ['sometimes', 'boolean'],
@@ -142,9 +139,35 @@ class LmsQuizController extends Controller
                         continue;
                     }
 
+                    $questionType = (($qRow['questionType'] ?? 'single_choice') === 'simulation_diagram')
+                        ? 'simulation_diagram'
+                        : 'single_choice';
+
+                    $meta = [];
+                    if (array_key_exists('required', $qRow)) {
+                        $meta['required'] = (bool) $qRow['required'];
+                    }
+                    $problemImageId = isset($qRow['problemImageMaterialPublicId'])
+                        ? trim((string) $qRow['problemImageMaterialPublicId'])
+                        : (isset($qRow['diagramMaterialPublicId'])
+                            ? trim((string) $qRow['diagramMaterialPublicId'])
+                            : '');
+                    if ($problemImageId !== '') {
+                        $meta['problemImageMaterialPublicId'] = $problemImageId;
+                    }
+
+                    $solutionImageId = isset($qRow['solutionImageMaterialPublicId'])
+                        ? trim((string) $qRow['solutionImageMaterialPublicId'])
+                        : '';
+                    if ($solutionImageId !== '') {
+                        $meta['solutionImageMaterialPublicId'] = $solutionImageId;
+                    }
+
                     $question = Question::query()->create([
                         'quiz_id' => $quiz->id,
                         'prompt' => $prompt,
+                        'question_type' => $questionType,
+                        'meta_json' => $meta !== [] ? $meta : null,
                         'sort_order' => $qIndex + 1,
                     ]);
 
@@ -249,8 +272,14 @@ class LmsQuizController extends Controller
         $user = $this->lmsActor();
         $quiz = Quiz::query()->where('public_id', $publicId)->with(['course'])->withCount('questions')->firstOrFail();
 
-        if ($quiz->course !== null && $catalog->isCurriculumItemLockedForUser($user, $quiz->course, $quiz->public_id)) {
-            return response()->json(['message' => 'Complete earlier lessons before attempting this quiz.'], 403);
+        if ($quiz->course !== null) {
+            if ($message = $catalog->curriculumAccessDeniedMessage($user, $quiz->course)) {
+                return response()->json(['message' => $message], 403);
+            }
+
+            if ($catalog->isCurriculumItemLockedForUser($user, $quiz->course, $quiz->public_id)) {
+                return response()->json(['message' => 'Complete earlier lessons before attempting this quiz.'], 403);
+            }
         }
 
         $validated = $request->validate([

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Program;
 use App\Services\LmsCatalogService;
+use App\Support\PageAuthorization;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -16,6 +17,10 @@ class LmsProgramController extends Controller
     {
         if (! $request->filled('page')) {
             return response()->json(['data' => $catalog->programs()]);
+        }
+
+        if ($response = PageAuthorization::denyUnlessCanAccess($request, '/setting-program')) {
+            return $response;
         }
 
         $validated = $request->validate([

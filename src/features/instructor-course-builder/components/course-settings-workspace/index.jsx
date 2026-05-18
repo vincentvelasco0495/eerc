@@ -22,7 +22,6 @@ import {
 import {
   curriculumBuilderCourse,
   courseWhatYouLearnSeedHtml,
-  curriculumCourseCoverImageUrl,
   courseMainDescriptionSeedHtml,
   coursePreviewDescriptionSeedText,
 } from '../../instructor-course-curriculum-data';
@@ -104,7 +103,6 @@ export function CourseSettingsWorkspace({
   const [learnHtml, setLearnHtml] = useState(canPersistToLms ? '' : courseWhatYouLearnSeedHtml);
   const [previewDescription, setPreviewDescription] = useState(coursePreviewDescriptionSeedText);
 
-  const [featuredCourse, setFeaturedCourse] = useState(false);
   const [lockLessonsInOrder, setLockLessonsInOrder] = useState(false);
 
   const [saveBusy, setSaveBusy] = useState(false);
@@ -148,7 +146,6 @@ export function CourseSettingsWorkspace({
     setDescriptionHtml(canPersistToLms ? '' : courseMainDescriptionSeedHtml);
     setLearnHtml(canPersistToLms ? '' : courseWhatYouLearnSeedHtml);
     setPreviewDescription(coursePreviewDescriptionSeedText);
-    setFeaturedCourse(false);
     setLockLessonsInOrder(false);
   }, [canPersistToLms, hasCourseRow]);
 
@@ -180,7 +177,6 @@ export function CourseSettingsWorkspace({
     ].filter(Boolean));
     setDescriptionHtml(descFallback || fromDesc || '');
     setLearnHtml(learningOutcomesToHtml(m.learningOutcomes ?? []) || '');
-    setFeaturedCourse(Boolean(m.featuredCourse));
     setLockLessonsInOrder(Boolean(m.lockLessonsInOrder));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- seed when switching authoring target only
   }, [tiedCourse?.id]);
@@ -287,7 +283,6 @@ export function CourseSettingsWorkspace({
         ...(description.length ? { description } : {}),
         ...(learningOutcomes.length ? { learningOutcomes } : {}),
         bannerImageUrl: bannerUrl.trim() === '' ? null : bannerUrl.trim(),
-        featuredCourse,
         lockLessonsInOrder,
         ...(instructorNames.length ? { coInstructors: instructorNames } : {}),
       };
@@ -348,7 +343,6 @@ export function CourseSettingsWorkspace({
     programId,
     slug,
     videoDuration,
-    featuredCourse,
     onSaved,
   ]);
 
@@ -373,10 +367,7 @@ export function CourseSettingsWorkspace({
             setBannerImageFile(file);
             setBannerPreviewUrl(URL.createObjectURL(file));
           }}
-          courseCoverSrc={
-            bannerPreviewUrl ||
-            (canPersistToLms ? bannerUrl?.trim() || curriculumCourseCoverImageUrl : curriculumCourseCoverImageUrl)
-          }
+          courseCoverSrc={bannerPreviewUrl || bannerUrl?.trim() || ''}
           courseDuration={courseDuration}
           onCourseDurationChange={setCourseDuration}
           videoDuration={videoDuration}
@@ -390,8 +381,6 @@ export function CourseSettingsWorkspace({
           onLearnHtmlChange={setLearnHtml}
           previewDescription={previewDescription}
           onPreviewDescriptionChange={setPreviewDescription}
-          featuredCourse={featuredCourse}
-          onFeaturedCourseChange={setFeaturedCourse}
           lockLessonsInOrder={lockLessonsInOrder}
           onLockLessonsInOrderChange={setLockLessonsInOrder}
           hideEmbeddedSaveFooter={canPersistToLms}

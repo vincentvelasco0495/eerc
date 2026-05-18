@@ -3,10 +3,10 @@ export function nid() {
 }
 
 const DEMO_ANSWER_TEXTS = [
-  'Computer Processing Unit',
-  'Central Peripheral Unit',
-  'Central Processing Unit',
-  'Computer Processing User',
+  'Drain surface runoff only',
+  'Support vertical roof loads',
+  'Resist lateral earth pressure',
+  'Measure soil compaction in the field',
 ];
 
 /** Seed question when opening a quiz lesson (demo content). */
@@ -15,9 +15,15 @@ export function createDemoQuestion() {
   return {
     id: nid(),
     collapsed: true,
-    questionText: '<p>What does CPU stand for?</p>',
+    questionText: '<p>What is the primary purpose of a retaining wall?</p>',
     questionType: 'single_choice',
     required: false,
+    problemImageMaterialPublicId: null,
+    problemImagePreviewUrl: null,
+    problemImageName: null,
+    solutionImageMaterialPublicId: null,
+    solutionImagePreviewUrl: null,
+    solutionImageName: null,
     answers,
     correctAnswerId: answers[2].id,
     newAnswerDraft: '',
@@ -34,6 +40,12 @@ export function createBlankQuestion() {
     questionText: '',
     questionType: 'single_choice',
     required: false,
+    problemImageMaterialPublicId: null,
+    problemImagePreviewUrl: null,
+    problemImageName: null,
+    solutionImageMaterialPublicId: null,
+    solutionImagePreviewUrl: null,
+    solutionImageName: null,
     answers: [
       { id: a1, text: '' },
       { id: a2, text: '' },

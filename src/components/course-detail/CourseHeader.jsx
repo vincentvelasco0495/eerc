@@ -245,7 +245,7 @@ export function CourseHeader({ data }) {
     const role = typeof user?.role === 'string' ? user.role.trim().toLowerCase() : '';
     const isInstructorLike = role === 'instructor' || role === 'admin';
     navigate(
-      isInstructorLike ? paths.dashboard.instructorProfile : paths.dashboard.enrolledCourses,
+      isInstructorLike ? paths.dashboard.home : paths.dashboard.enrolledCourses,
       { replace: true }
     );
   };

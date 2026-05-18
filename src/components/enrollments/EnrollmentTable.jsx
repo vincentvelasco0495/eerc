@@ -1,3 +1,5 @@
+import { useState, useCallback } from 'react';
+
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
@@ -11,6 +13,10 @@ import TableHead from '@mui/material/TableHead';
 import Typography from '@mui/material/Typography';
 import TableContainer from '@mui/material/TableContainer';
 import LinearProgress from '@mui/material/LinearProgress';
+
+import { fetchEnrollmentPaymentProofBlob } from 'src/redux/api/lmsApi';
+
+import { toast } from 'src/components/snackbar';
 
 const SKELETON_ROWS = 5;
 
@@ -29,9 +35,31 @@ export function EnrollmentTable({
   busyId = null,
   emptyMessage = 'No enrollments found',
 }) {
+  const [proofBusyId, setProofBusyId] = useState(null);
+
+  const handleViewPaymentProof = useCallback(async (row) => {
+    if (!row?.id || !row?.hasPaymentProof) {
+      return;
+    }
+
+    setProofBusyId(row.id);
+    try {
+      const blob = await fetchEnrollmentPaymentProofBlob(row.id);
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    } catch (error) {
+      const message =
+        typeof error === 'string' ? error : error?.message ?? 'Could not open payment proof.';
+      toast.error(message);
+    } finally {
+      setProofBusyId(null);
+    }
+  }, []);
+
   const showSkeleton = loading && (!Array.isArray(rows) || rows.length === 0);
   const showActions = showActionsColumn || canManage;
-  const colSpan = showActions ? 8 : 7;
+  const colSpan = showActions ? 9 : 8;
 
   return (
     <Box sx={{ position: 'relative' }}>
@@ -64,6 +92,7 @@ export function EnrollmentTable({
             <TableCell>School held</TableCell>
             <TableCell>Program</TableCell>
             <TableCell>Submitted</TableCell>
+            <TableCell>Payment proof</TableCell>
             <TableCell>Status</TableCell>
             {showActions ? <TableCell align="right">Actions</TableCell> : null}
           </TableRow>
@@ -103,6 +132,22 @@ export function EnrollmentTable({
                     <TableCell>{row.schoolHeld || '—'}</TableCell>
                     <TableCell>{row.programTitle || row.programId || '—'}</TableCell>
                     <TableCell>{row.submittedAt || '—'}</TableCell>
+                    <TableCell>
+                      {row.hasPaymentProof ? (
+                        <Button
+                          size="small"
+                          variant="text"
+                          disabled={proofBusyId === row.id}
+                          onClick={() => handleViewPaymentProof(row)}
+                        >
+                          {proofBusyId === row.id ? 'Opening…' : 'View proof'}
+                        </Button>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          —
+                        </Typography>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Chip
                         label={row.status}

@@ -1,4 +1,3 @@
-import dayjs from 'dayjs';
 import { useRef, useMemo, useState, useEffect, useCallback, useLayoutEffect } from 'react';
 
 import Box from '@mui/material/Box';
@@ -23,11 +22,8 @@ import { VideoLessonWorkspaceHeader } from '../video-lesson-workspace-header';
 import { VideoLessonWorkspaceFields } from '../video-lesson-workspace-fields';
 import { TextLessonWorkspaceSettings } from '../text-lesson-workspace-settings';
 import { TextLessonWorkspaceMaterials } from '../text-lesson-workspace-materials';
+import { normalizeVideoWorkspaceMeta } from '../../utils/lesson-authoring-helpers';
 import { TextLessonWorkspaceEditorSection } from '../text-lesson-workspace-editor-section';
-import {
-  dayjsFromClockString,
-  normalizeVideoWorkspaceMeta,
-} from '../../utils/lesson-authoring-helpers';
 import {
   buildLessonAuthoringTargetKey,
   normalizeUploadedLessonMaterial,
@@ -52,23 +48,9 @@ export function CurriculumVideoLessonWorkspace({
   onLessonMaterialsChange,
 }) {
   const [workspaceTab, setWorkspaceTab] = useState(0);
-  const [posterUploading, setPosterUploading] = useState(false);
   const [videoUploading, setVideoUploading] = useState(false);
-  const [posterPreviewUrl, setPosterPreviewUrl] = useState('');
   const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
-  const posterBlobRef = useRef(null);
   const videoBlobRef = useRef(null);
-
-  const assignPosterPreviewUrl = useCallback((blobUrlOrNull) => {
-    const raw = typeof blobUrlOrNull === 'string' ? blobUrlOrNull.trim() : '';
-    const next = raw || null;
-    const prev = posterBlobRef.current;
-    if (prev && prev.startsWith('blob:') && prev !== next) {
-      URL.revokeObjectURL(prev);
-    }
-    posterBlobRef.current = next && next.startsWith('blob:') ? next : null;
-    setPosterPreviewUrl(next ?? '');
-  }, []);
 
   const assignVideoPreviewUrl = useCallback((blobUrlOrNull) => {
     const raw = typeof blobUrlOrNull === 'string' ? blobUrlOrNull.trim() : '';
@@ -83,24 +65,17 @@ export function CurriculumVideoLessonWorkspace({
 
   useEffect(
     () => () => {
-      if (posterBlobRef.current) {
-        URL.revokeObjectURL(posterBlobRef.current);
-      }
       if (videoBlobRef.current) {
         URL.revokeObjectURL(videoBlobRef.current);
       }
     },
     []
   );
+
   const [sourceType, setSourceType] = useState('html-mp4');
-  const [videoWidth, setVideoWidth] = useState('');
   const [duration, setDuration] = useState('');
-  const [videoPosterLessonMaterialPublicId, setVideoPosterLessonMaterialPublicId] = useState(null);
   const [videoLessonMaterialPublicId, setVideoLessonMaterialPublicId] = useState(null);
   const [lessonPreview, setLessonPreview] = useState(false);
-  const [unlockAfterPurchase, setUnlockAfterPurchase] = useState(false);
-  const [startDate, setStartDate] = useState(null);
-  const [startTime, setStartTime] = useState(null);
   const [shortDescriptionHtml, setShortDescriptionHtml] = useState('');
   const [lessonContentHtml, setLessonContentHtml] = useState('');
 
@@ -170,33 +145,19 @@ export function CurriculumVideoLessonWorkspace({
     return id;
   }, [lesson?.id, lesson?.type, liveLessonAuthoring?.standaloneLessonPublicId]);
 
-  /** Full catalog list (poster/video lookups still resolve names from here). */
   const allLessonMaterials = useMemo(
     () => (Array.isArray(liveLessonAuthoring?.lessonMaterials) ? liveLessonAuthoring.lessonMaterials : []),
     [liveLessonAuthoring?.lessonMaterials]
   );
 
-  /** Listed attachments only — hide poster & primary video files tagged in `lessonMeta`. */
   const listedLessonMaterials = useMemo(() => {
-    const exclude = new Set(
-      [videoPosterLessonMaterialPublicId, videoLessonMaterialPublicId]
-        .filter((id) => id != null && String(id).trim() !== '')
-        .map((id) => String(id).trim())
-    );
-    if (exclude.size === 0) {
+    const linkedVideoId =
+      typeof videoLessonMaterialPublicId === 'string' ? videoLessonMaterialPublicId.trim() : '';
+    if (!linkedVideoId) {
       return allLessonMaterials;
     }
-    return allLessonMaterials.filter((m) => m?.id && !exclude.has(String(m.id)));
-  }, [
-    allLessonMaterials,
-    videoPosterLessonMaterialPublicId,
-    videoLessonMaterialPublicId,
-  ]);
-
-  const posterLinkedName = useMemo(() => {
-    if (!videoPosterLessonMaterialPublicId) return null;
-    return allLessonMaterials.find((m) => m.id === videoPosterLessonMaterialPublicId)?.name ?? null;
-  }, [allLessonMaterials, videoPosterLessonMaterialPublicId]);
+    return allLessonMaterials.filter((m) => m?.id && String(m.id) !== linkedVideoId);
+  }, [allLessonMaterials, videoLessonMaterialPublicId]);
 
   const videoLinkedName = useMemo(() => {
     if (!videoLessonMaterialPublicId) return null;
@@ -220,17 +181,11 @@ export function CurriculumVideoLessonWorkspace({
     if (!saveLiveRichLesson || !liveLessonAuthoring) {
       hydratedAuthoringKeyRef.current = '';
       setSourceType('html-mp4');
-      setVideoWidth('');
       setDuration('');
-      setVideoPosterLessonMaterialPublicId(null);
       setVideoLessonMaterialPublicId(null);
       setLessonPreview(false);
-      setUnlockAfterPurchase(false);
-      setStartDate(null);
-      setStartTime(null);
       setShortDescriptionHtml('');
       setLessonContentHtml('');
-      assignPosterPreviewUrl(null);
       assignVideoPreviewUrl(null);
       return;
     }
@@ -248,15 +203,6 @@ export function CurriculumVideoLessonWorkspace({
     const vst = lm.videoSourceType != null ? String(lm.videoSourceType).trim() : '';
     setSourceType(vst || 'html-mp4');
 
-    const w = lm.videoWidthPx != null ? String(lm.videoWidthPx).trim() : '';
-    setVideoWidth(w);
-
-    setVideoPosterLessonMaterialPublicId(
-      lm.videoPosterLessonMaterialPublicId != null &&
-        String(lm.videoPosterLessonMaterialPublicId).trim() !== ''
-        ? String(lm.videoPosterLessonMaterialPublicId).trim()
-        : null
-    );
     setVideoLessonMaterialPublicId(
       lm.videoLessonMaterialPublicId != null &&
         String(lm.videoLessonMaterialPublicId).trim() !== ''
@@ -278,10 +224,6 @@ export function CurriculumVideoLessonWorkspace({
     }
 
     setLessonPreview(!!lm.lessonPreview);
-    setUnlockAfterPurchase(!!lm.unlockAfterPurchase);
-    const startD = lm.startDate ? dayjs(String(lm.startDate)) : null;
-    setStartDate(startD?.isValid() ? startD.startOf('day') : null);
-    setStartTime(dayjsFromClockString(lm.startTime != null ? String(lm.startTime) : '') || null);
 
     setShortDescriptionHtml(String(liveLessonAuthoring.excerptHtml ?? '').trim());
     setLessonContentHtml(String(liveLessonAuthoring.bodyHtml ?? '').trim());
@@ -291,49 +233,13 @@ export function CurriculumVideoLessonWorkspace({
     lesson.type,
     saveLiveRichLesson,
     liveLessonAuthoring,
-    assignPosterPreviewUrl,
     assignVideoPreviewUrl,
   ]);
 
   useEffect(() => {
     let cancelled = false;
-    const pid =
-      typeof videoPosterLessonMaterialPublicId === 'string'
-        ? videoPosterLessonMaterialPublicId.trim()
-        : '';
-
-    async function load() {
-      if (posterUploading) return;
-      if (!pid || !CONFIG.serverUrl?.trim()) {
-        assignPosterPreviewUrl(null);
-        return;
-      }
-
-      try {
-        const material = findMaterialById(pid);
-        const directInlineUrl =
-          normalizeAssetUrl(material?.inlineFileUrl) || normalizeAssetUrl(material?.fileUrl);
-        if (!directInlineUrl) return;
-        if (cancelled || posterUploading) return;
-        assignPosterPreviewUrl(directInlineUrl);
-      } catch {
-        /* keep thumbnail from local blob if catalog refetch lagged */
-      }
-    }
-
-    void load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [videoPosterLessonMaterialPublicId, posterUploading, assignPosterPreviewUrl, findMaterialById]);
-
-  useEffect(() => {
-    let cancelled = false;
     const vid =
-      typeof videoLessonMaterialPublicId === 'string'
-        ? videoLessonMaterialPublicId.trim()
-        : '';
+      typeof videoLessonMaterialPublicId === 'string' ? videoLessonMaterialPublicId.trim() : '';
 
     async function load() {
       if (videoUploading) return;
@@ -366,29 +272,14 @@ export function CurriculumVideoLessonWorkspace({
       normalizeVideoWorkspaceMeta(
         {
           lessonPreview,
-          unlockAfterPurchase,
-          startDate,
-          startTime,
           durationLabel: duration.trim(),
           videoSourceType: sourceType,
-          videoWidthPx: videoWidth,
-          videoPosterLessonMaterialPublicId,
           videoLessonMaterialPublicId,
           ...overrides,
         },
         { durationLabelFallback: duration }
       ),
-    [
-      duration,
-      lessonPreview,
-      sourceType,
-      startDate,
-      startTime,
-      unlockAfterPurchase,
-      videoLessonMaterialPublicId,
-      videoPosterLessonMaterialPublicId,
-      videoWidth,
-    ]
+    [duration, lessonPreview, sourceType, videoLessonMaterialPublicId]
   );
 
   const persistLesson = useCallback(async () => {
@@ -422,8 +313,7 @@ export function CurriculumVideoLessonWorkspace({
 
   const materialUploadTarget = useMemo(() => {
     const hasStandalone = Boolean(
-      materialStandaloneLessonPublicId &&
-        String(materialStandaloneLessonPublicId).trim() !== ''
+      materialStandaloneLessonPublicId && String(materialStandaloneLessonPublicId).trim() !== ''
     );
     if (hasStandalone) {
       return { kind: 'standalone', id: materialStandaloneLessonPublicId };
@@ -434,8 +324,8 @@ export function CurriculumVideoLessonWorkspace({
     return null;
   }, [materialModulePublicId, materialStandaloneLessonPublicId]);
 
-  const uploadLessonMaterialAndLink = useCallback(
-    async (file, linkField) => {
+  const uploadLessonVideoAndLink = useCallback(
+    async (file) => {
       if (!file) {
         return;
       }
@@ -454,22 +344,10 @@ export function CurriculumVideoLessonWorkspace({
         return;
       }
 
-      const setBusy = linkField === 'poster' ? setPosterUploading : setVideoUploading;
-      const assignPreview =
-        linkField === 'poster' ? assignPosterPreviewUrl : assignVideoPreviewUrl;
-
-      setBusy(true);
-      assignPreview(URL.createObjectURL(file));
-      const previousPosterId =
-        linkField === 'poster' &&
-        typeof videoPosterLessonMaterialPublicId === 'string' &&
-        videoPosterLessonMaterialPublicId.trim() !== ''
-          ? videoPosterLessonMaterialPublicId.trim()
-          : null;
+      setVideoUploading(true);
+      assignVideoPreviewUrl(URL.createObjectURL(file));
       const previousVideoId =
-        linkField === 'video' &&
-        typeof videoLessonMaterialPublicId === 'string' &&
-        videoLessonMaterialPublicId.trim() !== ''
+        typeof videoLessonMaterialPublicId === 'string' && videoLessonMaterialPublicId.trim() !== ''
           ? videoLessonMaterialPublicId.trim()
           : null;
 
@@ -490,16 +368,7 @@ export function CurriculumVideoLessonWorkspace({
           throw new Error('Upload response missing material id.');
         }
 
-        const nextPoster =
-          linkField === 'poster' ? uploadedId : videoPosterLessonMaterialPublicId;
-        const nextVideo =
-          linkField === 'video' ? uploadedId : videoLessonMaterialPublicId;
-
-        if (linkField === 'poster') {
-          setVideoPosterLessonMaterialPublicId(uploadedId);
-        } else {
-          setVideoLessonMaterialPublicId(uploadedId);
-        }
+        setVideoLessonMaterialPublicId(uploadedId);
 
         await saveLiveRichLesson({
           title: lesson.title,
@@ -507,15 +376,13 @@ export function CurriculumVideoLessonWorkspace({
           shortDescriptionHtml,
           lessonContentHtml,
           lessonMeta: buildLessonMetaForSave({
-            videoPosterLessonMaterialPublicId: nextPoster,
-            videoLessonMaterialPublicId: nextVideo,
+            videoLessonMaterialPublicId: uploadedId,
           }),
         });
 
-        const replacedId = linkField === 'poster' ? previousPosterId : previousVideoId;
-        if (replacedId && replacedId !== uploadedId) {
+        if (previousVideoId && previousVideoId !== uploadedId) {
           try {
-            await deleteLessonMaterial(replacedId);
+            await deleteLessonMaterial(previousVideoId);
           } catch (delErr) {
             toast.error(
               getLmsAxiosErrorMessage(
@@ -535,15 +402,14 @@ export function CurriculumVideoLessonWorkspace({
           });
         }
 
-        toast.success(linkField === 'poster' ? 'Poster uploaded and linked.' : 'Video uploaded and linked.');
+        toast.success('Video uploaded and linked.');
       } catch (e) {
         toast.error(getLmsAxiosErrorMessage(e, 'Upload failed.'));
       } finally {
-        setBusy(false);
+        setVideoUploading(false);
       }
     },
     [
-      assignPosterPreviewUrl,
       assignVideoPreviewUrl,
       buildLessonMetaForSave,
       duration,
@@ -557,88 +423,16 @@ export function CurriculumVideoLessonWorkspace({
       saveLiveRichLesson,
       shortDescriptionHtml,
       videoLessonMaterialPublicId,
-      videoPosterLessonMaterialPublicId,
     ]
-  );
-
-  const handlePosterFiles = useCallback(
-    (files) => {
-      const f = files?.[0];
-      void uploadLessonMaterialAndLink(f, 'poster');
-    },
-    [uploadLessonMaterialAndLink]
   );
 
   const handleVideoFiles = useCallback(
     (files) => {
       const f = files?.[0];
-      void uploadLessonMaterialAndLink(f, 'video');
+      void uploadLessonVideoAndLink(f);
     },
-    [uploadLessonMaterialAndLink]
+    [uploadLessonVideoAndLink]
   );
-
-  const handleRemovePoster = useCallback(async () => {
-    const rawId =
-      typeof videoPosterLessonMaterialPublicId === 'string'
-        ? videoPosterLessonMaterialPublicId.trim()
-        : '';
-
-    if (!rawId) {
-      assignPosterPreviewUrl(null);
-      return;
-    }
-
-    if (!saveLiveRichLesson) {
-      assignPosterPreviewUrl(null);
-      setVideoPosterLessonMaterialPublicId(null);
-      toast.success('Poster cleared.');
-      return;
-    }
-
-    if (!window.confirm('Remove this poster from the lesson? The uploaded image will be deleted.')) {
-      return;
-    }
-
-    setPosterUploading(true);
-    try {
-      await saveLiveRichLesson({
-        title: lesson.title,
-        durationLabel: duration.trim(),
-        shortDescriptionHtml,
-        lessonContentHtml,
-        lessonMeta: buildLessonMetaForSave({
-          videoPosterLessonMaterialPublicId: null,
-        }),
-      });
-      assignPosterPreviewUrl(null);
-      setVideoPosterLessonMaterialPublicId(null);
-      await deleteLessonMaterial(rawId);
-      if (materialModulePublicId) {
-        onLessonMaterialsChange?.({
-          modulePublicId: materialModulePublicId,
-          standaloneLessonPublicId: materialStandaloneLessonPublicId,
-          removeIds: [rawId],
-        });
-      }
-      toast.success('Poster removed.');
-    } catch (e) {
-      toast.error(getLmsAxiosErrorMessage(e, 'Could not remove poster.'));
-    } finally {
-      setPosterUploading(false);
-    }
-  }, [
-    assignPosterPreviewUrl,
-    buildLessonMetaForSave,
-    duration,
-    lesson.title,
-    lessonContentHtml,
-    materialModulePublicId,
-    materialStandaloneLessonPublicId,
-    onLessonMaterialsChange,
-    saveLiveRichLesson,
-    shortDescriptionHtml,
-    videoPosterLessonMaterialPublicId,
-  ]);
 
   const handleRemoveVideo = useCallback(async () => {
     const rawId =
@@ -701,19 +495,9 @@ export function CurriculumVideoLessonWorkspace({
     videoLessonMaterialPublicId,
   ]);
 
-  const showPosterRemoveControls = Boolean(
-    saveLiveRichLesson ? videoPosterLessonMaterialPublicId : posterPreviewUrl
-  );
   const showVideoRemoveControls = Boolean(
     saveLiveRichLesson ? videoLessonMaterialPublicId : videoPreviewUrl
   );
-
-  const posterSecondaryHint =
-    videoPosterLessonMaterialPublicId ?
-      posterLinkedName ?
-        `Linked: ${posterLinkedName}`
-      : `Linked material id: ${videoPosterLessonMaterialPublicId}`
-    : null;
 
   const videoSecondaryHint =
     videoLessonMaterialPublicId ?
@@ -748,33 +532,20 @@ export function CurriculumVideoLessonWorkspace({
           <VideoLessonWorkspaceFields
             sourceType={sourceType}
             onSourceTypeChange={setSourceType}
-            videoWidth={videoWidth}
-            onVideoWidthChange={setVideoWidth}
             duration={duration}
             onDurationChange={setDuration}
-            onPosterFiles={handlePosterFiles}
             onVideoFiles={handleVideoFiles}
-            posterSecondaryHint={posterSecondaryHint}
             videoSecondaryHint={videoSecondaryHint}
-            posterPreviewUrl={posterPreviewUrl}
             videoPreviewUrl={videoPreviewUrl}
-            posterUploading={posterUploading}
             videoUploading={videoUploading}
-            onPosterRemove={handleRemovePoster}
             onVideoRemove={handleRemoveVideo}
-            showPosterRemove={showPosterRemoveControls}
             showVideoRemove={showVideoRemoveControls}
           />
 
           <TextLessonWorkspaceSettings
             lessonPreview={lessonPreview}
             onLessonPreviewChange={setLessonPreview}
-            unlockAfterPurchase={unlockAfterPurchase}
-            onUnlockAfterPurchaseChange={setUnlockAfterPurchase}
-            startDate={startDate}
-            onStartDateChange={setStartDate}
-            startTime={startTime}
-            onStartTimeChange={setStartTime}
+            showUnlockAfterPurchase={false}
             hideDuration
           />
 
@@ -844,7 +615,7 @@ export function CurriculumVideoLessonWorkspace({
           color="primary"
           onClick={persistLesson}
           sx={styles.footerButton}
-          disabled={posterUploading || videoUploading}
+          disabled={videoUploading}
         >
           {saveLiveRichLesson ? 'Save lesson' : 'Create'}
         </Button>

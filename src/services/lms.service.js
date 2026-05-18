@@ -612,6 +612,11 @@ function buildProgressSummary() {
     strengths: ['Hydraulics', 'Code Familiarity', 'Material Selection'],
     weaknesses: ['Open channel flow', 'Sanitary vent layouts', 'Heat treatment cycles'],
     suggestedModuleIds: ['module-hydraulics-practice', 'module-code-final-coaching', 'module-heat-treatment-refresher'],
+    instructorSummary: {
+      courses: courses.length,
+      enrollments: enrollments.length,
+      students: studentsMock.length,
+    },
   };
 }
 
@@ -924,8 +929,12 @@ export async function mockResponseForKey(key) {
   return null;
 }
 
-export async function submitEnrollmentRequest(programId) {
+export async function submitEnrollmentRequest(programId, paymentProofFile) {
   await delay(180);
+
+  if (!paymentProofFile) {
+    throw new Error('Upload proof of payment before submitting.');
+  }
 
   const rejected = enrollments.find(
     (row) => row.programId === programId && row.status === ENROLLMENT_STATUSES[2]
@@ -933,6 +942,8 @@ export async function submitEnrollmentRequest(programId) {
   if (rejected) {
     rejected.status = ENROLLMENT_STATUSES[0];
     rejected.submittedAt = new Date().toISOString().slice(0, 10);
+    rejected.hasPaymentProof = true;
+    rejected.paymentProofFileName = paymentProofFile?.name ?? 'payment-proof.pdf';
     return { ...rejected };
   }
 
@@ -955,6 +966,8 @@ export async function submitEnrollmentRequest(programId) {
     schoolHeld: user.schoolHeld ?? '',
     submittedAt: new Date().toISOString().slice(0, 10),
     status: ENROLLMENT_STATUSES[0],
+    hasPaymentProof: true,
+    paymentProofFileName: paymentProofFile?.name ?? 'payment-proof.pdf',
   };
   enrollments.unshift(created);
 

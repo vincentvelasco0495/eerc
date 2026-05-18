@@ -31,7 +31,7 @@ export function getSidebarItemSx(item) {
     color: item.active ? 'primary.main' : 'text.secondary',
     bgcolor: item.active ? 'primary.lighter' : 'transparent',
     textDecoration: 'none',
-    cursor: item.action === 'logout' ? 'pointer' : 'default',
+    cursor: item.action === 'logout' || item.path ? 'pointer' : 'default',
     transition: (theme) => theme.transitions.create(['background-color', 'color']),
   };
 }

@@ -10,7 +10,9 @@ use App\Models\User;
 use App\Services\LmsCatalogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LmsEnrollmentController extends Controller
 {
@@ -60,6 +62,7 @@ class LmsEnrollmentController extends Controller
     {
         $data = $request->validate([
             'program_id' => 'required|string|max:64',
+            'payment_proof' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
         ]);
 
         $user = $this->lmsActor();
@@ -68,6 +71,7 @@ class LmsEnrollmentController extends Controller
         }
 
         $program = Program::query()->where('public_id', $data['program_id'])->firstOrFail();
+        $uploaded = $request->file('payment_proof');
 
         $existing = Enrollment::query()
             ->where('user_id', $user->id)
@@ -81,10 +85,22 @@ class LmsEnrollmentController extends Controller
             ], 409);
         }
 
+        $stored = Storage::disk('public')->putFile('enrollment-payment-proofs', $uploaded);
+        $proofPayload = [
+            'payment_proof_path' => $stored,
+            'payment_proof_original_name' => $uploaded->getClientOriginalName() ?: ('payment-'.$uploaded->hashName()),
+            'payment_proof_mime' => $uploaded->getMimeType(),
+        ];
+
         if ($existing && $existing->status === 'rejected') {
+            if ($existing->payment_proof_path) {
+                Storage::disk('public')->delete($existing->payment_proof_path);
+            }
+
             $existing->update([
                 'status' => 'pending',
                 'submitted_at' => now()->toDateString(),
+                ...$proofPayload,
             ]);
             $enrollment = $existing;
         } else {
@@ -94,6 +110,7 @@ class LmsEnrollmentController extends Controller
                 'program_id' => $program->id,
                 'status' => 'pending',
                 'submitted_at' => now()->toDateString(),
+                ...$proofPayload,
             ]);
         }
 
@@ -107,7 +124,37 @@ class LmsEnrollmentController extends Controller
             'programTitle' => $enrollment->program->title ?? '',
             'submittedAt' => $enrollment->submitted_at->format('Y-m-d'),
             'status' => $enrollment->status,
+            'hasPaymentProof' => true,
         ], 201);
+    }
+
+    public function downloadPaymentProof(string $publicId): StreamedResponse|JsonResponse
+    {
+        $actor = $this->lmsActor();
+        if ($actor->id <= 0) {
+            abort(401, 'Authentication required.');
+        }
+
+        $enrollment = Enrollment::query()->where('public_id', $publicId)->firstOrFail();
+
+        if (! $this->canManageEnrollments($actor) && $enrollment->user_id !== $actor->id) {
+            abort(403, 'You cannot view this payment proof.');
+        }
+
+        $path = $enrollment->payment_proof_path;
+        if (! $path || ! Storage::disk('public')->exists($path)) {
+            abort(404, 'Payment proof not found.');
+        }
+
+        $disk = Storage::disk('public');
+        $name = $enrollment->payment_proof_original_name ?: 'payment-proof';
+        $mime = $enrollment->payment_proof_mime;
+
+        if ($mime) {
+            return $disk->response($path, $name, ['Content-Type' => $mime]);
+        }
+
+        return $disk->download($path, $name);
     }
 
     public function updateStatus(Request $request, string $publicId): JsonResponse
