@@ -18,7 +18,7 @@ import { InstructorWorkspaceShell } from 'src/features/instructor-profile/compon
 
 import { toast } from 'src/components/snackbar';
 import { EnrollmentTable } from 'src/components/enrollments/EnrollmentTable';
-import { ProgramsPagination, ProgramsPerPageControl } from 'src/components/programs/Pagination';
+import { ServerListPagination, ServerListPerPageControl } from 'src/components/server-pagination';
 
 import { useAuthContext } from 'src/auth/hooks';
 
@@ -185,7 +185,7 @@ export default function EnrollmentPage() {
                   <Typography variant="h6" sx={{ minWidth: 0 }}>
                     {isInstructorLike ? 'Enrollment list' : 'My enrollments'}
                   </Typography>
-                  <ProgramsPerPageControl
+                  <ServerListPerPageControl
                     perPage={perPage}
                     onPerPageChange={changePerPage}
                     disabled={listLoading}
@@ -217,7 +217,7 @@ export default function EnrollmentPage() {
                     debouncedSearch ? 'No enrollments match your search.' : 'No enrollments found'
                   }
                 />
-                <ProgramsPagination
+                <ServerListPagination
                   page={currentPage}
                   lastPage={lastPage}
                   total={total}

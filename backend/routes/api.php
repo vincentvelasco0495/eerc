@@ -1,6 +1,15 @@
 <?php
 
+use App\Http\Controllers\Api\AboutPageContentController;
+use App\Http\Controllers\Api\Admin\AboutPageContentAdminController;
+use App\Http\Controllers\Api\Admin\ContactFeedbackAdminController;
+use App\Http\Controllers\Api\Admin\ContactPageContentAdminController;
+use App\Http\Controllers\Api\ContactFeedbackController;
+use App\Http\Controllers\Api\ContactPageContentController;
+use App\Http\Controllers\Api\Admin\CmsMediaUploadController;
+use App\Http\Controllers\Api\Admin\HomepageContentAdminController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\HomepageContentController;
 use App\Http\Controllers\Api\LmsAdminSummaryController;
 use App\Http\Controllers\Api\LmsAnalyticsController;
 use App\Http\Controllers\Api\LmsCourseController;
@@ -43,6 +52,11 @@ Route::get('/courses/{courseLookup}/detail', [LmsCourseController::class, 'show'
 Route::get('/courses/{coursePublicId}/stats', [LmsCourseController::class, 'stats']);
 Route::get('/modules', [LmsModuleController::class, 'index']);
 Route::get('/quizzes', [LmsQuizController::class, 'index']);
+Route::get('/homepage-v2', [HomepageContentController::class, 'show']);
+Route::get('/about-us', [AboutPageContentController::class, 'show']);
+Route::get('/contact-page', [ContactPageContentController::class, 'show']);
+
+Route::middleware('throttle:10,1')->post('/contact-feedback', [ContactFeedbackController::class, 'store']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -109,4 +123,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/lesson-materials/{publicId}', [LmsLessonMaterialController::class, 'destroy']);
 
     Route::post('/admin/uploads', [LmsAdminUploadController::class, 'store']);
+
+    Route::middleware('page:/feedback')->group(function () {
+        Route::get('/admin/contact-feedback', [ContactFeedbackAdminController::class, 'index']);
+    });
+
+    Route::middleware('page:/content-management')->group(function () {
+        Route::get('/admin/homepage-v2', [HomepageContentAdminController::class, 'show']);
+        Route::put('/admin/homepage-v2/{section}', [HomepageContentAdminController::class, 'update']);
+        Route::post('/admin/homepage-v2/publish-all', [HomepageContentAdminController::class, 'publishAll']);
+        Route::get('/admin/about-us', [AboutPageContentAdminController::class, 'show']);
+        Route::put('/admin/about-us/{section}', [AboutPageContentAdminController::class, 'update']);
+        Route::post('/admin/about-us/publish-all', [AboutPageContentAdminController::class, 'publishAll']);
+        Route::get('/admin/contact-page', [ContactPageContentAdminController::class, 'show']);
+        Route::put('/admin/contact-page/{section}', [ContactPageContentAdminController::class, 'update']);
+        Route::post('/admin/contact-page/publish-all', [ContactPageContentAdminController::class, 'publishAll']);
+        Route::post('/admin/upload', [CmsMediaUploadController::class, 'store']);
+        Route::delete('/admin/media/{publicId}', [CmsMediaUploadController::class, 'destroy']);
+    });
 });

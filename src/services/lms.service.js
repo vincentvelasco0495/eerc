@@ -821,6 +821,7 @@ export async function mockResponseForKey(key) {
     const limit = Math.min(500, Math.max(1, parseInt(params.get('limit') || '100', 10)));
     const programRaw = (params.get('program') || '').trim();
     const programNorm = programRaw.toLowerCase();
+    const statusRaw = (params.get('status') || '').trim().toLowerCase();
 
     let list = courses;
     if (programRaw) {
@@ -841,6 +842,14 @@ export async function mockResponseForKey(key) {
           title === programNorm.replace(/-/g, ' ')
         );
       });
+    }
+
+    if (statusRaw === 'published') {
+      list = list.filter((course) => course.isPublished !== false && course.status !== 'draft');
+    } else if (statusRaw === 'draft') {
+      list = list.filter((course) => course.isPublished === false || course.status === 'draft');
+    } else if (statusRaw === 'upcoming') {
+      list = [];
     }
 
     const start = (page - 1) * limit;

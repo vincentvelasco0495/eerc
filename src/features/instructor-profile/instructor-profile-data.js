@@ -37,6 +37,11 @@ const sidebarGroups = [
         icon: 'solar:speaker-bold-duotone',
         path: paths.dashboard.announcement,
       },
+      {
+        label: 'Feedback',
+        icon: 'solar:chat-round-dots-bold-duotone',
+        path: paths.dashboard.feedback,
+      },
     ],
   },
   {
@@ -52,6 +57,26 @@ const sidebarGroups = [
         icon: 'solar:clipboard-list-bold-duotone',
         path: paths.dashboard.assignment,
         badge: '18',
+      },
+    ],
+  },
+  {
+    title: 'Content Management',
+    items: [
+      {
+        label: 'Homepage',
+        icon: 'solar:home-2-bold-duotone',
+        path: paths.dashboard.contentManagementHomepageV2,
+      },
+      {
+        label: 'About Us',
+        icon: 'solar:info-circle-bold-duotone',
+        path: paths.dashboard.contentManagementAboutUs,
+      },
+      {
+        label: 'Contact Us',
+        icon: 'solar:mailbox-bold-duotone',
+        path: paths.dashboard.contentManagementContactUs,
       },
     ],
   },
@@ -86,23 +111,25 @@ const sidebarGroups = [
 export function getInstructorWorkspaceNavGroups(pathname, role, user) {
   const homePath = getRoleHomePath(role);
 
-  return sidebarGroups.map((group) => ({
-    ...group,
-    items: group.items
-      .map((item) => {
-        if (item.pathKey === 'home') {
-          return { ...item, path: homePath };
-        }
-        return item;
-      })
-      .filter((item) => !item.path || canAccessPageHref(user ?? { role, pagePermissions: [] }, item.path))
-      .map((item) => ({
-        ...item,
-        active: item.path
-          ? pathname === item.path || pathname === `${item.path}/`
-          : false,
-      })),
-  }));
+  return sidebarGroups
+    .map((group) => ({
+      ...group,
+      items: group.items
+        .map((item) => {
+          if (item.pathKey === 'home') {
+            return { ...item, path: homePath };
+          }
+          return item;
+        })
+        .filter((item) => !item.path || canAccessPageHref(user ?? { role, pagePermissions: [] }, item.path))
+        .map((item) => ({
+          ...item,
+          active: item.path
+            ? pathname === item.path || pathname === `${item.path}/`
+            : false,
+        })),
+    }))
+    .filter((group) => group.items.length > 0);
 }
 
 /** First letter of the first two name parts, e.g. "Alex E. Rivera" -> "AE" (same as menu avatar). */
@@ -164,8 +191,6 @@ export const instructorAnalyticsStats = buildInstructorAnalyticsStats({
   enrollments: 0,
   students: 0,
 });
-
-export const instructorReportingPeriods = ['All time', 'This month', 'This quarter', 'This year'];
 
 export const instructorCourseFilters = [
   { value: 'all', label: 'All' },

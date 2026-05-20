@@ -61,7 +61,9 @@ const DASHBOARD_LAYOUT_FIRST_SEGMENTS = new Set([
   'student-profile',
   'available-programs',
   'enrollment',
+  'feedback',
   'admin',
+  'content-management',
 ]);
 
 export function isDashboardLayoutPath(pathname) {
@@ -208,6 +210,8 @@ export const paths = {
     announcement: `/announcement`,
     /** @deprecated Use `announcement` — legacy `/instructor-announcement` URL. */
     instructorAnnouncement: `/announcement`,
+    /** Contact form submissions inbox (admin / instructor). */
+    feedback: `/feedback`,
     courseCurriculum: `/course-curriculum`,
     /** Opens the builder against the LMS API and creates a DB row on first save / first module. */
     newCourseCurriculum: `/course-curriculum?new=1`,
@@ -240,6 +244,10 @@ export const paths = {
     leaderboard: `/leaderboard`,
     enrollment: `/enrollment`,
     admin: `/admin`,
+    contentManagementHomepage: `/content-management/homepage`,
+    contentManagementHomepageV2: `/content-management/homepage-v2`,
+    contentManagementAboutUs: `/content-management/about-us`,
+    contentManagementContactUs: `/content-management/contact-us`,
     mail: `/mail`,
     chat: `/chat`,
     blank: `/blank`,

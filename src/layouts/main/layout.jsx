@@ -46,7 +46,12 @@ function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md' }) {
 
   const { value: open, onFalse: onClose, onTrue: onOpen } = useBoolean();
 
-  const isHomePage = pathname === '/';
+  const normalizedPath = (pathname ?? '').replace(/\/$/, '') || '/';
+  /** Home, About, and Contact share the same marketing header + footer chrome. */
+  const isMarketingLanding =
+    normalizedPath === '/' ||
+    normalizedPath === paths.about ||
+    normalizedPath === paths.contact;
   const isProgramCourseDetailPage =
     pathname === paths.programCourseDetail || /^\/program-course-detail\/?$/.test(pathname ?? '');
   const hideProgramDetailHeader = isProgramCourseDetailPage && !authenticated;
@@ -186,7 +191,7 @@ function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md' }) {
       ),
       rightArea: (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5 } }}>
-          {isHomePage ? (
+          {isMarketingLanding ? (
             <Button
               type="button"
               variant="contained"
@@ -224,7 +229,7 @@ function MainLayout({ sx, cssVars, children, slotProps, layoutQuery = 'md' }) {
   };
 
   const renderFooter = () =>
-    isHomePage ? (
+    isMarketingLanding ? (
       <HomeFooter
         sx={[
           {

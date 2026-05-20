@@ -32,7 +32,7 @@ import { Editor } from 'src/components/editor';
 import { toast } from 'src/components/snackbar';
 import { ConfirmDialog } from 'src/components/custom-dialog';
 import { InstructorTable } from 'src/components/instructors/InstructorTable';
-import { ProgramsPagination, ProgramsPerPageControl } from 'src/components/programs/Pagination';
+import { ServerListPagination, ServerListPerPageControl } from 'src/components/server-pagination';
 
 const DEFAULT_FORM = {
   name: '',
@@ -406,7 +406,7 @@ export default function InstructorsPage() {
                   <Typography variant="h6" sx={{ minWidth: 0 }}>
                     Instructor list
                   </Typography>
-                  <ProgramsPerPageControl
+                  <ServerListPerPageControl
                     perPage={perPage}
                     onPerPageChange={changePerPage}
                     disabled={listLoading}
@@ -440,7 +440,7 @@ export default function InstructorsPage() {
                     debouncedSearch ? 'No instructors match your search.' : 'No instructors found'
                   }
                 />
-                <ProgramsPagination
+                <ServerListPagination
                   page={currentPage}
                   lastPage={lastPage}
                   total={total}

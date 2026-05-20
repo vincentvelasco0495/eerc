@@ -37,6 +37,7 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
     paths.dashboard.home,
     paths.dashboard.instructorHome,
     paths.dashboard.announcement,
+    paths.dashboard.feedback,
     paths.dashboard.settingProfile,
     paths.dashboard.gradebook,
     paths.dashboard.courseCurriculum,

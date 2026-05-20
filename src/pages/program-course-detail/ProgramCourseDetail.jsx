@@ -16,6 +16,7 @@ import {
   useLmsModulesByCourse,
 } from 'src/hooks/use-lms';
 
+import { normalizeHtmlForDisplay } from 'src/utils/html-content';
 import { resolveProgramBannerSrc } from 'src/utils/program-banner';
 
 import { InstructorCourseCard } from 'src/features/instructor-profile/components/instructor-course-card';
@@ -95,11 +96,25 @@ const Title = styled.h1`
   letter-spacing: -0.02em;
 `;
 
-const Subtitle = styled.p`
+const ProgramDescription = styled.div`
   margin: 0;
   font-size: 14px;
   line-height: 1.65;
   color: ${colors.muted};
+
+  p {
+    margin: 0 0 0.75em;
+  }
+
+  p:last-child {
+    margin-bottom: 0;
+  }
+
+  ul,
+  ol {
+    margin: 0.5em 0;
+    padding-left: 1.25em;
+  }
 `;
 
 /** Narrow sidebar + wide content; mobile: flex column — main (hero) above sidebar. */
@@ -325,6 +340,12 @@ export default function ProgramCourseDetail() {
     () => programCourses.map((course) => mapLmsCatalogCourseToInstructorCard(course)),
     [programCourses]
   );
+
+  const programLecturesFromCourses = useMemo(
+    () =>
+      programCourses.reduce((sum, course) => sum + (Number(course.totalModules) || 0), 0),
+    [programCourses]
+  );
   const visibleProgramCourseCards = useMemo(() => {
     if (selectedFilter === 'all') {
       return programCourseCards;
@@ -355,7 +376,12 @@ export default function ProgramCourseDetail() {
   );
 
   const programTitle = selectedProgram?.title || shell?.data?.title || 'Program';
-  const programDescription = selectedProgram?.description || shell?.data?.shortDescription || '';
+  const programDescriptionRaw =
+    selectedProgram?.description || shell?.data?.shortDescription || '';
+  const programDescriptionHtml = useMemo(
+    () => normalizeHtmlForDisplay(programDescriptionRaw),
+    [programDescriptionRaw]
+  );
   const programBannerSrc = resolveProgramBannerSrc(selectedProgram?.bannerPath);
 
   const programEnrollment = useMemo(() => {
@@ -457,7 +483,7 @@ export default function ProgramCourseDetail() {
       key: 'program_lectures',
       icon: 'book',
       label: 'Lectures',
-      value: String(programStats?.totalLectures ?? 0),
+      value: String(programLecturesFromCourses || programStats?.totalLectures || 0),
     },
     {
       key: 'program_videos',
@@ -493,7 +519,9 @@ export default function ProgramCourseDetail() {
               <CourseDetailBackArrowSvg />
             </BackButton>
             <Title>{programTitle}</Title>
-            {programDescription ? <Subtitle>{programDescription}</Subtitle> : null}
+            {programDescriptionHtml ? (
+              <ProgramDescription dangerouslySetInnerHTML={{ __html: programDescriptionHtml }} />
+            ) : null}
           </LocalHeader>
           <TwoColGrid>
           <AsideColumn aria-label="Course summary sidebar">

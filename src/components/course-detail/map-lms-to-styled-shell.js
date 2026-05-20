@@ -285,9 +285,12 @@ export function mapLmsToStyledCourseDetail(
           },
         ];
 
-  const videoLessonsCount = sortedModules.filter(
-    (m) => Array.isArray(m.resources) && m.resources.includes('Video')
-  ).length;
+  const videoLessonsInCurriculum = curriculumModules.reduce(
+    (sum, mod) =>
+      sum +
+      (mod.lessons ?? []).filter((lesson) => lesson.type === 'video' || lesson.type === 'stream').length,
+    0
+  );
   const statsTotalVideos = Number(courseStats?.totalVideos ?? NaN);
   const statsTotalLectures = Number(courseStats?.totalLectures ?? NaN);
   const statsTotalQuizzes = Number(courseStats?.totalQuizzes ?? NaN);
@@ -299,17 +302,20 @@ export function mapLmsToStyledCourseDetail(
       ? course.totalModules
       : sortedModules.length;
 
+  const videoCount =
+    videoLessonsInCurriculum > 0
+      ? videoLessonsInCurriculum
+      : Number.isFinite(statsTotalVideos) && statsTotalVideos >= 0
+        ? statsTotalVideos
+        : 0;
+
   const detailRows = [
     { key: 'duration', label: 'Duration', value: `${course.hours ?? 0} hours`, icon: 'clock' },
     { key: 'lectures', label: 'Lectures', value: String(lecturesCount), icon: 'book' },
     {
       key: 'video',
       label: 'Video',
-      value:
-        course.videoHoursLabel ??
-        ((Number.isFinite(statsTotalVideos) ? statsTotalVideos : videoLessonsCount) > 0
-          ? `${Number.isFinite(statsTotalVideos) ? statsTotalVideos : videoLessonsCount} ${(Number.isFinite(statsTotalVideos) ? statsTotalVideos : videoLessonsCount) === 1 ? 'lesson' : 'lessons'} with video`
-          : '—'),
+      value: String(videoCount),
       icon: 'play',
     },
     {

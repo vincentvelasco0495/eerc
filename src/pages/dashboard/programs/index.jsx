@@ -32,7 +32,7 @@ import { Editor } from 'src/components/editor';
 import { toast } from 'src/components/snackbar';
 import { ConfirmDialog } from 'src/components/custom-dialog';
 import { ProgramTable } from 'src/components/programs/ProgramTable';
-import { ProgramsPagination, ProgramsPerPageControl } from 'src/components/programs/Pagination';
+import { ServerListPagination, ServerListPerPageControl } from 'src/components/server-pagination';
 
 const DEFAULT_FORM = {
   code: '',
@@ -329,7 +329,11 @@ export default function ProgramsPage() {
                       Description
                     </Typography>
                     <Editor
+                      key={editingId ? `program-description-${editingId}` : 'program-description-create'}
                       value={form.description}
+                      contentRevision={editingId ?? 'program-description-create'}
+                      revisionApplyHtml={form.description}
+                      debounceMs={0}
                       onChange={(html) =>
                         setForm((prev) => ({
                           ...prev,
@@ -395,7 +399,7 @@ export default function ProgramsPage() {
                   <Typography variant="h6" sx={{ minWidth: 0 }}>
                     Program list
                   </Typography>
-                  <ProgramsPerPageControl
+                  <ServerListPerPageControl
                     perPage={perPage}
                     onPerPageChange={changePerPage}
                     disabled={listLoading}
@@ -423,7 +427,7 @@ export default function ProgramsPage() {
                     debouncedSearch ? 'No programs match your search.' : 'No programs found'
                   }
                 />
-                <ProgramsPagination
+                <ServerListPagination
                   page={currentPage}
                   lastPage={lastPage}
                   total={total}

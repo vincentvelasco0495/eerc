@@ -139,19 +139,19 @@ class LmsCatalogService
         /** @var Program $program */
         $program = Program::query()->where('public_id', $programPublicId)->firstOrFail();
 
-        $courseIds = Course::query()
+        $courses = Course::query()
             ->where('program_id', $program->id)
-            ->pluck('id');
+            ->with(['modules'])
+            ->get();
 
-        $totalCourses = (int) $courseIds->count();
+        $courseIds = $courses->pluck('id');
 
-        $totalDurationHours = (int) Course::query()
-            ->whereIn('id', $courseIds)
-            ->sum('hours');
+        $totalCourses = (int) $courses->count();
 
-        $moduleIds = Module::query()
-            ->whereIn('course_id', $courseIds)
-            ->pluck('id');
+        $totalDurationHours = (int) $courses->sum('hours');
+
+        $visibleModules = $courses->flatMap(fn (Course $course) => $this->modulesForCourseStats($course));
+        $moduleIds = $visibleModules->pluck('id')->unique()->values();
 
         $totalLectures = (int) $moduleIds->count();
 
@@ -159,11 +159,7 @@ class LmsCatalogService
             ->whereIn('course_id', $courseIds)
             ->count();
 
-        $totalVideos = (int) ModuleResource::query()
-            ->whereIn('module_id', $moduleIds)
-            ->where('format', 'Video')
-            ->distinct('module_id')
-            ->count('module_id');
+        $totalVideos = $this->countVideoLessonsForModules($visibleModules);
 
         return [
             'programId' => $program->public_id,
@@ -200,11 +196,7 @@ class LmsCatalogService
             })
             ->count();
 
-        $totalVideos = (int) ModuleResource::query()
-            ->whereIn('module_id', $moduleIds)
-            ->where('format', 'Video')
-            ->distinct('module_id')
-            ->count('module_id');
+        $totalVideos = $this->countVideoLessonsForModules($modulesStat);
 
         return [
             'courseId' => $course->public_id,
@@ -219,8 +211,13 @@ class LmsCatalogService
     /**
      * @return array{data: array<int, array<string, mixed>>, meta: array<string, int>}
      */
-    public function coursesPaginated(User $user, int $page, int $perPage, ?string $programHint = null): array
-    {
+    public function coursesPaginated(
+        User $user,
+        int $page,
+        int $perPage,
+        ?string $programHint = null,
+        ?string $status = null
+    ): array {
         $completedMods = UserModuleProgress::query()
             ->where('user_id', $user->id)
             ->where('progress_percent', '>=', 100)
@@ -247,6 +244,8 @@ class LmsCatalogService
         $normalizedProgramHint = trim($normalizedProgramHint, '-');
         $resolvedProgramPublicId = $programAliasMap[$normalizedProgramHint] ?? null;
 
+        $status = strtolower(trim((string) ($status ?? '')));
+
         /** @var LengthAwarePaginator $paginator */
         $paginator = Course::query()
             ->with([
@@ -268,6 +267,10 @@ class LmsCatalogService
                     }
                 });
             })
+            ->when($status === 'published', fn ($query) => $query->where('is_published', true))
+            ->when($status === 'draft', fn ($query) => $query->where('is_published', false))
+            ->when($status === 'upcoming', fn ($query) => $query->whereRaw('0 = 1'))
+            ->orderByDesc('updated_at')
             ->orderBy('title')
             ->paginate($perPage, ['*'], 'page', $page);
 
@@ -594,6 +597,41 @@ class LmsCatalogService
         $visible = $course->modules->filter(fn (Module $m) => (bool) $m->is_visible)->values();
 
         return $visible->isNotEmpty() ? $visible : $course->modules;
+    }
+
+    /**
+     * Count learner-visible video lessons (module core + standalone), matching curriculum typing.
+     *
+     * @param  Collection<int, Module>  $modules
+     */
+    protected function countVideoLessonsForModules(Collection $modules): int
+    {
+        $count = 0;
+
+        foreach ($modules as $module) {
+            if (! $module->relationLoaded('resources')) {
+                $module->load('resources');
+            }
+
+            $resources = $module->resources;
+            $coreResources = $resources
+                ->filter(fn (ModuleResource $resource) => ! (bool) $resource->is_standalone_lesson)
+                ->pluck('format')
+                ->all();
+
+            if ($module->streaming_only || in_array('Video', $coreResources, true)) {
+                $count++;
+            }
+
+            foreach ($resources->where('is_standalone_lesson', true) as $standalone) {
+                $kind = strtolower((string) ($standalone->lesson_kind ?? ''));
+                if (in_array($kind, ['video', 'stream'], true) || $standalone->format === 'Video') {
+                    $count++;
+                }
+            }
+        }
+
+        return $count;
     }
 
     /**

@@ -285,8 +285,8 @@ export function useLmsProgramStats(programPublicId) {
   };
 }
 
-export function useLmsCourses(page = 1, limit = 100, program = '') {
-  const key = lmsEndpoints.courses({ page, limit, program });
+export function useLmsCourses(page = 1, limit = 100, program = '', status = '') {
+  const key = lmsEndpoints.courses({ page, limit, program, status });
   const redux = useReduxLmsResource(key, true, { ttlMs: 10_000 });
   const payload = redux.data ?? {};
   return {

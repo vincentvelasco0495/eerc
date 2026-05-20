@@ -10,6 +10,9 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             LmsDemoSeeder::class,
+            HomepageV2SectionSeeder::class,
+            AboutPageSectionSeeder::class,
+            ContactPageSectionSeeder::class,
             RolePagePermissionSeeder::class,
         ]);
     }

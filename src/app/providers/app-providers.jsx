@@ -3,10 +3,12 @@ import 'src/global.css';
 import { SWRConfig } from 'swr';
 import { useEffect } from 'react';
 import { Provider } from 'react-redux';
+import { QueryClientProvider } from '@tanstack/react-query';
 
 import { usePathname } from 'src/routes/hooks';
 
 import { CONFIG } from 'src/global-config';
+import { queryClient } from 'src/lib/query-client';
 import { LocalizationProvider } from 'src/locales';
 import { themeConfig, ThemeProvider } from 'src/theme';
 import { I18nProvider } from 'src/locales/i18n-provider';
@@ -56,6 +58,7 @@ function StoreBootstrapper({ children }) {
 export default function AppProviders({ children }) {
   return (
     <Provider store={store}>
+      <QueryClientProvider client={queryClient}>
       <SWRConfig value={{ revalidateOnFocus: false }}>
         <StoreBootstrapper>
           <I18nProvider>
@@ -82,6 +85,7 @@ export default function AppProviders({ children }) {
           </I18nProvider>
         </StoreBootstrapper>
       </SWRConfig>
+      </QueryClientProvider>
     </Provider>
   );
 }

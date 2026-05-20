@@ -28,6 +28,7 @@ const AdminPage = lazy(() => import('src/pages/dashboard/admin'));
 const AssignmentsPage = lazy(() => import('src/pages/dashboard/assignments'));
 const InstructorProfilePage = lazy(() => import('src/pages/dashboard/instructor-profile'));
 const InstructorAnnouncementPage = lazy(() => import('src/pages/dashboard/instructor-announcement'));
+const FeedbackInboxPage = lazy(() => import('src/pages/dashboard/feedback'));
 const InstructorSettingsPage = lazy(() => import('src/pages/dashboard/instructor-settings'));
 const InstructorGradebookPage = lazy(() => import('src/pages/dashboard/instructor-gradebook'));
 const InstructorCourseCurriculumPage = lazy(() =>
@@ -39,6 +40,15 @@ const ProgramsPage = lazy(() => import('src/pages/dashboard/programs'));
 const InstructorsPage = lazy(() => import('src/pages/dashboard/instructors'));
 const StudentsPage = lazy(() => import('src/pages/dashboard/students'));
 const SettingsPage = lazy(() => import('src/pages/dashboard/settings'));
+const ContentManagementHomepageV2Page = lazy(
+  () => import('src/pages/dashboard/content-management/homepage-v2')
+);
+const ContentManagementAboutUsPage = lazy(
+  () => import('src/pages/dashboard/content-management/about-us')
+);
+const ContentManagementContactUsPage = lazy(
+  () => import('src/pages/dashboard/content-management/contact-us')
+);
 const EnrolledCoursesPage = lazy(() => import('src/pages/dashboard/enrolled-courses/index.jsx'));
 const AvailableProgramsPage = lazy(() => import('src/pages/dashboard/available-programs/index.jsx'));
 
@@ -165,6 +175,7 @@ export const dashboardRoutes = [
         element: <Navigate to={paths.dashboard.instructorHome} replace />,
       },
       { path: 'announcement', element: <InstructorAnnouncementPage /> },
+      { path: 'feedback', element: <FeedbackInboxPage /> },
       { path: 'instructor-announcement', element: <LegacyInstructorAnnouncementRedirect /> },
       { path: 'instructor-announcement/*', element: <LegacyInstructorAnnouncementRedirect /> },
       { path: 'setting-profile', element: <InstructorSettingsPage /> },
@@ -203,6 +214,10 @@ export const dashboardRoutes = [
       },
       { path: 'available-programs', element: <AvailableProgramsPage /> },
       { path: 'enrollment', element: <EnrollmentPage /> },
+      { path: 'content-management/homepage', element: <ContentManagementHomepageV2Page /> },
+      { path: 'content-management/homepage-v2', element: <ContentManagementHomepageV2Page /> },
+      { path: 'content-management/about-us', element: <ContentManagementAboutUsPage /> },
+      { path: 'content-management/contact-us', element: <ContentManagementContactUsPage /> },
       { path: 'admin', element: <AdminPage /> },
       {
         path: 'course',

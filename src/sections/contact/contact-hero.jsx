@@ -61,14 +61,14 @@ export function ContactHero({ sx, ...other }) {
               color: 'common.white',
               rowGap: { xs: 5, md: 0 },
               columnGap: { xs: 2, md: 5 },
-              gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
             }}
           >
             {CONTACTS.map((contact) => (
-              <li key={contact.country}>
+              <li key={contact.title}>
                 <m.div variants={varFade('inUp', { distance: 24 })}>
                   <Typography variant="h6" sx={{ mb: 1 }}>
-                    {contact.country}
+                    {contact.title}
                   </Typography>
                 </m.div>
 
@@ -90,23 +90,16 @@ export function ContactHero({ sx, ...other }) {
 
 const CONTACTS = [
   {
-    country: 'Bali',
-    address: '508 Bridle Avenue Newnan, GA 30263',
-    phoneNumber: '(239) 555-0108',
+    title: 'Manila branch',
+    address:
+      'Room 202, 2nd Floor, Espana Place Bldg., 1139 Adelina St., Sampaloc, Manila',
   },
   {
-    country: 'London',
-    address: '508 Bridle Avenue Newnan, GA 30263',
-    phoneNumber: '(319) 555-0115',
+    title: 'Baguio branch',
+    address: 'BSUCMPC Building, 95 Lower Bonifacio St., Baguio, 2600 Benguet',
   },
   {
-    country: 'Prague',
-    address: '508 Bridle Avenue Newnan, GA 30263',
-    phoneNumber: '(252) 555-0126',
-  },
-  {
-    country: 'Moscow',
-    address: '508 Bridle',
-    phoneNumber: '(307) 555-0133',
+    title: 'Legazpi branch',
+    address: '3rd Floor, CCJ Bldg., Tahao Road, Legazpi City (near BDO and SM Legazpi)',
   },
 ];

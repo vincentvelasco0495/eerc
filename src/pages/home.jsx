@@ -1,4 +1,4 @@
-import { HomeView } from 'src/sections/home/view';
+import { HomeV2View } from 'src/sections/home-v2';
 
 // ----------------------------------------------------------------------
 
@@ -14,7 +14,7 @@ export default function Page() {
       <title>{metadata.title}</title>
       <meta name="description" content={metadata.description} />
 
-      <HomeView />
+      <HomeV2View />
     </>
   );
 }

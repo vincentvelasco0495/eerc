@@ -9,18 +9,7 @@ export const styles = {
     borderRadius: 2,
     p: { xs: 2.5, sm: 3 },
   },
-  selectPlaceholder: {
-    color: 'text.secondary',
-    fontWeight: 500,
-  },
-  selectFieldRoot: {
-    '& .MuiOutlinedInput-root': {
-      bgcolor: 'common.white',
-      borderRadius: 1.5,
-    },
-  },
-  menuPlaceholder: { color: 'text.secondary' },
-  messageField: {
+  textField: {
     '& .MuiOutlinedInput-root': {
       bgcolor: 'common.white',
       borderRadius: 1.5,

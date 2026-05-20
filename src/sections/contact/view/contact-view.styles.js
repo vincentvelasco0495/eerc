@@ -95,6 +95,9 @@ export const styles = {
     textTransform: 'uppercase',
     boxShadow: 'none',
   },
+  formActionsRow: {
+    pt: 0,
+  },
   contactList: {
     display: 'grid',
     gap: 3,

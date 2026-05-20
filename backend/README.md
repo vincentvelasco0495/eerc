@@ -44,7 +44,7 @@ Read endpoints return **one resource** each (relational ids only, no nested enti
 | `GET` | `/api/user` | **Auth** — current user (LMS profile shape) |
 | `GET` | `/api/meta` | **Auth** |
 | `GET` | `/api/programs` | **Auth** |
-| `GET` | `/api/courses?page=1&limit=20` | **Auth** — pagination (`limit` max 100) |
+| `GET` | `/api/courses?page=1&limit=20&status=published` | **Auth** — pagination (`limit` max 100); optional `status`: `published`, `draft`, `upcoming` |
 | `GET` | `/api/enrollments` | **Auth** |
 | `GET` | `/api/modules?courseId={publicId}` | **Auth** — or `?ids=id1,id2` |
 | `GET` | `/api/quizzes` | **Auth** — optional `moduleId` |

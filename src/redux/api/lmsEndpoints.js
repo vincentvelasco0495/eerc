@@ -23,12 +23,17 @@ export const lmsEndpoints = {
   studentsLinkableUsers: () => '/api/students/linkable-users',
   programStats: (programPublicId) =>
     `/api/programs/${encodeURIComponent(programPublicId)}/stats`,
-  courses: ({ page = 1, limit = 100, program = '' } = {}) => {
+  courses: ({ page = 1, limit = 100, program = '', status = '' } = {}) => {
     const programQuery =
       typeof program === 'string' && program.trim()
         ? `&program=${encodeURIComponent(program.trim())}`
         : '';
-    return `/api/courses?page=${page}&limit=${limit}${programQuery}`;
+    const statusNorm = typeof status === 'string' ? status.trim().toLowerCase() : '';
+    const statusQuery =
+      statusNorm && statusNorm !== 'all'
+        ? `&status=${encodeURIComponent(statusNorm)}`
+        : '';
+    return `/api/courses?page=${page}&limit=${limit}${programQuery}${statusQuery}`;
   },
   courseDetail: (courseLookup) =>
     `/api/courses/${encodeURIComponent(String(courseLookup ?? '').trim())}/detail`,

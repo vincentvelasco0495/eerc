@@ -17,8 +17,10 @@ const FALLBACK_RULES = {
     { path: '/setting-profile', matchType: 'exact', query: null },
     { path: '/enrollment', matchType: 'prefix', query: null },
     { path: '/announcement', matchType: 'exact', query: null },
+    { path: '/feedback', matchType: 'prefix', query: null },
     { path: '/gradebook', matchType: 'exact', query: null },
     { path: '/assignment', matchType: 'exact', query: null },
+    { path: '/content-management', matchType: 'prefix', query: null },
     { path: '/admin', matchType: 'prefix', query: null },
     { path: '/quizzes/history', matchType: 'prefix', query: null },
     { path: '/quizzes', matchType: 'prefix', query: null },
@@ -29,8 +31,10 @@ const FALLBACK_RULES = {
     { path: '/setting-profile', matchType: 'exact', query: null },
     { path: '/enrollment', matchType: 'prefix', query: null },
     { path: '/announcement', matchType: 'exact', query: null },
+    { path: '/feedback', matchType: 'prefix', query: null },
     { path: '/gradebook', matchType: 'exact', query: null },
     { path: '/assignment', matchType: 'exact', query: null },
+    { path: '/content-management', matchType: 'prefix', query: null },
     { path: '/courses', matchType: 'prefix', query: null },
     { path: '/quizzes/history', matchType: 'prefix', query: null },
     { path: '/quizzes', matchType: 'prefix', query: null },
@@ -101,14 +105,54 @@ function ruleMatches(rule, pathname, queryParams) {
   return path === rulePath;
 }
 
-export function getPagePermissionRules(user) {
-  const fromApi = user?.pagePermissions;
-
-  if (Array.isArray(fromApi) && fromApi.length > 0) {
-    return fromApi;
+function pathGrantedByRuleSet(rules, pathname, queryParams = {}) {
+  if (!Array.isArray(rules) || rules.length === 0) {
+    return false;
   }
 
-  return FALLBACK_RULES[normalizeUserRole(user?.role)] ?? [];
+  return rules.some((rule) => ruleMatches(rule, pathname, queryParams));
+}
+
+function ruleQueryParams(rule) {
+  if (!rule?.query || typeof rule.query !== 'object') {
+    return {};
+  }
+
+  return { ...rule.query };
+}
+
+function dedupeRules(rules) {
+  const seen = new Set();
+
+  return rules.filter((rule) => {
+    const key = `${normalizePath(rule.path)}|${rule.matchType ?? 'exact'}|${JSON.stringify(rule.query ?? null)}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+
+    return true;
+  });
+}
+
+export function getPagePermissionRules(user) {
+  const fromApi = user?.pagePermissions;
+  const role = normalizeUserRole(user?.role);
+  const fallbacks = FALLBACK_RULES[role] ?? [];
+
+  if (!Array.isArray(fromApi) || fromApi.length === 0) {
+    return fallbacks;
+  }
+
+  // Merge role fallbacks for paths the API rule set does not already cover.
+  // Stale DB seeds can omit newer pages (e.g. /feedback); fallbacks keep nav aligned with shipped routes.
+  const extras = fallbacks.filter(
+    (fb) => !pathGrantedByRuleSet(fromApi, normalizePath(fb.path), ruleQueryParams(fb))
+  );
+
+  return dedupeRules([...fromApi, ...extras]);
 }
 
 export function canAccessPage(user, pathname, queryParams = {}) {

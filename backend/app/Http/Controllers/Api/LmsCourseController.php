@@ -22,9 +22,18 @@ class LmsCourseController extends Controller
         $page = max(1, (int) $request->query('page', 1));
         $limit = min(100, max(1, (int) $request->query('limit', 20)));
         $program = trim((string) $request->query('program', ''));
+        $status = strtolower(trim((string) $request->query('status', '')));
+        $allowedStatuses = ['published', 'draft', 'upcoming'];
+        $statusFilter = in_array($status, $allowedStatuses, true) ? $status : null;
 
         $user = $this->lmsActor();
-        $payload = $catalog->coursesPaginated($user, $page, $limit, $program !== '' ? $program : null);
+        $payload = $catalog->coursesPaginated(
+            $user,
+            $page,
+            $limit,
+            $program !== '' ? $program : null,
+            $statusFilter
+        );
 
         return response()->json($payload);
     }

@@ -3,32 +3,33 @@ import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
-import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
+import { Editor } from 'src/components/editor';
 import { toast } from 'src/components/snackbar';
 
 import { styles } from './styles';
+import { announcementFieldCopy } from '../../instructor-announcement-data';
 import { InstructorWorkspaceShell } from '../../components/instructor-workspace-shell';
-import {
-  instructorAnnouncementCourseOptions,
-  instructorAnnouncementCoursePlaceholder,
-} from '../../instructor-announcement-data';
 
 export function InstructorAnnouncementView() {
-  const [course, setCourse] = useState('');
+  const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
+  const [messageRevision, setMessageRevision] = useState(0);
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (!course) {
-      toast.error('Please choose a course for the announcement.');
+    if (!title.trim()) {
+      toast.error('Please enter an announcement title.');
       return;
     }
     toast.success('Announcement saved (demo).');
     setMessage('');
+    setMessageRevision((n) => n + 1);
   };
+
+  const { title: titleCopy, message: messageCopy } = announcementFieldCopy;
 
   return (
     <InstructorWorkspaceShell>
@@ -40,45 +41,40 @@ export function InstructorAnnouncementView() {
         <Box sx={styles.formSurface}>
           <Stack spacing={2.5}>
             <TextField
-              select
               fullWidth
-              value={course}
-              onChange={(event) => setCourse(event.target.value)}
-              slotProps={{
-                select: {
-                  displayEmpty: true,
-                  renderValue: (selected) =>
-                    selected ? (
-                      selected
-                    ) : (
-                      <Box component="span" sx={styles.selectPlaceholder}>
-                        {instructorAnnouncementCoursePlaceholder}
-                      </Box>
-                    ),
-                },
-              }}
-              sx={styles.selectFieldRoot}
-            >
-              <MenuItem value="" sx={styles.menuPlaceholder}>
-                <em>{instructorAnnouncementCoursePlaceholder}</em>
-              </MenuItem>
-              {instructorAnnouncementCourseOptions.map((option) => (
-                <MenuItem key={option} value={option}>
-                  {option}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <TextField
-              fullWidth
-              multiline
-              minRows={8}
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              placeholder="Enter message for students"
-              inputProps={{ 'aria-label': 'Announcement message for students' }}
-              sx={styles.messageField}
+              required
+              label={titleCopy.label}
+              helperText={titleCopy.helperText}
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder={titleCopy.placeholder}
+              inputProps={{ 'aria-label': titleCopy.label }}
+              sx={styles.textField}
             />
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                {messageCopy.label}
+              </Typography>
+              <Editor
+                value={message}
+                onChange={setMessage}
+                placeholder={messageCopy.placeholder}
+                helperText={messageCopy.helperText}
+                contentRevision={messageRevision}
+                revisionApplyHtml={message}
+                chrome="tinymce"
+                sx={{
+                  mt: 0.5,
+                  minHeight: 320,
+                  maxHeight: 560,
+                }}
+                tinymceResizeBounds={{
+                  min: 180,
+                  max: 520,
+                }}
+              />
+            </Box>
 
             <Stack direction="row" justifyContent="flex-end" sx={styles.actionsRow}>
               <Button type="submit" variant="contained" size="large" sx={styles.submitButton}>

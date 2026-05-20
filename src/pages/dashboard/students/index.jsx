@@ -31,7 +31,7 @@ import { InstructorWorkspaceShell } from 'src/features/instructor-profile/compon
 import { Editor } from 'src/components/editor';
 import { toast } from 'src/components/snackbar';
 import { ConfirmDialog } from 'src/components/custom-dialog';
-import { ProgramsPagination, ProgramsPerPageControl } from 'src/components/programs/Pagination';
+import { ServerListPagination, ServerListPerPageControl } from 'src/components/server-pagination';
 import { InstructorTable as StudentRosterTable } from 'src/components/instructors/InstructorTable';
 
 const DEFAULT_FORM = {
@@ -406,7 +406,7 @@ export default function StudentsPage() {
                   <Typography variant="h6" sx={{ minWidth: 0 }}>
                     Student roster
                   </Typography>
-                  <ProgramsPerPageControl
+                  <ServerListPerPageControl
                     perPage={perPage}
                     onPerPageChange={changePerPage}
                     disabled={listLoading}
@@ -440,7 +440,7 @@ export default function StudentsPage() {
                     debouncedSearch ? 'No students match your search.' : 'No student roster entries found'
                   }
                 />
-                <ProgramsPagination
+                <ServerListPagination
                   page={currentPage}
                   lastPage={lastPage}
                   total={total}

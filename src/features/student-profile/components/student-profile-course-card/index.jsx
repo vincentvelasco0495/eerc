@@ -10,6 +10,7 @@ import CardContent from '@mui/material/CardContent';
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 
+import { htmlToPlainText } from 'src/utils/html-content';
 import { resolveProgramBannerSrc } from 'src/utils/program-banner';
 
 import { Iconify } from 'src/components/iconify';
@@ -65,7 +66,7 @@ export function StudentProfileCourseCard({ course }) {
             </Typography>
             {course.description ? (
               <Typography variant="body2" sx={styles.description}>
-                {course.description}
+                {htmlToPlainText(course.description)}
               </Typography>
             ) : null}
           </Stack>
